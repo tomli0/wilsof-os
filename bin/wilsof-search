@@ -1,0 +1,15 @@
+#!/bin/sh
+# Minimal, documented bridge to DMS Spotlight. It does not claim custom providers.
+set -eu
+
+if [ "${1:-}" != "toggle" ] || [ "$#" -ne 1 ]; then
+  printf '%s\n' "Usage: wilsof-search toggle" >&2
+  exit 64
+fi
+
+if ! command -v dms >/dev/null 2>&1; then
+  printf '%s\n' "wilsof-search: DankMaterialShell (dms) is not available." >&2
+  exit 69
+fi
+
+exec dms ipc call spotlight toggle

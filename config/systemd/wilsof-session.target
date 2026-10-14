@@ -1,8 +1,8 @@
 [Unit]
 Description=Wilsof OS graphical session
 Requires=graphical-session.target
-After=graphical-session.target
-Wants=dms.service
+After=graphical-session.target dms.service
+Wants=dms.service wilsof-wallpaper.service
 
 [Install]
 WantedBy=graphical-session.target

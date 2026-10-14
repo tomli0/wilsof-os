@@ -5,7 +5,8 @@ After=dms.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/dms ipc call wallpaper set /usr/share/wilsof-os/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png
+ExecCondition=/usr/bin/test -x /usr/bin/dms
+ExecStart=/usr/bin/dms ipc call wallpaper set "%h/.local/share/wilsof-os/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png"
 
 [Install]
 WantedBy=wilsof-session.target

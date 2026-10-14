@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply approved Wilsof OS wallpaper
+PartOf=wilsof-session.target
+After=dms.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/dms ipc call wallpaper set /usr/share/wilsof-os/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png
+
+[Install]
+WantedBy=wilsof-session.target

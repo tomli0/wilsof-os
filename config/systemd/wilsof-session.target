@@ -1,0 +1,8 @@
+[Unit]
+Description=Wilsof OS graphical session
+Requires=graphical-session.target
+After=graphical-session.target
+Wants=dms.service
+
+[Install]
+WantedBy=graphical-session.target

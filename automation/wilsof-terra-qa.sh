@@ -11,7 +11,7 @@ set -Eeuo pipefail
 
 readonly REPO="${WILSOF_REPOSITORY:-tomli0/wilsof-os}"
 readonly MAX_ROUNDS="2"
-readonly REVIEW_CMD="${WILSOF_QA_REVIEW_CMD:-hermes chat --provider openrouter --model terra-review}"
+readonly REVIEW_CMD="${WILSOF_QA_REVIEW_CMD:-hermes chat --provider openrouter --model openai/gpt-5.6-terra --format text}"
 
 usage() {
   cat <<'EOF'

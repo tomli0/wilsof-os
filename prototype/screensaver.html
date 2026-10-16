@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wilsof WS screensaver preview</title>
+<style>
+:root { color-scheme: dark; --ink:#14181e; --ice:#86b9ce; --text:#e7eef2; --muted:#a9b2bb; }
+* { box-sizing:border-box; }
+body { margin:0; min-height:100vh; overflow:hidden; background:var(--ink); color:var(--text); font:15px/1.45 system-ui,sans-serif; }
+#scene { position:fixed; inset:0; display:grid; place-items:center; overflow:hidden; }
+#particles { width:min(84vw,1000px); height:min(54vw,430px); display:grid; grid-template-columns:repeat(42,1fr); grid-template-rows:repeat(14,1fr); align-items:center; justify-items:center; perspective:600px; }
+.particle { color:var(--ice); font:clamp(10px,1.3vw,17px)/1 ui-monospace,SFMono-Regular,monospace; opacity:0; text-shadow:0 0 10px #86b9ce38; will-change:transform,opacity; animation:cycle 18s cubic-bezier(.4,0,.2,1) infinite; animation-delay:var(--delay); }
+@keyframes cycle { 0%,8%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r)) scale(.5)} 25%,46%{opacity:.78;transform:translate(0,0) rotate(0) scale(1)} 60%{opacity:.58;transform:translate(var(--floatx),var(--floaty)) rotate(var(--floatr)) scale(1)} 100%{opacity:0;transform:translate(var(--dx2),var(--dy2)) rotate(var(--r2)) scale(.4)} }
+.controls { position:fixed; right:18px; bottom:18px; display:flex; gap:8px; padding:8px; border:1px solid #3a424b; border-radius:8px; background:#14181edb; }
+button { border:1px solid #3a424b; border-radius:5px; padding:6px 9px; background:#202832; color:var(--text); cursor:pointer; font:inherit; }
+button:hover,button:focus-visible { border-color:var(--ice); outline:none; }
+button[aria-pressed="true"] { color:var(--ink); background:var(--ice); }
+.notice { position:fixed; left:18px; bottom:18px; max-width:38rem; color:var(--muted); font-size:12px; }
+body.static .particle { animation:none; opacity:.78; transform:none; }
+body.disabled #particles { display:none; }
+body.disabled .notice::after { content:" Preview disabled."; color:var(--text); }
+@media (prefers-reduced-motion:reduce) { .particle { animation:none; opacity:.78; transform:none; } }
+</style>
+</head>
+<body>
+<main id="scene" aria-label="Unsecured Wilsof WS animated screensaver preview">
+  <div id="particles" aria-hidden="true"></div>
+</main>
+<p class="notice">Unsecured preview only. It is not a lock screen and it never handles authentication. Any pointer or key activity dismisses this preview.</p>
+<div class="controls" aria-label="Preview controls">
+  <button id="motion" type="button" aria-pressed="false">Static</button>
+  <button id="disable" type="button" aria-pressed="false">Disable</button>
+</div>
+<script>
+'use strict';
+// Derived from assets/ws-ascii-mask.json, itself sampled from the approved WS PNG.
+const mask = ["","   ########                 ##############","   #########               ###############","    #########             ###############","     #################   ###############","      #################  #############","       ######## #######################","       #################################","        #################################","         ######################## ########","          ######## ######################","           #######  ####################","           ######   ###################",""];
+const glyphs = '·:+=*#';
+const particles = document.querySelector('#particles');
+mask.forEach((line, row) => [...line.padEnd(42)].forEach((cell, column) => {
+  if (cell !== '#') return;
+  const node = document.createElement('span');
+  node.className = 'particle';
+  node.textContent = glyphs[(row * 7 + column * 3) % glyphs.length];
+  node.style.gridColumn = column + 1;
+  node.style.gridRow = row + 1;
+  node.style.setProperty('--delay', `${-((row * 37 + column * 19) % 6000) / 1000}s`);
+  node.style.setProperty('--dx', `${((column * 23) % 280) - 140}px`);
+  node.style.setProperty('--dy', `${((row * 41) % 180) - 90}px`);
+  node.style.setProperty('--r', `${((row * 17 + column * 13) % 130) - 65}deg`);
+  node.style.setProperty('--floatx', `${((column * 11) % 44) - 22}px`);
+  node.style.setProperty('--floaty', `${((row * 13) % 30) - 15}px`);
+  node.style.setProperty('--floatr', `${((row + column) % 12) - 6}deg`);
+  node.style.setProperty('--dx2', `${((column * 47) % 320) - 160}px`);
+  node.style.setProperty('--dy2', `${((row * 29) % 210) - 105}px`);
+  node.style.setProperty('--r2', `${((row * 31 + column * 7) % 160) - 80}deg`);
+  particles.append(node);
+}));
+const motion = document.querySelector('#motion');
+const disable = document.querySelector('#disable');
+function dismiss() { document.body.classList.add('disabled'); disable.setAttribute('aria-pressed', 'true'); }
+function toggleMotion() { const enabled = document.body.classList.toggle('static'); motion.setAttribute('aria-pressed', String(enabled)); motion.textContent = enabled ? 'Animate' : 'Static'; }
+function toggleDisable() { const enabled = document.body.classList.toggle('disabled'); disable.setAttribute('aria-pressed', String(enabled)); }
+motion.addEventListener('click', toggleMotion);
+disable.addEventListener('click', toggleDisable);
+document.addEventListener('pointerdown', event => { if (!event.target.closest('.controls')) dismiss(); });
+document.addEventListener('keydown', event => { if (!event.target.closest('.controls')) dismiss(); });
+</script>
+</body>
+</html>

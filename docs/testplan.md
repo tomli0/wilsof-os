@@ -36,6 +36,9 @@ A PASS only covers the stated method. “IPC” is not physical keyboard evidenc
 | Persistence | logout/login and reboot observation | NOT TESTED | not yet performed |
 | Local quality gate | unit tests, shell syntax, theme JSON and diff whitespace | PASS | `33 passed`; shell/JSON/diff checks |
 | CI | GitHub Actions on current pushed commit | PENDING | must be rechecked after the final push |
+| Screensaver preview | Approved-asset-derived WS particle formation, drift, dissolution/repeat and controls | PASS (static) | `assets/ws-ascii-mask.json`, `prototype/screensaver.html`, `docs/screensaver.md` |
+| Screensaver preview | Running graphical capture, resource observation, physical dismissal | NOT TESTED | requires a graphical client; no generated mockup is used as evidence |
+| Screensaver security | Secure idle lock, Super+L and PAM path unchanged by preview | PASS (static) | preview contains no Hyprlock/Hypridle integration; existing config tests cover the lock path |
 
 ## Physical-console checklist
 

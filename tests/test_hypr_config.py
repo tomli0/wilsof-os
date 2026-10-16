@@ -6,6 +6,8 @@ CONFIG = ROOT / "config" / "hypr" / "wilsof.conf"
 LUA_CONFIG = ROOT / "config" / "hypr" / "wilsof.lua"
 IDLE_CONFIG = ROOT / "config" / "hypr" / "hypridle.conf"
 LOCK_CONFIG = ROOT / "config" / "hypr" / "hyprlock.conf"
+SCREENSAVER_PREVIEW = ROOT / "prototype" / "screensaver.html"
+SCREENSAVER_MASK = ROOT / "assets" / "ws-ascii-mask.json"
 
 
 def read_lua_config():
@@ -111,3 +113,16 @@ def test_lock_surface_uses_approved_wilsof_tokens_and_password_feedback():
     assert "Skriv passord for å låse opp" in config
     assert "Feil passord" in config
     assert "Mørk geometrisk bakgrunn med isblått WS-monogram.png" in config
+
+
+def test_screensaver_is_an_unsecured_preview_and_does_not_change_lock_policy():
+    preview = SCREENSAVER_PREVIEW.read_text(encoding="utf-8")
+    mask = SCREENSAVER_MASK.read_text(encoding="utf-8")
+    assert "Unsecured preview only" in preview
+    assert "@keyframes cycle" in preview
+    assert "prefers-reduced-motion" in preview
+    assert "Static" in preview
+    assert "Disable" in preview
+    assert "Wilsof OS-logo med geometrisk WS-monogram.png" in mask
+    assert "hyprlock" not in preview.lower()
+    assert "hypridle" not in preview.lower()

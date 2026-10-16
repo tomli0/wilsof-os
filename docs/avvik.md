@@ -8,6 +8,8 @@
 
 ## Gjenstående avvik
 
+- SSH til VM 113 har korrekt pinnet ED25519-fingeravtrykk (`SHA256:0IOuFZDTGymRZzoa5kSAO1x8FCo+ZO1khL3q/xqNAqw`), men `wilsofdev@192.168.10.250` avviser tilgjengelig ED25519-nøkkel med `Permission denied (publickey)`. Ingen hostnøkkel er endret eller akseptert på nytt. Dette blokkerer utplassering, aktiv sesjonsinspeksjon, IPC/syntetisk input, skjermbilder og reboot/låsetest i denne økten.
+
 - Spotlight har visuelt verifiserte programtreff og Files-filter, men ikke full akseptanse for vinduer, systemhandlinger med bekreftelse, aliaser eller privat filindeks. Disse skal ikke markedsføres som fullført.
 - PipeWire har RTKit-varsel fordi RTKit ikke er tilgjengelig. Dette er ikke tolket som lydfeil; avspilling er ikke testet.
 - DMS viser enkelte statusikoner fra tilgjengelige komponenter; den planlagte bar-konfigurasjonen fjerner vær og ressursmålere.

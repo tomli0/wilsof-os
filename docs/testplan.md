@@ -18,7 +18,8 @@ Status er skilt mellom statisk kontroll, IPC og observert GUI. PASS betyr bare d
 | Bindinger | Lastet og entydig | PASS | Hyprland IPC-bindliste etter reload |
 | Bindinger | Fysisk tastetrykk observert | IKKE TESTET | krever Proxmox-konsoll |
 | Innstillinger | Super+I åpner DMS settings | PASS (IPC/bind lastet) | registrert entydig bind til `dms ipc call settings open` |
-| Hjelp | Super+F1 åpner DMS keybind-visning | PASS (IPC/bind lastet) | wrapper testet isolert; bind lastet |
+| Hjelp | Lokal Wilsof-visning med faktiske standardbindinger, Super-forklaring og separat VM-lag | PASS (lokal wrapper/renderer) | 30 pytest; manifest-parser, Ghostty-kall, aktiv/inaktiv VM-seksjon og feilstatus testet |
+| Hjelp | Faktisk vindu, fokus, lesbarhet og Enter-lukking i aktiv VM-sesjon | IKKE TESTET | VM 113 er ikke SSH-tilgjengelig med tilgjengelig nøkkel |
 | Programmer | Pakker installert | PASS | Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe, VLC kontrollert med `pacman -Q` |
 | Programmer | Firefox synlig i launcher | PASS (GUI) | visuelt Firefox-treff |
 | Programmer | Faktisk oppstart av representative apper | IKKE TESTET | ikke kjørt i denne sluttrunden |

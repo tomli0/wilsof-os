@@ -66,6 +66,12 @@ def test_arch_preflight_is_read_only_and_rejects_non_arch_hosts():
     assert "Arch" in result.stderr
 
 
+def test_arch_preflight_checks_the_apps_required_by_wilsof_flows():
+    content = ARCH_PREFLIGHT.read_text(encoding="utf-8")
+    for package in ("ghostty", "firefox", "nautilus", "gnome-text-editor", "papers", "loupe", "vlc"):
+        assert package in content
+
+
 def test_installer_requires_explicit_target_vm_guard():
     result = run(INSTALL)
     assert result.returncode == 64
@@ -109,19 +115,6 @@ def test_static_theme_defines_the_approved_base_and_accent():
     assert '"background": "#14181E"' in theme
 
 
-def test_help_wrapper_delegates_to_the_supported_dms_keybind_view(tmp_path):
-    helper = ROOT / "bin" / "wilsof-help"
-    fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
-    log = tmp_path / "args"
-    dms = fake_bin / "dms"
-    dms.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" > {log}\n", encoding="utf-8")
-    dms.chmod(0o755)
-    result = run(helper, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
-    assert result.returncode == 0, result.stderr
-    assert log.read_text(encoding="utf-8").strip() == "ipc call keybinds open"
-
-
 def test_vm_test_binding_wrapper_is_opt_in_and_reversible(tmp_path):
     wrapper = ROOT / "bin" / "wilsof-vm-test-binds"
     source = tmp_path / ".local" / "share" / "wilsof-os" / "vm-test"
@@ -140,3 +133,102 @@ def test_vm_test_lua_has_only_the_four_requested_ctrl_alt_bindings():
     for key in ("space", "L", "I", "F1"):
         assert f'"CTRL + ALT + {key}"' in config
     assert config.count("hl.bind(") == 4
+
+
+def test_help_opens_a_keyboard_closable_local_view_from_the_shared_manifest(tmp_path):
+    helper = ROOT / "bin" / "wilsof-help"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    log = tmp_path / "args"
+    ghostty = fake_bin / "ghostty"
+    ghostty.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" > {log}\n", encoding="utf-8")
+    ghostty.chmod(0o755)
+    manifest = tmp_path / "shortcuts.json"
+    manifest.write_text('{"schema": 1, "standard": [], "vm_test": []}\n', encoding="utf-8")
+    renderer = tmp_path / "wilsof-help-view"
+    renderer.write_text("#!/bin/sh\n", encoding="utf-8")
+    renderer.chmod(0o755)
+    result = run(
+        helper,
+        env={
+            "PATH": f"{fake_bin}:{os.environ['PATH']}",
+            "WILSOF_SHORTCUTS_FILE": str(manifest),
+            "WILSOF_HELP_VIEWER": str(renderer),
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    assert log.read_text(encoding="utf-8").strip() == f"--title=Wilsof snarveier --command {renderer} {manifest}"
+
+
+def test_help_viewer_renders_standard_and_enabled_vm_test_bindings(tmp_path):
+    viewer = ROOT / "bin" / "wilsof-help-view"
+    manifest = tmp_path / "shortcuts.json"
+    manifest.write_text(
+        """{
+  "schema": 1,
+  "standard": [{"keys": "Super+Space", "action": "Launcher"}],
+  "vm_test": [{"keys": "Ctrl+Alt+Space", "action": "Launcher"}]
+}
+""",
+        encoding="utf-8",
+    )
+    disabled = run(viewer, str(manifest), env={"WILSOF_VM_TEST_BINDS": "disabled"})
+    assert disabled.returncode == 0, disabled.stderr
+    assert "Super (Command/Windows)" in disabled.stdout
+    assert "Super+Space" in disabled.stdout
+    assert "VM-testbindinger er ikke aktivert" in disabled.stdout
+    enabled = run(viewer, str(manifest), env={"WILSOF_VM_TEST_BINDS": "enabled"})
+    assert enabled.returncode == 0, enabled.stderr
+    assert "Valgfrie VM-testbindinger (aktive)" in enabled.stdout
+    assert "Ctrl+Alt+Space" in enabled.stdout
+
+
+def test_help_viewer_rejects_malformed_manifest(tmp_path):
+    viewer = ROOT / "bin" / "wilsof-help-view"
+    manifest = tmp_path / "broken.json"
+    manifest.write_text("not-json\n", encoding="utf-8")
+    result = run(viewer, str(manifest))
+    assert result.returncode == 65
+    assert "invalid shortcut manifest" in result.stderr
+
+
+def test_lock_is_idempotent_only_for_the_current_user(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    hyprlock = fake_bin / "hyprlock"
+    hyprlock.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    hyprlock.chmod(0o755)
+    pgrep = fake_bin / "pgrep"
+    pgrep.write_text("#!/bin/sh\nprintf '%s\\n' \"$*\"\nexit 0\n", encoding="utf-8")
+    pgrep.chmod(0o755)
+    result = run(LOCK, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
+    assert result.returncode == 0
+    assert "already active" in result.stderr
+
+
+def test_installer_deploys_the_help_viewer_and_shared_shortcut_manifest():
+    content = INSTALL.read_text(encoding="utf-8")
+    assert 'bin/wilsof-help-view' in content
+    assert 'config/wilsof-shortcuts.json' in content
+
+
+def test_installer_backs_up_replaced_wilsof_managed_files_before_installing():
+    content = INSTALL.read_text(encoding="utf-8")
+    assert 'backup_managed()' in content
+    assert '"$HOME/.config/hypr/wilsof.lua"' in content
+    assert '"$HOME/.local/bin/wilsof-help"' in content
+    assert '"$HOME/.local/state/wilsof-os/backups"' in content
+
+
+def test_shared_shortcut_manifest_covers_all_wilsof_action_bindings():
+    import json
+
+    manifest = json.loads((ROOT / "config" / "wilsof-shortcuts.json").read_text(encoding="utf-8"))
+    standard = {row["keys"] for row in manifest["standard"]}
+    vm_test = {row["keys"] for row in manifest["vm_test"]}
+    for keys in (
+        "Super+Space", "Super+L", "Super+I", "Super+F1", "Super+Q", "Super+F", "Super+Shift+Space",
+    ):
+        assert keys in standard
+    for keys in ("Ctrl+Alt+Space", "Ctrl+Alt+L", "Ctrl+Alt+I", "Ctrl+Alt+F1"):
+        assert keys in vm_test

@@ -8,7 +8,8 @@ Wilsof er foreløpig en Arch-basert skrivebordsprototype under utvikling. Dette 
 - Godkjent WS-bakgrunn, mørk `#14181E` overflate og isblå `#86B9CE` aksent.
 - Tomt skrivebord og en nedstrippet DMS-linje med arbeidsområder, klokke og nødvendig status.
 - `Super+Space` åpner DMS Spotlight. DMS leverer programmer og lokale filtreff; vinduer og systemhandlinger må fortsatt verifiseres separat.
-- `Super+L` og Hypridle bruker samme `wilsof-lock`-wrapper rundt Hyprlock. Autentisering/opplåsing er ikke testet av agenten.
+- `Super+L` og Hypridle bruker samme `wilsof-lock`-wrapper rundt Hyprlock. Wrapperen er idempotent per bruker og melder eksplisitt når Hyprlock allerede kjører. Autentisering/opplåsing er ikke testet av agenten.
+- `Super+F1` åpner en lokal, tastatur-lukkbar snarveihjelp i Ghostty. Den leser Wilsofs versjonerte snarveimanifest; aktive Ctrl+Alt VM-testbindinger vises separat.
 
 Faktisk teststatus, begrensninger og skjermbilder står i `docs/status.md`, `docs/testplan.md` og `docs/avvik.md`.
 

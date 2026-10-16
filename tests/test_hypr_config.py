@@ -88,7 +88,8 @@ def test_lua_owns_the_agreed_live_keybindings_with_supported_dispatchers():
         assert binding in config
     assert "hl.dsp.dispatch" not in config
     assert 'hl.unbind(key)' in config
-    assert '"SUPER + L"' in config
+    key_table = config.split("for _, key", 1)[0]
+    assert '"SUPER + F1"' in key_table
     assert 'require("wilsof-vm-test-enabled")' in config
 
 

@@ -19,11 +19,37 @@ esac
 install -d "$HOME/.local/bin" "$HOME/.local/share/wilsof-os/assets" \
   "$HOME/.config/hypr" "$HOME/.config/systemd/user/dms.service.d" \
   "$HOME/.config/DankMaterialShell" "$HOME/.local/state/wilsof-os"
+
+backup_root="$HOME/.local/state/wilsof-os/backups"
+backup_dir="$backup_root/$(date -u +%Y%m%dT%H%M%SZ)"
+backup_managed() {
+  [ -e "$1" ] || return 0
+  install -d "$backup_dir"
+  cp -a -- "$1" "$backup_dir/"
+}
+
+for managed in \
+  "$HOME/.local/bin/wilsof-search" "$HOME/.local/bin/wilsof-lock" \
+  "$HOME/.local/bin/wilsof-help" "$HOME/.local/bin/wilsof-help-view" \
+  "$HOME/.local/bin/wilsof-vm-test-binds" \
+  "$HOME/.local/share/wilsof-os/wilsof-shortcuts.json" \
+  "$HOME/.local/share/wilsof-os/vm-test/wilsof-vm-test.lua" \
+  "$HOME/.config/hypr/wilsof.conf" "$HOME/.config/hypr/wilsof.lua" \
+  "$HOME/.config/hypr/hypridle.conf" \
+  "$HOME/.config/systemd/user/wilsof-session.target" \
+  "$HOME/.config/systemd/user/wilsof-wallpaper.service" \
+  "$HOME/.config/systemd/user/dms.service.d/wilsof.conf" \
+  "$HOME/.local/share/wilsof-os/wilsof-theme.json"; do
+  backup_managed "$managed"
+done
+
 install -m 0755 "$root/bin/wilsof-search" "$HOME/.local/bin/wilsof-search"
 install -m 0755 "$root/bin/wilsof-lock" "$HOME/.local/bin/wilsof-lock"
 install -m 0755 "$root/bin/wilsof-help" "$HOME/.local/bin/wilsof-help"
+install -m 0755 "$root/bin/wilsof-help-view" "$HOME/.local/bin/wilsof-help-view"
 install -m 0755 "$root/bin/wilsof-vm-test-binds" "$HOME/.local/bin/wilsof-vm-test-binds"
 install -d "$HOME/.local/share/wilsof-os/vm-test"
+install -m 0644 "$root/config/wilsof-shortcuts.json" "$HOME/.local/share/wilsof-os/wilsof-shortcuts.json"
 install -m 0644 "$root/config/hypr/wilsof-vm-test.lua" "$HOME/.local/share/wilsof-os/vm-test/wilsof-vm-test.lua"
 install -m 0644 "$root/config/hypr/wilsof.conf" "$HOME/.config/hypr/wilsof.conf"
 install -m 0644 "$root/config/hypr/wilsof.lua" "$HOME/.config/hypr/wilsof.lua"

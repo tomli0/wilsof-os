@@ -16,8 +16,9 @@ Dette dokumentet gjelder bare autorisert, dedikert Wilsof-infrastruktur. VM 112/
 
        WILSOF_TARGET_VM=1 /opt/wilsof-os/scripts/install-user-config.sh
 
-4. Installererens eneste DMS-Lua-endring er én markert `require("wilsof")`. Den må finnes én gang og stå etter `require("dms.binds-user")`.
-5. Start/reload bare avgrensede komponenter under aktiv sesjon: `hyprctl reload`, `systemctl --user restart dms.service`, `systemctl --user restart hypridle.service`, og start `wilsof-session.target`. Ikke logg ut/reboot mens arbeid pågår.
+4. Installereren sikkerhetskopierer eksisterende Wilsof-administrerte filer under `~/.local/state/wilsof-os/backups/<UTC-tid>/` før erstatning. Den rører ikke personlig DMS `settings.json` ved normal oppgradering.
+5. Installererens eneste DMS-Lua-endring er én markert `require("wilsof")`. Den må finnes én gang og stå etter `require("dms.binds-user")`.
+6. Start/reload bare avgrensede komponenter under aktiv sesjon: `hyprctl reload`, `systemctl --user restart dms.service`, `systemctl --user restart hypridle.service`, og start `wilsof-session.target`. Ikke logg ut/reboot mens arbeid pågår.
 
 ## Valgfri VM-test for Super-fangende klienter
 

@@ -35,7 +35,7 @@ end)
 -- Remove only generated DMS binds that conflict with Wilsof's documented map.
 -- `hl.unbind` is case-sensitive and removes all earlier registrations of each key.
 local wilsof_keys = {
-    "SUPER + space", "SUPER + L", "SUPER + I", "SUPER + Q", "SUPER + F",
+    "SUPER + space", "SUPER + L", "SUPER + I", "SUPER + Q", "SUPER + F", "SUPER + F1",
     "SUPER + left", "SUPER + right", "SUPER + up", "SUPER + down",
     "SUPER + SHIFT + left", "SUPER + SHIFT + right", "SUPER + SHIFT + up", "SUPER + SHIFT + down",
     "SUPER + CTRL + left", "SUPER + CTRL + right", "SUPER + CTRL + up", "SUPER + CTRL + down",

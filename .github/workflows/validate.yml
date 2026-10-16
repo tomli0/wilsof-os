@@ -5,6 +5,7 @@ on:
     branches: [arch-install]
   pull_request:
     branches: [main, arch-install]
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read

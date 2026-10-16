@@ -18,9 +18,16 @@ def test_arch_installer_does_not_embed_desktop_passwords():
     assert "chpasswd" not in content
 
 
+
 def test_arch_installer_does_not_embed_or_enable_remote_administration():
     content = INSTALLER.read_text(encoding="utf-8")
     assert "authorized_keys" not in content
     assert "PermitRootLogin" not in content
     assert "sshd.service" not in content
     assert "openssh" not in content
+
+
+def test_arch_installer_includes_dms_power_profile_backend():
+    content = INSTALLER.read_text(encoding="utf-8")
+    assert "power-profiles-daemon" in content
+

@@ -34,7 +34,7 @@ mount "${DISK}1" /mnt/boot
 pacstrap -K /mnt base linux linux-firmware btrfs-progs networkmanager sudo qemu-guest-agent \
   hyprland hyprlock hypridle xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
   dms-shell greetd greetd-tuigreet firefox ghostty nautilus gnome-text-editor papers loupe vlc \
-  pipewire pipewire-pulse wireplumber polkit-gnome
+  pipewire pipewire-pulse wireplumber polkit-gnome power-profiles-daemon
 
 genfstab -U /mnt >> /mnt/etc/fstab
 arch-chroot /mnt /bin/bash -s <<'CHROOT'

@@ -23,6 +23,16 @@ for command in dms ghostty Hyprland hypridle hyprlock; do
     fi
 done
 
+if command -v pacman >/dev/null 2>&1; then
+    if package=$(pacman -Q power-profiles-daemon 2>/dev/null); then
+        ok "power-profile backend package: $package"
+    else
+        missing "package power-profiles-daemon"
+    fi
+else
+    warn "cannot query power-profiles-daemon package (pacman unavailable)"
+fi
+
 for path in \
     "$HOME/.local/bin/wilsof-search" \
     "$HOME/.local/bin/wilsof-lock" \
@@ -65,5 +75,15 @@ else
     missing "systemctl (cannot inspect services)"
 fi
 
-printf '%s\n' "Logs: journalctl --user -b -u dms.service; journalctl --user -b -u hypridle.service; journalctl -b -u greetd.service"
+if command -v busctl >/dev/null 2>&1; then
+    if busctl --system status net.hadess.PowerProfiles >/dev/null 2>&1; then
+        ok "D-Bus power-profile backend: net.hadess.PowerProfiles"
+    else
+        warn "D-Bus power-profile backend unavailable: net.hadess.PowerProfiles (DMS will show 'ERROR: power-profiles-daemon not available')"
+    fi
+else
+    missing "busctl (cannot inspect the power-profile D-Bus backend)"
+fi
+
+printf '%s\n' "Logs: journalctl --user -b -u dms.service; journalctl --user -b -u hypridle.service; journalctl -b -u greetd.service; journalctl -b -u power-profiles-daemon.service"
 exit "$status"

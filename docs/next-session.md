@@ -5,24 +5,23 @@ Oppdatert: 2026-10-16 UTC
 ## Kontrollpunkt
 
 - Gren: `arch-install`.
-- Kontrollpunktets implementasjonscommit: `2d005f2`; bruk `git rev-parse --short HEAD` for den eksakte handoff-spissen.
-- VM 113: ikke inspisert i denne økten. Pinned ED25519-hostnøkkel for `192.168.10.250` matcher fortsatt `SHA256:0IOuFZDTGymRZzoa5kSAO1x8FCo+ZO1khL3q/xqNAqw`.
-- Tilgangsstatus: `wilsofdev@192.168.10.250` avviser tilgjengelig nøkkel med `Permission denied (publickey)`. Ikke erstatt eller godta hostnøkkel, og ikke bruk passord-/autentiseringsomveier.
+- Siste lokale commit ved dette kontrollpunktet: `94ebc4a` før dokumentasjonscommit; kontroller `git rev-parse HEAD` før videre arbeid.
+- VM 113 har fortsatt pinnet ED25519-hostnøkkel `SHA256:0IOuFZDTGymRZzoa5kSAO1x8FCo+ZO1khL3q/xqNAqw`.
+- Tilgangsstatus: `root` og `wilsofdev` fungerer med eksisterende ED25519-nøkkel og `StrictHostKeyChecking=yes`. `wilsofdev` ble reparert ved å gjenopprette manglende `~/.ssh/authorized_keys` med katalogmodus `0700` og filmodus `0600`.
+- VM-status: aktiv Hyprland/DMS-sesjon for `wilsofdev`, ulåst. Ikke rebootet, logget ut eller låst.
+- Utplassert: `94ebc4a` under `/opt/wilsof-os`, installert som `wilsofdev`; installert `wilsof-search` er kontrollert mot kilde.
 
-## Lokalt ferdigstilt
+## Utført og testet
 
-- Erstattet DMS-generic keybind-hjelp med lokal Ghostty-hjelp (`wilsof-help` og `wilsof-help-view`) som leser `config/wilsof-shortcuts.json`.
-- Hjelpen forklarer Super som Command/Windows, viser standardbindingene og viser Ctrl+Alt VM-testbindingene bare når opt-in markerfil er aktiv.
-- La `SUPER + F1` til i eksplisitt DMS-kollisjonsfjerning.
-- Begrenset Hyprlock-duplikatkontroll til gjeldende UID og gjort allerede-aktiv tilstand synlig.
-- Installereren sikkerhetskopierer erstattede Wilsof-administrerte filer; preflight dekker nå Ghostty og de avtalte representative appene.
-- Lokal verifikasjon: `pytest -q` = 30 bestått; `sh -n scripts/*.sh bin/wilsof-*`; JSON- og `git diff --check` bestått.
+- `Super+Space`-wrapper bruker DMS `launcher toggleWith apps`, slik at programlisten er standardinngangen uten QR-generatorens friteksttreff.
+- Arch-preflight, installering, DMS Launcher IPC, Settings IPC og systemmeny IPC er gjennomført på VM 113.
+- Ekte 1280×800-skjermbilder er lagret under `evidence/vm113-2026-10-16-*.png`.
+- Lokal kontroll: 30 pytest bestått, shell- og JSON-validering bestått. En minimal GitHub Actions-workflow kjører de samme lokale kontrollene uten secrets, deploy eller VM-tilgang.
 
-## Første neste steg når SSH er gjenopprettet
+## Eksakt neste steg
 
-1. Koble til med eksisterende nøkkel og `StrictHostKeyChecking=yes`; kontroller aktiv sesjon, installert commit, bruker, DMS/Hyprland-miljø og backup før utplassering.
-2. Installer oppdatert arbeidsgren på VM 113 og test `wilsof-help` i aktiv Wayland-sesjon: synlighet, fokus, lesbarhet, Enter-lukking, aktiv/inaktiv VM-testseksjon.
-3. Test launcher og representative appstarter via IPC og avgrenset syntetisk input; ta ekte skjermbilder.
-4. Test Ctrl+Alt VM-laget fra fysisk MacBook/Proxmox-konsoll; ikke konkluder om Omarchy-fangst før fysisk test.
-5. Etter øvrig GUI-arbeid: undersøk/utfør én kontrollert Hyprlock-test. PAM-opplåsing er fortsatt IKKE TESTET uten bruker.
-6. Utfør kun reboot dersom det fremdeles er hensiktsmessig, etter SSH- og boot-forhåndskontroll.
+1. Commit og push dokumentasjon/evidens som er lagt til etter `94ebc4a`; kontroller diff for sensitive data og oppdater PR 1.
+2. I aktiv VM-konsoll: test faktisk `Super+Space`, søk, piltaster, Enter og Esc; åpne Firefox fra trefflisten.
+3. Test `Super+F1` gjennom reell Hyprland-binding. Forrige SSH-syntetiske Ghostty-start ga `PostForkError` og er ikke godkjent som bindingstest.
+4. Test valgfri Ctrl+Alt VM-modus fra fysisk MacBook → Omarchy → Proxmox → VM. Merk kjeden IKKE TESTET til dette er observert.
+5. Til slutt: test låsflaten én gang når brukeren kan låse opp selv; PAM-opplåsing, idle-lås, logout/login og reboot-persistens er fortsatt IKKE TESTET.

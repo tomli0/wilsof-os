@@ -12,9 +12,9 @@ Status: vedtatt. DMS eier shell, bakgrunns-IPC og standardkonfigurasjon. Wilsof 
 
 Status: vedtatt. `#14181E` og `#86B9CE` er faste designverdier. Matugen er deaktivert for DMS-tjenesten; custom theme er førsteinstallasjonsstandard og personlige senere valg beholdes.
 
-## D-004 — Super+Space er én DMS Spotlight-inngang
+## D-004 — Super+Space er én programfokusert DMS Launcher-inngang
 
-Status: vedtatt med begrensning. Wrapperen åpner DMS Spotlight. DMS sine faktiske, visuelt dokumenterte programtreff brukes; ikke-verifiserte aggregatorfunksjoner påstås ikke.
+Status: vedtatt med begrensning. Wrapperen åpner DMS Launcher med `toggleWith apps`, slik at programlisten er den forventede førstevisningen og QR-generatorens fritekstresultat ikke er vanlig søkeutfall. DMS sine faktisk visuelt dokumenterte programtreff brukes; filer, vinduer og systemhandlinger blir ikke påstått som launcherfunksjoner før de er testet.
 
 ## D-005 — ESP er `/boot`, ikke XBOOTLDR
 

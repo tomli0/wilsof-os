@@ -11,15 +11,16 @@ Status er skilt mellom statisk kontroll, IPC og observert GUI. PASS betyr bare d
 | Konfigurasjon | DMS-binds uten Wilsof-duplikater | PASS | `hyprctl -j binds`: én forekomst av Super+Space/L/I, piler, 1, Q og F etter `hl.unbind` |
 | Konfigurasjon | Norsk grafisk tastatur | PASS | `hyprctl getoption input:kb_layout` → `no` |
 | Design | Godkjent bakgrunn, tom flate, palette og linje | PASS | visuelt inspisert `evidence/desktop-wilsof-clean.png` |
-| Launcher | Spotlight åpnes via Wilsof-wrapper | PASS (IPC) | `wilsof-search toggle` → `SPOTLIGHT_TOGGLE_SUCCESS` |
-| Launcher | Programtreff | PASS (GUI) | `evidence/launcher-firefox-query.png` viser Firefox |
+| Launcher | Programmodus åpnes via installert Wilsof-wrapper | PASS (IPC) | `wilsof-search toggle` → `LAUNCHER_TOGGLE_SUCCESS: apps` på VM 113 |
+| Launcher | Tom programliste og Firefox-treff | PASS (GUI) | `evidence/vm113-2026-10-16-launcher-apps.png` og `evidence/vm113-2026-10-16-launcher-firefox.png` |
 | Launcher | Piltaster/Enter/Esc via fysisk tastatur | IKKE TESTET | ingen Proxmox-konsollinput-observasjon |
-| Launcher | Vinduer, innstillinger, systemhandlinger, norsk/engelsk alias | IKKE TESTET | DMS-funksjonsomfang ikke verifisert ende-til-ende |
+| Launcher | Vinduer, filer, systemhandlinger, norsk/engelsk alias | IKKE TESTET / IKKE IMPLEMENTERT | Wilsof åpner programmodus; DMS-kategorier er oppstrøms og andre leverandører er ikke lovet |
 | Bindinger | Lastet og entydig | PASS | Hyprland IPC-bindliste etter reload |
 | Bindinger | Fysisk tastetrykk observert | IKKE TESTET | krever Proxmox-konsoll |
-| Innstillinger | Super+I åpner DMS settings | PASS (IPC/bind lastet) | registrert entydig bind til `dms ipc call settings open` |
+| Innstillinger | Super+I/DMS Settings åpnes | PASS (IPC/GUI) | `SETTINGS_OPEN_SUCCESS`; visuelt inspisert `evidence/vm113-2026-10-16-settings.png` |
+| Systemhandlinger | Meny og hold-bekreftelse | PASS (IPC/GUI) | visuelt inspisert `evidence/vm113-2026-10-16-powermenu.png`; ingen handling utført |
 | Hjelp | Lokal Wilsof-visning med faktiske standardbindinger, Super-forklaring og separat VM-lag | PASS (lokal wrapper/renderer) | 30 pytest; manifest-parser, Ghostty-kall, aktiv/inaktiv VM-seksjon og feilstatus testet |
-| Hjelp | Faktisk vindu, fokus, lesbarhet og Enter-lukking i aktiv VM-sesjon | IKKE TESTET | VM 113 er ikke SSH-tilgjengelig med tilgjengelig nøkkel |
+| Hjelp | Faktisk vindu, fokus, lesbarhet og Enter-lukking i aktiv VM-sesjon | IKKE TESTET | SSH-syntetisk Ghostty-start ga `PostForkError`; reell Hyprland-binding er ikke testet |
 | Programmer | Pakker installert | PASS | Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe, VLC kontrollert med `pacman -Q` |
 | Programmer | Firefox synlig i launcher | PASS (GUI) | visuelt Firefox-treff |
 | Programmer | Faktisk oppstart av representative apper | IKKE TESTET | ikke kjørt i denne sluttrunden |

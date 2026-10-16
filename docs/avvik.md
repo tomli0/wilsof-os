@@ -8,11 +8,11 @@
 
 ## Gjenstående avvik
 
-- SSH til VM 113 har korrekt pinnet ED25519-fingeravtrykk (`SHA256:0IOuFZDTGymRZzoa5kSAO1x8FCo+ZO1khL3q/xqNAqw`), men `wilsofdev@192.168.10.250` avviser tilgjengelig ED25519-nøkkel med `Permission denied (publickey)`. Ingen hostnøkkel er endret eller akseptert på nytt. Dette blokkerer utplassering, aktiv sesjonsinspeksjon, IPC/syntetisk input, skjermbilder og reboot/låsetest i denne økten.
-
-- Spotlight har visuelt verifiserte programtreff og Files-filter, men ikke full akseptanse for vinduer, systemhandlinger med bekreftelse, aliaser eller privat filindeks. Disse skal ikke markedsføres som fullført.
+- SSH-tilgang er gjenopprettet og utplassering er gjennomført. Årsaken var manglende `/home/wilsofdev/.ssh/authorized_keys`, ikke feil hostnøkkel eller låst konto. Tilgangen er gjenopprettet med kun den eksisterende offentlige nøkkelen; passordinnlogging og sudo-policy er ikke endret.
+- DMS Launcher i Apps-modus er Wilsofs felles programinngang. DMS viser fortsatt engelske kategori-/metadata-tekster og mangler norsk placeholder. Prosjektet gjør ingen stor DMS-fork bare for oversettelse. Filer, vinduer og systemhandlinger blir ikke lovet som launcherfunksjoner.
+- DMS-systemmenyen har hold-bekreftelse på 500 ms, men det er ikke gjennomført fysisk tastaturtest av avbrytelse med Esc eller hver destruktive dialog.
+- Ghostty-hjelpens aktive GUI-vindu er ikke godkjent: en SSH-syntetisk start ga Ghostty `PostForkError`. Renderer, manifest og kommandoform er testet lokalt; reell Hyprland-tastaturvei må testes i VM-konsollen.
 - PipeWire har RTKit-varsel fordi RTKit ikke er tilgjengelig. Dette er ikke tolket som lydfeil; avspilling er ikke testet.
-- DMS viser enkelte statusikoner fra tilgjengelige komponenter; den planlagte bar-konfigurasjonen fjerner vær og ressursmålere.
 - Hyprlock/PAM, fysisk tastatur via Proxmox, logout/login og reboot-persistens krever manuell kontroll.
 
 ## Bootfeil

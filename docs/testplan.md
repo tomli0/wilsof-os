@@ -1,54 +1,47 @@
-# Testmatrise — Arch-prototype
+# Test matrix — Arch prototype
 
-Status er skilt mellom statisk kontroll, IPC og observert GUI. PASS betyr bare den angitte kontrollen.
+A PASS only covers the stated method. “IPC” is not physical keyboard evidence.
 
-| Område | Kontroll | Status | Evidens |
+| Area | Check | Status | Evidence |
 |---|---|---|---|
-| Oppstart | Installert root, ikke live-ISO | PASS | `/` og `/home` på Btrfs `/dev/sda2`, ingen live/squashfs-mount |
-| Oppstart | greetd, SSH, qemu-guest-agent, NetworkManager | PASS | alle aktive ved SSH-kontroll |
-| Oppstart | EFI, systemd-boot, fallback og boot-entry | PASS | `bootctl status`: NVRAM-entry og `EFI/BOOT/BOOTX64.EFI`; `arch.conf` peker på korrekt UUID/subvolum |
-| Konfigurasjon | Wilsof lastes én gang etter DMS | PASS | én `require("wilsof")` og aktiv Hyprland-bindliste |
-| Konfigurasjon | DMS-binds uten Wilsof-duplikater | PASS | `hyprctl -j binds`: én forekomst av Super+Space/L/I, piler, 1, Q og F etter `hl.unbind` |
-| Konfigurasjon | Norsk grafisk tastatur | PASS | `hyprctl getoption input:kb_layout` → `no` |
-| Design | Godkjent bakgrunn, tom flate, palette og linje | PASS | visuelt inspisert `evidence/desktop-wilsof-clean.png` |
-| Launcher | Programmodus åpnes via installert Wilsof-wrapper | PASS (IPC) | `wilsof-search toggle` → `LAUNCHER_TOGGLE_SUCCESS: apps` på VM 113 |
-| Launcher | Tom programliste og Firefox-treff | PASS (GUI) | `evidence/vm113-2026-10-16-launcher-apps.png` og `evidence/vm113-2026-10-16-launcher-firefox.png` |
-| Launcher | Piltaster/Enter/Esc via fysisk tastatur | IKKE TESTET | ingen Proxmox-konsollinput-observasjon |
-| Launcher | Vinduer, filer, systemhandlinger, norsk/engelsk alias | IKKE TESTET / IKKE IMPLEMENTERT | Wilsof åpner programmodus; DMS-kategorier er oppstrøms og andre leverandører er ikke lovet |
-| Bindinger | Lastet og entydig | PASS | Hyprland IPC-bindliste etter reload |
-| Bindinger | Fysisk tastetrykk observert | IKKE TESTET | krever Proxmox-konsoll |
-| Innstillinger | Super+I/DMS Settings åpnes | PASS (IPC/GUI) | `SETTINGS_OPEN_SUCCESS`; visuelt inspisert `evidence/vm113-2026-10-16-settings.png` |
-| Systemhandlinger | Meny og hold-bekreftelse | PASS (IPC/GUI) | visuelt inspisert `evidence/vm113-2026-10-16-powermenu.png`; ingen handling utført |
-| Hjelp | Lokal Wilsof-visning med faktiske standardbindinger, Super-forklaring og separat VM-lag | PASS (lokal wrapper/renderer) | 30 pytest; manifest-parser, Ghostty-kall, aktiv/inaktiv VM-seksjon og feilstatus testet |
-| Hjelp | Faktisk vindu, fokus, lesbarhet og Enter-lukking i aktiv VM-sesjon | IKKE TESTET | SSH-syntetisk Ghostty-start ga `PostForkError`; reell Hyprland-binding er ikke testet |
-| Programmer | Pakker installert | PASS | Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe, VLC kontrollert med `pacman -Q` |
-| Programmer | Firefox synlig i launcher | PASS (GUI) | visuelt Firefox-treff |
-| Programmer | Faktisk oppstart av representative apper | IKKE TESTET | ikke kjørt i denne sluttrunden |
-| Standardvalg | nettleser og filbehandler | PASS | `dms-open.desktop`, `org.gnome.Nautilus.desktop` |
-| Portal | Hyprland backend aktiv | PASS | portalens logg: PipeWire tilkoblet og screencopy init ok |
-| Lyd | PipeWire/WirePlumber aktiv | PASS (tjeneste) | begge aktive; PipeWire Pulse socket-aktivert |
-| Lyd/skjermdeling | reell avspilling/deling | IKKE TESTET | ingen brukerflyt utført |
-| Lås/idle | én Hypridle-instans og fem-minutters regel | PASS | én PID, `found 1 rules`, timeout 300 |
-| Lås | låseflate og PAM-opplåsing | IKKE TESTET | lokal autentisering må utføres av bruker |
-| Persistens | observert etter ny grafisk innlogging/full omstart | IKKE TESTET | ikke logget ut eller rebootet aktiv økt |
-| Ytelse | måling | DELVIS PASS | DMS ca. 370 MiB RSS før siste reload; Hypridle ca. 1 MiB; VM-ytelse er ikke maskinvaregaranti |
+| Base system | Installed Arch root, Btrfs, systemd-boot and fallback loader | PASS (static/SSH) | Prior VM inspection; recovery steps in `docs/vm-runbook.md` |
+| Session | greetd, SSH, Hyprland, DMS and Hypridle running | PASS (SSH) | live process and unit inspection on VM 113 |
+| Theme | approved wallpaper, charcoal, ice-blue, empty desktop and minimal bar | PASS (visual) | `evidence/vm113-2026-10-16-desktop.png` |
+| Launcher | application-mode DMS launcher opens through installed wrapper | PASS (IPC/visual) | `dms ipc call launcher toggleWith apps`; launcher screenshot |
+| Launcher | empty query and selected Firefox result | PASS (visual) | `evidence/vm113-2026-10-16-launcher-apps.png` and launcher evidence |
+| Launcher | local file/window/settings/power universal search | NOT IMPLEMENTED / NOT TESTED | application mode is intentionally scoped |
+| Launcher | keyboard arrows, Enter and Escape through physical client | NOT TESTED | requires actual console input |
+| Settings | DMS Settings opens through Wilsof entry | PASS (IPC/visual) | `evidence/vm113-2026-10-16-settings.png` |
+| Help | shared-manifest rendering in DMS Notepad | PASS (wrapper/IPC/visual) | `help-notepad-final-2026-10-16.png` |
+| Help | close through supported DMS IPC | PASS (IPC) | `dms ipc call notepad close` returned success |
+| Help | physical `Super+F1`, Escape and keyboard close | NOT TESTED | no physical-console observation |
+| Bindings | declared Wilsof binding layer | PASS (static) | 33 local pytest tests cover source relationships |
+| Bindings | actual physical key delivery | NOT TESTED | client may intercept Super |
+| VM fallback | four Ctrl+Alt bindings shown as active | PASS (visual/static) | help screenshot and manifest |
+| VM fallback | physical MacBook → Omarchy → Proxmox → VM path | NOT TESTED | requires human observation |
+| System actions | DMS power menu and 500 ms confirmation visible | PASS (visual) | `evidence/vm113-2026-10-16-powermenu.png` |
+| System actions | keyboard cancellation and destructive action safety | NOT TESTED | destructive action was intentionally not run |
+| Applications | required package set installed | PASS (package query) | Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe and VLC |
+| Applications | real graphical starts | PARTIAL | Firefox was shown in launcher; representative starts still need active-session tests |
+| Portals/audio | portal backend and PipeWire/WirePlumber units | PASS (service) | live package/service inspection |
+| Audio/screen sharing | playback and sharing user flows | NOT TESTED | no user-flow test |
+| Lock setup | Hyprlock package, PAM file and Wilsof config present | PASS (static/SSH) | `/etc/pam.d/hyprlock`; deployed `hyprlock.conf` |
+| Lock surface | live configured Hyprlock display | PASS (process/log/visual) | Hyprlock PID, `Locking session`, configured prompt and `evidence/vm113-2026-10-16-lock.png` |
+| Unlock | PAM password authentication | NOT TESTED | must be entered locally by authorized human |
+| Idle | one Hypridle service and 300-second listener | PASS (service/config) | live unit status and `hypridle.conf` |
+| Idle | actual lock after five minutes | FAIL (before fix) / RETEST REQUIRED | prior logs: Hyprlock lacked config and exited |
+| Wallpaper | desktop shows approved asset | PASS (visual) | desktop screenshots |
+| Wallpaper service | fresh DMS IPC result after unit start | PASS (IPC) | DMS `SUCCESS`, `wallpaper get` returns approved asset, systemd result success |
+| Wallpaper service | startup after new graphical login | NOT TESTED | requires logout/login or reboot observation |
+| Persistence | logout/login and reboot observation | NOT TESTED | not yet performed |
+| Local quality gate | unit tests, shell syntax, theme JSON and diff whitespace | PASS | `33 passed`; shell/JSON/diff checks |
+| CI | GitHub Actions on current pushed commit | PENDING | must be rechecked after the final push |
 
-## Valgfritt VM-testoppsett for klienter som fanger Super
+## Physical-console checklist
 
-Aktiveres bare i gjesten med `wilsof-vm-test-binds enable`. Dette lager en brukerfil under `~/.config/hypr/`, laster Hyprland på nytt og beholder alle Wilsof-standardbindingene. Kontrollert via Hyprland IPC: hver Ctrl+Alt-bind og den tilsvarende Super-binden forekommer nøyaktig én gang.
-
-Prøv fysisk fra Proxmox-konsollen:
-
-1. `Ctrl+Alt+Space` — launcher.
-2. `Ctrl+Alt+L` — lås.
-3. `Ctrl+Alt+I` — innstillinger.
-4. `Ctrl+Alt+F1` — snarveihjelp.
-
-Slå av med `wilsof-vm-test-binds disable` fra en grafisk Wilsof-terminal. Kommandoen fjerner bare den opt-in-filen og reloader Hyprland. Klientkonflikten fra Omarchy kan bare markeres fysisk kontrollert etter at disse fire tastetrykkene er observert i MacBook → Proxmox-konsoll → gjest-kjeden.
-
-## Manuell sluttkontroll
-
-1. I Proxmox-konsollen: trykk hver Wilsof-bind, spesielt Super+Space, Super+I og Super+F1.
-2. I Spotlight: test piltaster, Enter, Esc, åpne vindu/søk/innstillinger og systemhandlingers bekreftelsesdialoger uten å utføre dem.
-3. Trykk Super+L og test den viste Hyprlock-flaten og lokal PAM-opplåsing; vent fem minutter for idle-lås.
-4. Logg ut/inn og reboot én gang når den aktive arbeidsøkten kan avsluttes; observer bakgrunn, tema og launcher på nytt.
+1. Test `Super+Space`, type a query, use arrow keys, Enter and Escape; open Firefox.
+2. Test `Super+I` and `Super+F1`; close help with the UI and try Escape.
+3. Enable the optional layer only if needed, then test all four Ctrl+Alt fallbacks and disable it again.
+4. Open the system menu and cancel every destructive confirmation.
+5. When ready to enter the local password, test `Super+L` and then wait five minutes for idle lock.
+6. Only after all other GUI work is saved, perform a controlled logout/login or reboot and re-check the session.

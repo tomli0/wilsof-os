@@ -1,23 +1,27 @@
-# Arkitektur — Wilsof Arch-prototype
+# Architecture — Wilsof Arch prototype
 
-## Stabel
+## Stack
 
-Arch Linux → systemd-boot/UEFI → greetd/tuigreet → Hyprland → DMS. Wilsof er et versjonert lag over DMS-generert Hyprland-konfigurasjon, ikke en shell-fork.
+Arch Linux → systemd-boot/UEFI → greetd/tuigreet → Hyprland → DankMaterialShell (DMS). Wilsof is a versioned override layer over DMS-generated Hyprland configuration, not a DMS shell fork.
 
-`~/.config/hypr/hyprland.lua` genereres av DMS. Installasjonen legger til én markert `require("wilsof")` sist. `wilsof.lua` eier Wilsof-farger, layout, avtalte bindinger og `wilsof-session.target`; den endrer ikke `dms/*.lua`.
+DMS generates `~/.config/hypr/hyprland.lua`. The user-profile installer appends one marked `require("wilsof")` after DMS's own modules. `wilsof.lua` owns Wilsof colors, layout, agreed bindings and `wilsof-session.target`; it does not modify generated `dms/*.lua` files.
 
-## Bakgrunn og farger
+## Design tokens
 
-DMS er eneste bakgrunnseier: `wilsof-wallpaper.service` kaller DMS-IPC med den godkjente asseten. DMS bruker `wilsof-theme.json` som fast custom theme. Systemd-drop-in setter `DMS_DISABLE_MATUGEN=1`, slik at bakgrunn ikke genererer eller overskriver Wilsof-paletten.
+Wilsof-owned surfaces use charcoal `#14181E`, ice-blue `#86B9CE`, cool white `#E7EEF2`, inactive outline `#3A424B`, moderate 8/10 px gaps, 6 px rounding and a one-pixel focused border. Upstream DMS controls are themed through its supported custom-theme file rather than a DMS fork.
 
-Førstegangsinstallasjonen skriver et minimalt `settings.json` fra template. Etter at markøren `~/.local/state/wilsof-os/dms-defaults-v1` finnes, beholder installasjonsskriptet personlige DMS-innstillinger. Eksplicit reset må være en separat brukerhandling.
+DMS is the wallpaper owner. Wilsof supplies the approved asset and fixed custom palette. The DMS systemd drop-in disables Matugen so wallpaper extraction cannot overwrite Wilsof colors. The installer seeds a DMS `settings.json` only once; later normal upgrades preserve personal settings.
 
-## Launcher, lås og tjenester
+## User flows
 
-`wilsof-search` er en smal, argumentvalidert bro til `dms ipc call spotlight toggle`; den påstår ikke egne providers. `wilsof-help` åpner DMS sin levende keybind-visning. `wilsof-lock` sikrer én Hyprlock-prosess og brukes både av Super+L og Hypridle.
+`wilsof-search` is an argument-validated bridge to `dms ipc call launcher toggleWith apps`. It deliberately provides application discovery, not unverified universal search providers.
 
-DMS og Hypridle er user-tjenester. Wilsof-session.target starter wallpaper etter DMS. Dette er oppstartsrekkefølge, ikke en loop eller sleep-baserte reparasjon.
+`wilsof-help` renders the shared JSON shortcut manifest into a local state file and opens it through supported DMS Notepad IPC. This avoids the active-session Ghostty `PostForkError` while preserving a single shortcut data source.
+
+`wilsof-lock` starts Hyprlock only when the current user has no existing Hyprlock process. The same wrapper is used by Super+L and Hypridle. `hyprlock.conf` defines only the lock presentation; `/etc/pam.d/hyprlock` remains system-owned authentication policy.
+
+DMS and Hypridle are user services. `wilsof-session.target` starts the wallpaper oneshot after DMS is requested. The wallpaper service must be verified for an actual successful IPC result, not only a systemd exit status.
 
 ## Boot
 
-ESP er montert på `/boot`; systemd-boot installeres med `bootctl --esp-path=/boot install`. Installasjonsskriptet verifiserer NVRAM-loader, `EFI/BOOT/BOOTX64.EFI`, kernel/initramfs og root UUID/Btrfs-subvolum. `/boot` skal ikke gis som `--boot-path` siden den er ESP, ikke XBOOTLDR.
+The ESP is mounted at `/boot`; install systemd-boot with `bootctl --esp-path=/boot install`. The installer validates the NVRAM loader, `EFI/BOOT/BOOTX64.EFI`, kernel/initramfs and root UUID/Btrfs subvolume. Do not treat `/boot` as an XBOOTLDR path.

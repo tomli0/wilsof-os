@@ -1,55 +1,56 @@
-# VM-runbook — Arch testmål
+# VM runbook — Arch test target
 
-Dette dokumentet gjelder bare autorisert, dedikert Wilsof-infrastruktur. VM 112/Fedora endres ikke.
+This runbook applies only to authorized, disposable Wilsof infrastructure. Do not modify the historical Fedora VM or unrelated machines.
 
-## Trygg tilgang
+## Safe access
 
-1. Bekreft target-OS, VM-navn og installert disk via lesekontroller.
-2. Sammenlign presentert ED25519-nøkkel mot registrert fingeravtrykk før den pins; bruk `StrictHostKeyChecking=yes` etterpå.
-3. Ta snapshot før skrivebordsarbeid når plattformen tilbyr det. Ikke reinstaller, formater eller endre VM-maskinvare som del av konfigurasjonstesting.
+1. Confirm target operating system, VM identity and installed disk through read-only checks.
+2. Compare the presented ED25519 host key with the recorded fingerprint before pinning it. Keep `StrictHostKeyChecking=yes` afterwards.
+3. Take a VM snapshot if the platform offers one before desktop work. Do not reinstall, format, repartition or alter virtual hardware as part of configuration testing.
 
-## Før første grafiske innlogging
+## Before the first graphical login
 
-`install-arch-test-vm.sh` konfigurerer greetd med tuigreet og Hyprland, men inneholder aldri et passord eller en passordhash. Før første grafiske innlogging må den autoriserte operatøren ved lokal konsoll sette `wilsofdev` sitt passord med vanlig interaktiv systemadministrasjon. Ikke legg passord, hash eller nøkkelmateriale i prosjektet, miljøfiler eller chat.
+`install-arch-test-vm.sh` configures greetd with tuigreet and Hyprland without placing a password or hash in the repository. An authorized local operator must set the user password through normal interactive administration before graphical login. Never put passwords, hashes or private keys in the repository, shell environment or chat.
 
-## Installere Wilsof-brukerprofil
+## Install or upgrade the Wilsof user profile
 
-1. Kontroller DMS, Hyprland, Hyprlock, Hypridle, portal og brukerens systemd-/D-Bus-sesjon med `scripts/preflight-arch.sh`.
-2. Kjør DMS sin headless setup som målbruker hvis `~/.config/hypr/hyprland.lua` mangler.
-3. Kopier prosjektet til VM-en og kjør:
+1. Run `scripts/preflight-arch.sh` as the target user to verify DMS, Hyprland, Hyprlock, Hypridle, the portal and the user systemd/D-Bus session.
+2. If `~/.config/hypr/hyprland.lua` is absent, run DMS headless setup as that target user.
+3. Copy the repository to the authorized VM location and run:
 
        WILSOF_TARGET_VM=1 /opt/wilsof-os/scripts/install-user-config.sh
 
-4. Installereren sikkerhetskopierer eksisterende Wilsof-administrerte filer under `~/.local/state/wilsof-os/backups/<UTC-tid>/` før erstatning. Den rører ikke personlig DMS `settings.json` ved normal oppgradering.
-5. Installererens eneste DMS-Lua-endring er én markert `require("wilsof")`. Den må finnes én gang og stå etter `require("dms.binds-user")`.
-6. Start/reload bare avgrensede komponenter under aktiv sesjon: `hyprctl reload`, `systemctl --user restart dms.service`, `systemctl --user restart hypridle.service`, og start `wilsof-session.target`. Ikke logg ut/reboot mens arbeid pågår.
+4. The installer backs up replaced Wilsof-managed files under `~/.local/state/wilsof-os/backups/<UTC-time>/` before replacement. It preserves an existing personal DMS `settings.json` during normal upgrades.
+5. The installer appends exactly one marked `require("wilsof")` to the DMS-generated entry point. Verify it occurs once and after `require("dms.binds-user")`.
+6. It installs the Wilsof Hyprlock presentation file but does not change PAM configuration or account authentication.
+7. Reload only bounded user components while working: `hyprctl reload`, `systemctl --user restart dms.service`, `systemctl --user restart hypridle.service`, and start `wilsof-session.target`. Do not log out or reboot mid-work.
 
-## Valgfri VM-test for Super-fangende klienter
+## VM fallback bindings
 
-På klienter som Omarchy der Super blir fanget før Proxmox-konsollen, aktiver alternativene fra en grafisk Wilsof-terminal:
+If the client intercepts Super before the guest, enable fallback bindings from a graphical Wilsof terminal:
 
     wilsof-vm-test-binds enable
 
-Test `Ctrl+Alt+Space`, `Ctrl+Alt+L`, `Ctrl+Alt+I` og `Ctrl+Alt+F1` fysisk gjennom klienten. Dette er et testlag og endrer ikke Wilsof-standardbindingene. Slå det av med:
+Physically test `Ctrl+Alt+Space`, `Ctrl+Alt+L`, `Ctrl+Alt+I` and `Ctrl+Alt+F1` through the actual client-to-console path. Disable the layer after testing:
 
     wilsof-vm-test-binds disable
 
-Begge kommandoer reloader Hyprland når de kjøres i den grafiske sesjonen.
+These commands only create or remove Wilsof's opt-in user file and reload Hyprland; they do not change client configuration.
 
-## Tilbakestilling
+## Recovery and reset
 
-- Konfigurasjonsbackup ligger under `~/.local/state/wilsof-os/backups/`.
-- For å velge nye personlige DMS-verdier, bruk DMS Settings. Reinstallasjon av Wilsof overskriver ikke eksisterende `settings.json` etter førsteinstallasjon.
-- For eksplisitt Wilsof-reset: sikkerhetskopier `~/.config/DankMaterialShell/settings.json`, slett `~/.local/state/wilsof-os/dms-defaults-v1` og ønsket settings-fil, og kjør installasjonsskriptet på nytt.
-- Ved skrivebordsfeil: velg lokal fallback-sesjon ved greetd/tuigreet, gjenopprett backupen og kontroller `journalctl --user -u dms -b` samt Hyprland-loggen før nye endringer.
+- Backups are under `~/.local/state/wilsof-os/backups/`.
+- Use DMS Settings for personal DMS changes. Normal Wilsof reinstallation does not overwrite existing `settings.json` after first install.
+- For an explicit Wilsof DMS reset, back up `settings.json`, remove `~/.local/state/wilsof-os/dms-defaults-v1` and the intended settings file, then reinstall deliberately.
+- For a desktop failure, select a local fallback session in tuigreet, restore a backup, then inspect `journalctl --user -u dms -b` and the Hyprland log before retrying.
 
-## Boot-recovery (uten formatering)
+## Boot recovery without formatting
 
-1. Start et autorisert recovery-miljø, monter ESP på `/boot` og Btrfs `@`/`@home` på riktige steder.
-2. Kontroller `/boot/loader/entries/arch.conf`, kernel/initramfs, root UUID og `rootflags=subvol=@`.
-3. Kjør `bootctl --esp-path=/boot install` og kontroller både NVRAM-entry og `EFI/BOOT/BOOTX64.EFI`.
-4. Ikke påstå full reboot-PASS før én faktisk kontrollert reboot er observert.
+1. Boot an authorized recovery environment and mount the ESP at `/boot` plus the correct Btrfs `@` and `@home` subvolumes.
+2. Verify `/boot/loader/entries/arch.conf`, kernel/initramfs, root UUID and `rootflags=subvol=@`.
+3. Run `bootctl --esp-path=/boot install` and verify both the NVRAM entry and `EFI/BOOT/BOOTX64.EFI`.
+4. Do not claim reboot success until one controlled reboot has actually been observed.
 
-## Bevis
+## Evidence discipline
 
-Ta faktiske skjermbilder av tomt skrivebord, Spotlight og innstillinger. Skill IPC/bind-last fra fysisk Proxmox-tastetrykk og fra visuelt bevis. Fyll `docs/testplan.md` med PASS/FAIL/IKKE TESTET.
+Capture real screenshots of the desktop, launcher, settings, help and lock surface where permitted. Record whether each result was static validation, IPC, synthetic input, visual observation or physical keyboard input in `docs/testplan.md`.

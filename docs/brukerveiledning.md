@@ -1,27 +1,53 @@
-# Bruk Wilsof
+# Using Wilsof
 
-## Åpne programmer og søke
+## Open applications
 
-Trykk `Super+Space`. Skriv navnet på programmet, bruk pilene for å velge og `Enter` for å åpne. `Esc` lukker launcheren. `Super` er Command/⌘ på mange Mac-tastaturer og Windows-tasten på PC-tastaturer.
+Press `Super+Space`. Wilsof opens DMS Launcher in application mode. Type an application name, use the arrow keys to select a result and press `Enter` to open it. The launcher is intended for local application discovery; Wilsof does not send the query to web services.
 
-Launcheren starter i programmodus slik at et vanlig søk ikke blir til en nett- eller pluginhandling. DMS viser foreløpig noen kategorier på engelsk.
+`Super` is the Command key on many Mac keyboards and the Windows key on PC keyboards. Press `Esc` to cancel the launcher; physical-keyboard confirmation is still recorded separately in the test plan.
 
-## Finn innstillinger
+## Find settings
 
-Trykk `Super+I`, eller søk etter `Settings` i launcheren. Der kan du blant annet endre bakgrunn, farger, typografi, Hyprland, topplinje og arbeidsområder. Personlige DMS-endringer beholdes når Wilsof oppdateres.
+Press `Super+I` to open DMS Settings. It exposes appearance, wallpaper, theme and colors, typography and motion, Hyprland, bar and workspace settings. Wilsof preserves an existing personal DMS `settings.json` during normal upgrades.
 
-## Få hjelp
+## Get help
 
-Trykk `Super+F1`. Hjelpen viser Wilsofs snarveier og forklarer `Super`. Trykk `Enter` for å lukke.
+Press `Super+F1`. Wilsof renders the shared shortcut manifest into a local DMS Notepad page. The page explains Super, lists standard bindings first and shows the optional VM bindings only when they are active. Close the page with its visible `X` control. It does not require network access.
 
-## Arbeidsområder og vinduer
+## Workspaces and windows
 
-`Super+1` til `Super+9` bytter arbeidsområde. `Super+Piler` flytter fokus. `Super+Q` lukker aktivt vindu. Bruk `Super+F1` når du trenger resten av snarveiene.
+- `Super+1` through `Super+9`: switch workspace.
+- `Super+Shift+1` through `Super+Shift+9`: move the active window to a workspace.
+- `Super+Arrow keys`: move focus.
+- `Super+Shift+Arrow keys`: move the active window.
+- `Super+Ctrl+Arrow keys`: resize the active window.
+- `Super+Q`: close the active window.
+- `Super+F`: fullscreen.
+- `Super+Shift+Space`: toggle floating mode.
 
-## Lås og systemhandlinger
+The ice-blue border identifies the active window. The top bar shows workspace orientation, time and essential status; it intentionally avoids a dock and desktop widgets.
 
-`Super+L` låser økten. Systemhandlinger finnes i kontrollsenterets meny i topplinjen: lås, logg ut, start på nytt, slå av og hvilemodus. DMS krever at en handling holdes inne i 500 ms før den utføres, slik at vanlig navigasjon ikke slår av eller logger ut maskinen.
+## Lock and power actions
 
-## VM-testbindinger
+`Super+L` invokes Wilsof's Hyprlock wrapper. Hypridle invokes the same wrapper after five minutes and before suspend. Hyprlock uses the system PAM configuration; enter the account password locally to unlock. Do not place passwords in configuration files or project documentation.
 
-Når klienten fanger Super før tastetrykket når VM-en, kan den valgfrie VM-modusen aktiveres av en Wilsof-bruker. Da virker `Ctrl+Alt+Space`, `Ctrl+Alt+L`, `Ctrl+Alt+I` og `Ctrl+Alt+F1` i tillegg. Denne modusen er ikke en del av standardbindingene og kan slås av igjen.
+The DMS system menu includes lock, log out, restart, power off and suspend. DMS displays a 500 ms hold confirmation before the destructive actions. During testing, cancel those confirmations rather than executing a destructive action.
+
+## Optional VM fallback bindings
+
+Some VM clients intercept Super before the guest receives it. From a graphical Wilsof terminal, enable the optional layer:
+
+    wilsof-vm-test-binds enable
+
+The following guest-only fallbacks then become available:
+
+- `Ctrl+Alt+Space`: launcher
+- `Ctrl+Alt+L`: lock
+- `Ctrl+Alt+I`: settings
+- `Ctrl+Alt+F1`: help
+
+Disable the layer when the test is complete:
+
+    wilsof-vm-test-binds disable
+
+The fallback layer never changes the standard Super bindings. A physical keyboard test through the actual client and VM remains the only proof that client-side interception is solved.

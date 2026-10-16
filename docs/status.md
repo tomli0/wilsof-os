@@ -1,34 +1,35 @@
-# Status — Wilsof Arch-prototype
+# Status — Wilsof Arch prototype
 
-Oppdatert: 2026-10-16 UTC
+Updated: 2026-10-16 UTC
 
-## Tilgang og utplassering
+## Access and deployment
 
-- VM 113 `wilsof-arch-test` svarer med korrekt pinnet ED25519-fingeravtrykk: `SHA256:0IOuFZDTGymRZzoa5kSAO1x8FCo+ZO1khL3q/xqNAqw`.
-- `root`-SSH med eksisterende ED25519-nøkkel fungerte. Årsaken til avvisning for `wilsofdev` var konkret: `/home/wilsofdev/.ssh/` og `authorized_keys` manglet. Kontoen var ikke låst, og ingen begrensende sshd-regel ble funnet.
-- Den eksisterende offentlige nøkkelen ble lagt tilbake med katalog `0700`, nøkkelfil `0600` og korrekt eierskap. En ny, separat `wilsofdev` nøkkelinnlogging med kun publickey ble verifisert før utplassering.
-- Commit `94ebc4a` (desktop-utplassering) er utplassert under `/opt/wilsof-os`. Installering som `wilsofdev` passerte Arch-preflight, og installerte kopier av `wilsof-search` ble sammenlignet byte-for-byte med kildeversjonen. Den senere installasjonsrettingen `e192b17` konfigurerer greetd med tuigreet/Hyprland på fremtidige rene installasjoner; den er ikke kjørt mot eksisterende VM 113.
+- VM 113 is reachable as `wilsofdev` with the existing public-key SSH setup and strict host-key checking. Root SSH remains available through its existing authorized key. Password login and sudo policy were not changed.
+- The live target is Arch Linux with Hyprland 0.56.2 and DMS 1.6.3. The active session is `wilsofdev` on a 1280×800 Virtual-1 output.
+- The original deployment under `/opt/wilsof-os` had no Git metadata. The current working-tree changes to help and Hyprlock configuration were copied there and installed as `wilsofdev`; installed files were compared byte-for-byte after installation.
+- `wilsof-wallpaper.service` is a completed `Type=oneshot` unit, so `inactive (dead)` is expected after a successful run. It now directly requires DMS, and a fresh manual start returned DMS `SUCCESS`, the approved asset through `wallpaper get`, and systemd `Result=success`/`ExecMainStatus=0`. Startup behavior after a new graphical login still needs persistence testing.
 
-## Brukeropplevelse og design
+## Implemented and visually observed
 
-- Tomt skrivebord, WS-bakgrunn, charcoal `#14181E`, isblå `#86B9CE`, tynne vinduskanter og avgrenset topplinje er visuelt inspisert på VM 113 i 1280×800.
-- `Super+Space` bruker nå DMS Launcher i programmets modus (`launcher toggleWith apps`), ikke Spotlight. Det gir en tydelig programliste, et fokusert søkefelt, synlig valgt treff og diskrete piltast/Enter-hint. Det unngår at Wilsof åpner QR-generatorens frie tekstresultat ved et vanlig programåpne-søk.
-- `Super+I` åpner DMS Settings via IPC. Bakgrunn, tema/farger, typografi/bevegelse, Hyprland, topplinje og arbeidsområder er synlige. Brukerens DMS-innstillinger bevares ved gjentatt installasjon.
-- Systemmenyen viser lås, logg ut, start på nytt, slå av, hvilemodus og start DMS på nytt. Den viser «Hold to confirm (500 ms)» før en valgt handling utføres; ingen destruktiv handling ble utført under kontrollen.
-- DMS har ingen støttet launcher-widget i den installerte minimale topplinjen (`widget list` returnerte klokke, kontrollsenter, batteri og tray). Det er derfor ikke laget en falsk eller separat topplinjemeny. Launcher nås med standardbindingen; fysisk topplinjeklikk er ikke testet.
+- Empty desktop, approved WS wallpaper, charcoal `#14181E`, ice-blue `#86B9CE`, thin borders and restrained DMS top bar were visually inspected in the running VM.
+- `Super+Space` calls `dms ipc call launcher toggleWith apps`. The visible launcher begins with applications, has an input field, a selected result and local application categories.
+- `Super+I` opens DMS Settings. Wallpaper, theme and colors, typography and motion, Hyprland, bar and workspace categories were visually inspected.
+- The original Ghostty shortcut help was broken in the active session: Ghostty 1.3.1 produced `PostForkError` and a configuration-error dialog. Wilsof help now renders the shared shortcut manifest into DMS Notepad through supported DMS IPC. The deployed page was visually inspected, including standard bindings, Super explanation, active VM-test section and visible close control.
+- A Wilsof Hyprlock configuration is installed. `/etc/pam.d/hyprlock` is present and includes the system `login` PAM stack. A live Hyprlock process acquired the Wayland session lock, presented the configured surface and displayed the PAM password prompt; the VM is intentionally left locked. Successful password authentication and unlock were not attempted.
 
-## Ekte VM-skjermbilder
+## Evidence
 
-- `evidence/vm113-2026-10-16-desktop.png` — tomt skrivebord/topplinje.
-- `evidence/vm113-2026-10-16-launcher-apps.png` — installert Wilsof-wrapper åpner programmodus med markert Apps-filter.
-- `evidence/vm113-2026-10-16-launcher-firefox.png` — Firefox er synlig og valgt som programtreff.
-- `evidence/vm113-2026-10-16-settings.png` — DMS Settings og synlige kategorier.
-- `evidence/vm113-2026-10-16-powermenu.png` — systemhandlinger og hold-bekreftelse.
+- `evidence/vm113-2026-10-16-desktop.png` — desktop/top bar.
+- `evidence/vm113-2026-10-16-launcher-apps.png` — installed application launcher.
+- `evidence/vm113-2026-10-16-settings.png` — DMS Settings.
+- `evidence/vm113-2026-10-16-powermenu.png` — power menu confirmation.
+- `evidence/vm113-2026-10-16-help.png` — deployed local shortcut help at 1280×800.
+- `evidence/vm113-2026-10-16-lock.png` — deployed Hyprlock surface at 1280×800.
 
-## Begrensninger
+## Not yet passed
 
-- DMS sin oppstrømslauncher mangler norsk placeholder og viser enkelte engelske kategorier/metadata. Wilsof har ikke startet en DMS-fork for dette.
-- Programmodus er testet med tomt søk og IPC-åpning. Fysisk piltast, Enter og Esc gjennom MacBook → Omarchy → Proxmox → VM er IKKE TESTET.
-- Ghostty-hjelpens renderer og manifest er lokalt testet, men den aktive grafiske Ghostty-visningen ble ikke PASS-merket: en syntetisk SSH-lansering utløste Ghosttys `PostForkError`, som ikke er samme prosessvei som den reelle Hyprland-bindingen. Hjelp via fysisk `Super+F1` eller VM-testbinding er IKKE TESTET.
-- Låseflate, PAM-opplåsing, fem minutters idle-lås, logout/login og reboot-persistens er IKKE TESTET. Ingen låsetest er startet mens brukeren er borte.
-- Dette er funksjonell/visuell gjennomgang, ikke brukertesting med nye personer.
+- The current launcher is application-focused, not a verified universal search for files, open windows, settings and system actions.
+- Physical MacBook → Omarchy → Proxmox → VM keyboard behavior, including Enter/Escape, remains untested.
+- DMS Notepad help opening and IPC close were tested; physical `Super+F1`, `Esc`, and keyboard closure of the help view remain untested.
+- The Hyprlock surface, local PAM unlock, five-minute idle lock, logout/login, reboot persistence, audio playback and screen sharing remain untested.
+- This is engineering validation and visual review, not usability testing with new people.

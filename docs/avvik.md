@@ -1,20 +1,21 @@
-# Avvik og begrensninger
+# Deviations and known limits
 
-## Avsluttede avvik
+## Resolved
 
-- Standard lilla DMS og standardbakgrunn: årsak var at Wilsof-session.target aldri ble startet av den faktiske DMS-genererte Lua-entrypointen. I tillegg manglet fast custom-theme. Rettet og visuelt kontrollert på VM 113.
-- Genererte DMS-binds dupliserte Wilsof-binds. Rettet med dokumentert, case-sensitiv `hl.unbind` før Wilsof-bindene registreres; kontrollert via Hyprland IPC.
-- Hypridle fant ikke `wilsof-lock` fordi user-tjenestens PATH ikke inneholder `~/.local/bin`. Rettet med `$HOME/.local/bin/wilsof-lock`; den avvikende DPMS-regelen ble fjernet fordi Hyprland 0.56.2 avviste den gamle dispatch-syntaksen.
+- The DMS-generated bindings conflicted with Wilsof bindings. Wilsof now removes the relevant generated bindings before registering its own overrides.
+- Hypridle did not find `wilsof-lock` because its user-service PATH omitted `~/.local/bin`. The idle configuration now calls the wrapper by absolute user path.
+- The shortcut-help path used Ghostty with `--command`. In the running Arch session Ghostty 1.3.1 created a non-functional terminal with `PostForkError` and a configuration-error dialog. Help now uses supported DMS Notepad IPC and the existing shared manifest; it no longer depends on Ghostty.
+- The Command glyph was missing in the DMS Notepad font. The help text now says “Command key” rather than rendering the unsupported glyph.
 
-## Gjenstående avvik
+## Current limits
 
-- SSH-tilgang er gjenopprettet og utplassering er gjennomført. Årsaken var manglende `/home/wilsofdev/.ssh/authorized_keys`, ikke feil hostnøkkel eller låst konto. Tilgangen er gjenopprettet med kun den eksisterende offentlige nøkkelen; passordinnlogging og sudo-policy er ikke endret.
-- DMS Launcher i Apps-modus er Wilsofs felles programinngang. DMS viser fortsatt engelske kategori-/metadata-tekster og mangler norsk placeholder. Prosjektet gjør ingen stor DMS-fork bare for oversettelse. Filer, vinduer og systemhandlinger blir ikke lovet som launcherfunksjoner.
-- DMS-systemmenyen har hold-bekreftelse på 500 ms, men det er ikke gjennomført fysisk tastaturtest av avbrytelse med Esc eller hver destruktive dialog.
-- Ghostty-hjelpens aktive GUI-vindu er ikke godkjent: en SSH-syntetisk start ga Ghostty `PostForkError`. Renderer, manifest og kommandoform er testet lokalt; reell Hyprland-tastaturvei må testes i VM-konsollen.
-- PipeWire har RTKit-varsel fordi RTKit ikke er tilgjengelig. Dette er ikke tolket som lydfeil; avspilling er ikke testet.
-- Hyprlock/PAM, fysisk tastatur via Proxmox, logout/login og reboot-persistens krever manuell kontroll.
+- DMS Launcher is deliberately application-focused. It is not presented as a complete universal search until local files, open windows, settings, aliases and power actions have been individually tested through a supported provider path.
+- DMS has no supported launcher widget in the installed minimal top bar. Wilsof does not add a decorative or fake search button.
+- DMS and several upstream views have English category labels. Wilsof does not fork DMS for translation.
+- A historical wallpaper oneshot run reached DMS before the target was available. The unit now directly requires DMS; a fresh manual start returned DMS `SUCCESS`, the expected `wallpaper get` value and systemd success. Login/reboot startup ordering still needs a real persistence test.
+- Hyprlock's PAM file exists and a Wilsof lock configuration is installed. Unlock requires a human entering the account password locally; the agent does not collect or enter it.
+- VM keyboard interception, idle lock, logout/login and reboot persistence require direct physical-console checks.
 
-## Bootfeil
+## Boot history
 
-Nåværende disk er korrekt: EFI System-partisjon på `/dev/sda1`, ESP på `/boot`, systemd-boot NVRAM-entry og fallback `EFI/BOOT/BOOTX64.EFI`, samt korrekt Btrfs root-UUID/subvolum. Tidligere oppstartslogg fra den mislykkede første diskstarten er ikke bevart, så den eksakte årsaken kan ikke fastslås uten spekulasjon. Installasjonsoppskriften er korrigert for den observerte ESP/XBOOTLDR-forvirringen og verifiserer alle boot-artefakter statisk.
+The active Arch disk uses an ESP at `/boot`, systemd-boot with fallback `EFI/BOOT/BOOTX64.EFI`, and Btrfs root parameters. The earlier failed disk boot was not retained, so its exact cause is unknown. The installation recipe validates the observed boot artifacts statically; it is not a substitute for a real reboot observation.

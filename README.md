@@ -1,38 +1,73 @@
-# Wilsof OS — Arch-skrivebordsprototype
+# Wilsof OS
 
-Wilsof er foreløpig en Arch-basert skrivebordsprototype under utvikling. Dette er ikke et ferdig, selvstendig OS, et produksjonsklart installasjonsmedium eller en release.
+Wilsof OS is an early Arch Linux-based desktop prototype focused on a clean, keyboard-first experience. It combines Hyprland and DankMaterialShell with a consistent visual identity, a unified launcher and a minimal set of everyday applications.
 
-## Nåværende prototype
+The goal is to make a tiling desktop easy to navigate, with discoverable controls and practical keyboard shortcuts.
 
-- Arch Linux, Hyprland 0.56.2 og DankMaterialShell (DMS) 1.6.3 i den dedikerte test-VM-en.
-- Godkjent WS-bakgrunn, mørk `#14181E` overflate og isblå `#86B9CE` aksent.
-- Tomt skrivebord og en nedstrippet DMS-linje med arbeidsområder, klokke og nødvendig status.
-- `Super+Space` åpner den samme DMS-launcheren i programmodus. Den viser programmer med søkefelt og synlig valgt treff; ingen web-søk sendes av Wilsofs wrapper. DMS sin egen placeholder og engelske kategoritekster er foreløpig oppstrømsbegrensninger.
-- `Super+I` åpner DMS-innstillinger. DMS tilbyr blant annet utseende, bakgrunn, typografi/bevegelse, Hyprland, topplinje og arbeidsområder; endringer i personlige DMS-innstillinger beholdes ved Wilsof-oppgradering.
-- `Super+L` og Hypridle bruker samme `wilsof-lock`-wrapper rundt Hyprlock. Wrapperen er idempotent per bruker og melder eksplisitt når Hyprlock allerede kjører. Autentisering/opplåsing er ikke testet av agenten.
-- `Super+F1` åpner en lokal, tastatur-lukkbar snarveihjelp i Ghostty. Den leser Wilsofs versjonerte snarveimanifest; aktive Ctrl+Alt VM-testbindinger vises separat.
-- Se `docs/brukerveiledning.md` for vanlige oppgaver uten utviklerkommandoer.
+Wilsof is under active development. It is not yet a production-ready distribution or a standalone installation image.
 
-Faktisk teststatus, begrensninger og skjermbilder står i `docs/status.md`, `docs/testplan.md` og `docs/avvik.md`.
+## Current prototype
 
-## Rask, kontrollert installasjon av brukerprofil
+- Arch Linux, greetd/tuigreet, Hyprland and DankMaterialShell (DMS).
+- An intentionally empty desktop using the approved WS wallpaper, charcoal `#14181E`, ice-blue `#86B9CE`, thin window borders and restrained rounding.
+- A minimal top bar for workspace orientation, time and essential system status.
+- `Super+Space` opens the single DMS application launcher. It starts with installed applications and keeps search local; it is not yet a complete universal search for open windows, files, settings and system actions.
+- `Super+I` opens DMS Settings.
+- `Super+F1` opens local shortcut help generated from Wilsof's shared shortcut manifest in DMS Notepad.
+- `Super+L` and Hypridle call the same idempotent Hyprlock wrapper. The lock configuration and PAM wiring are present; real password unlock remains a manual check.
+- Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe and VLC are part of the test-VM package set.
 
-Kjør kun på den dedikerte Wilsof-VM-en som `wilsofdev`:
+## Screenshots from the Arch test session
+
+![Wilsof application launcher](evidence/vm113-2026-10-16-launcher-apps.png)
+
+![Wilsof settings](evidence/vm113-2026-10-16-settings.png)
+
+![Wilsof shortcut help](evidence/vm113-2026-10-16-help.png)
+
+![Wilsof lock surface](evidence/vm113-2026-10-16-lock.png)
+
+These are screenshots of the running Arch VM, not the browser prototype in `prototype/`.
+
+## What is implemented, and what is not
+
+The application launcher, settings entry, local help renderer, optional VM fallback bindings, theme, wallpaper, active binding layer and installer guards are implemented in the prototype.
+
+The launcher is deliberately application-focused today. Its DMS UI exposes upstream categories, but Wilsof does not claim tested local-file search, open-window search, aliases in Norwegian and English, or system-power actions through that launcher. The physical MacBook → Omarchy → Proxmox keyboard path, Escape/Enter behavior, PAM unlock, idle-lock observation, logout/login and reboot persistence need direct manual verification.
+
+See [the current status](docs/status.md), [test plan](docs/testplan.md) and [known deviations](docs/avvik.md) for evidence and limits.
+
+## Trying the isolated test VM
+
+The repository contains the intended configuration and test-VM scripts; it does not contain credentials, a disk image or an installer release. Use only an authorized disposable Arch VM and follow [the VM runbook](docs/vm-runbook.md). The user-profile installer has an explicit `WILSOF_TARGET_VM=1` guard and only manages Wilsof-owned files in the target user's home directory:
 
     WILSOF_TARGET_VM=1 /opt/wilsof-os/scripts/install-user-config.sh
 
-Skriptet nekter andre operativsystemer, kopierer bare Wilsof-filer til brukerens hjemmekatalog og er idempotent. På første installasjon setter det en statisk DMS-palett og en minimal topplinje. Senere installasjoner beholder `~/.config/DankMaterialShell/settings.json`; tilbakestilling er dokumentert i `docs/vm-runbook.md`.
+The optional VM fallback layer is for clients that intercept Super before it reaches the guest:
 
-## Valgfri VM-testbinding
+    wilsof-vm-test-binds enable
+    wilsof-vm-test-binds disable
 
-Hvis VM-klienten fanger Super, kan en Wilsof-bruker aktivere bare fire Ctrl+Alt-fallbacks med `wilsof-vm-test-binds enable`: Space (launcher), L (lås), I (innstillinger) og F1 (hjelp). Slå dem av igjen med `wilsof-vm-test-binds disable`. Wilsof-standardbindingene endres ikke.
+It adds only `Ctrl+Alt+Space`, `Ctrl+Alt+L`, `Ctrl+Alt+I` and `Ctrl+Alt+F1`; it does not replace the standard Wilsof bindings.
 
-## Utviklerkontroll
+## Everyday use
+
+The English [user guide](docs/brukerveiledning.md) covers opening applications, settings, help, workspaces, locking, power actions and the VM fallback layer. Architecture and design boundaries are documented in [architecture](docs/arkitektur.md) and [decisions](docs/beslutningslogg.md).
+
+## Development checks
 
     pytest -q
     sh -n scripts/*.sh bin/wilsof-*
     python3 -m json.tool config/dms/wilsof-theme.json
 
-## Om komponentene
+GitHub Actions runs these local validation checks without secrets, homelab access, deployment or destructive disk operations.
 
-Wilsof integrerer eksisterende Arch-, Hyprland-, Hyprlock-, Hypridle- og DMS-komponenter. Prosjektet påstår ikke eierskap til disse. Se `docs/arkitektur.md` for integrasjonsgrensene og `docs/beslutningslogg.md` for beslutningene.
+## Branch and maturity
+
+The active Arch work is on `arch-install`. The repository default branch is `main`; its GitHub landing page remains unchanged until pull request review and merge. Review the current work directly at [the Arch branch README](https://github.com/tomli0/wilsof-os/blob/arch-install/README.md) and [pull request #1](https://github.com/tomli0/wilsof-os/pull/1).
+
+Historical Fedora material is retained where useful as history. It is not the active prototype path.
+
+## Credits and license
+
+Wilsof integrates Arch Linux, Hyprland, Hyprlock, Hypridle, DankMaterialShell and the listed desktop applications. Wilsof does not claim ownership of those upstream projects. No license file is currently included in this repository; no license grant should be inferred until one is added.

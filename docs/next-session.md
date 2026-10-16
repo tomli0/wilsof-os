@@ -1,27 +1,24 @@
-# Neste økt — Wilsof Arch VM 113
+# Next session — Wilsof Arch VM 113
 
-Oppdatert: 2026-10-16 UTC
+Updated: 2026-10-16 UTC
 
-## Kontrollpunkt
+## Checkpoint
 
-- Gren: `arch-install`.
-- Siste kontrollpunktscommit: `e192b17`; kontroller `git rev-parse HEAD` før videre arbeid.
-- VM 113 har fortsatt pinnet ED25519-hostnøkkel `SHA256:0IOuFZDTGymRZzoa5kSAO1x8FCo+ZO1khL3q/xqNAqw`.
-- Tilgangsstatus: `root` og `wilsofdev` fungerer med eksisterende ED25519-nøkkel og `StrictHostKeyChecking=yes`. `wilsofdev` ble reparert ved å gjenopprette manglende `~/.ssh/authorized_keys` med katalogmodus `0700` og filmodus `0600`.
-- VM-status: aktiv Hyprland/DMS-sesjon for `wilsofdev`, ulåst. Ikke rebootet, logget ut eller låst.
-- Utplassert: `94ebc4a` under `/opt/wilsof-os`, installert som `wilsofdev`; installert `wilsof-search` er kontrollert mot kilde.
+- Branch: `arch-install`; verify `git rev-parse HEAD` before new work.
+- Deployment source: `/opt/wilsof-os` has no Git metadata. The installed user profile was refreshed from the current working-tree copies of `wilsof-help`, `wilsof-help-view`, `hyprlock.conf` and `install-user-config.sh`.
+- SSH access: root and wilsofdev public-key connections work with strict host checking. Do not weaken host-key policy, enable password login or change sudo policy.
+- Session state: `wilsofdev` Hyprland session is currently locked by the deployed Hyprlock process. The lock surface was visually captured; only the authorized local user can perform PAM unlock. Optional VM fallback bindings were reset to disabled.
 
-## Utført og testet
+## Completed in this session
 
-- `Super+Space`-wrapper bruker DMS `launcher toggleWith apps`, slik at programlisten er standardinngangen uten QR-generatorens friteksttreff.
-- Arch-preflight, installering, DMS Launcher IPC, Settings IPC og systemmeny IPC er gjennomført på VM 113.
-- Ekte 1280×800-skjermbilder er lagret under `evidence/vm113-2026-10-16-*.png`.
-- Lokal kontroll: 30 pytest bestått, shell- og JSON-validering bestått. En minimal GitHub Actions-workflow kjører de samme lokale kontrollene uten secrets, deploy eller VM-tilgang.
+- Diagnosed the Ghostty help failure as a real active-session `PostForkError`, not a keyboard-input failure.
+- Replaced Ghostty help with a local DMS Notepad page generated from the shared manifest; deployed, opened, captured at 1280×800 and closed via supported IPC.
+- Corrected the Command-key explanation after visual review exposed an unsupported glyph.
+- Added and deployed a Wilsof Hyprlock presentation configuration. PAM wiring and prior missing-config failures were inspected.
 
-## Eksakt neste steg
+## Exact next steps
 
-1. Commit og push dokumentasjon/evidens som er lagt til etter `94ebc4a`; kontroller diff for sensitive data og oppdater PR 1.
-2. I aktiv VM-konsoll: test faktisk `Super+Space`, søk, piltaster, Enter og Esc; åpne Firefox fra trefflisten.
-3. Test `Super+F1` gjennom reell Hyprland-binding. Forrige SSH-syntetiske Ghostty-start ga `PostForkError` og er ikke godkjent som bindingstest.
-4. Test valgfri Ctrl+Alt VM-modus fra fysisk MacBook → Omarchy → Proxmox → VM. Merk kjeden IKKE TESTET til dette er observert.
-5. Til slutt: test låsflaten én gang når brukeren kan låse opp selv; PAM-opplåsing, idle-lås, logout/login og reboot-persistens er fortsatt IKKE TESTET.
+1. The authorized local user must perform PAM unlock before further graphical tests; do not work around the lock.
+2. From the physical Proxmox console, test standard and optional VM bindings: launcher search, arrows, Enter, Escape, settings and help closure. Then observe five-minute idle lock.
+3. After human GUI work is saved, execute one controlled logout/login or reboot and verify the pinned host key, greetd, DMS, wallpaper, launcher and user services.
+4. Refresh this file with the final commit, deployed checksum/version and exact session state.

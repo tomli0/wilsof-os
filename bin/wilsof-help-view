@@ -48,7 +48,8 @@ def main(argv: list[str]) -> int:
         return fail(str(error), 65)
 
     print("Wilsof snarveier")
-    print("Super (Command/Windows) er Command/⌘ på mange Mac-tastaturer og Windows-tasten på PC-tastaturer.")
+    print("Super er Command-tasten på mange Mac-tastaturer og Windows-tasten på PC-tastaturer.")
+    print("Lukk hjelpen med X øverst til høyre.")
     print()
     render("Standardbindinger", manifest["standard"])
     print()

@@ -84,8 +84,10 @@ def test_installer_selects_arch_or_fedora_preflight_explicitly():
     assert 'arch) "$root/scripts/preflight-arch.sh"' in content
 
 
-def test_wallpaper_unit_quotes_asset_path_with_spaces():
+def test_wallpaper_unit_requires_dms_and_quotes_asset_path_with_spaces():
     content = WALLPAPER_UNIT.read_text(encoding="utf-8")
+    assert "Requires=dms.service" in content
+    assert "After=dms.service" in content
     assert '"%h/.local/share/wilsof-os/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png"' in content
 
 
@@ -93,6 +95,7 @@ def test_installer_integrates_with_the_dms_lua_entrypoint_and_locking():
     content = INSTALL.read_text(encoding="utf-8")
     assert 'config/hypr/wilsof.lua' in content
     assert 'config/hypr/hypridle.conf' in content
+    assert 'config/hypr/hyprlock.conf' in content
     assert 'bin/wilsof-lock' in content
     assert 'bin/wilsof-help' in content
     assert 'require("wilsof")' in content
@@ -135,29 +138,32 @@ def test_vm_test_lua_has_only_the_four_requested_ctrl_alt_bindings():
     assert config.count("hl.bind(") == 4
 
 
-def test_help_opens_a_keyboard_closable_local_view_from_the_shared_manifest(tmp_path):
+def test_help_renders_the_shared_manifest_in_dms_notepad(tmp_path):
     helper = ROOT / "bin" / "wilsof-help"
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     log = tmp_path / "args"
-    ghostty = fake_bin / "ghostty"
-    ghostty.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" > {log}\n", encoding="utf-8")
-    ghostty.chmod(0o755)
+    dms = fake_bin / "dms"
+    dms.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" > {log}\n", encoding="utf-8")
+    dms.chmod(0o755)
     manifest = tmp_path / "shortcuts.json"
     manifest.write_text('{"schema": 1, "standard": [], "vm_test": []}\n', encoding="utf-8")
     renderer = tmp_path / "wilsof-help-view"
-    renderer.write_text("#!/bin/sh\n", encoding="utf-8")
+    renderer.write_text("#!/bin/sh\nprintf '%s\\n' 'Wilsof snarveier'\n", encoding="utf-8")
     renderer.chmod(0o755)
+    document = tmp_path / "state" / "Wilsof snarveier.txt"
     result = run(
         helper,
         env={
             "PATH": f"{fake_bin}:{os.environ['PATH']}",
             "WILSOF_SHORTCUTS_FILE": str(manifest),
             "WILSOF_HELP_VIEWER": str(renderer),
+            "WILSOF_HELP_DOCUMENT": str(document),
         },
     )
     assert result.returncode == 0, result.stderr
-    assert log.read_text(encoding="utf-8").strip() == f"--title=Wilsof snarveier --command {renderer} {manifest}"
+    assert log.read_text(encoding="utf-8").strip() == f"ipc call notepad openFile {document}"
+    assert document.read_text(encoding="utf-8").strip() == "Wilsof snarveier"
 
 
 def test_help_viewer_renders_standard_and_enabled_vm_test_bindings(tmp_path):
@@ -174,7 +180,7 @@ def test_help_viewer_renders_standard_and_enabled_vm_test_bindings(tmp_path):
     )
     disabled = run(viewer, str(manifest), env={"WILSOF_VM_TEST_BINDS": "disabled"})
     assert disabled.returncode == 0, disabled.stderr
-    assert "Super (Command/Windows)" in disabled.stdout
+    assert "Super er Command-tasten" in disabled.stdout
     assert "Super+Space" in disabled.stdout
     assert "VM-testbindinger er ikke aktivert" in disabled.stdout
     enabled = run(viewer, str(manifest), env={"WILSOF_VM_TEST_BINDS": "enabled"})

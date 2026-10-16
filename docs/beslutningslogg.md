@@ -1,21 +1,29 @@
-# Beslutningslogg
+# Decisions
 
-## D-001 — Arch som aktiv prototypeplattform
+## D-001 — Arch is the active prototype platform
 
-Status: vedtatt. Arch VM 113 er aktivt testmål. Fedora-materiale beholdes som historikk/referanse, men er ikke aktiv installasjonsvei.
+Status: accepted. Arch VM 113 is the active test target. Fedora material is retained only as historical reference and is not the active installation path.
 
-## D-002 — DMS beholdes, Wilsof er override-lag
+## D-002 — Keep DMS; Wilsof is an override layer
 
-Status: vedtatt. DMS eier shell, bakgrunns-IPC og standardkonfigurasjon. Wilsof lastes separat sist, slik at DMS-generering ikke sletter prosjektets endringer.
+Status: accepted. DMS owns the shell, supported IPC and generated configuration. Wilsof loads separately after DMS so regeneration does not erase project changes.
 
-## D-003 — Fast Wilsof-palett, ikke wallpaper-avledet
+## D-003 — Use a fixed Wilsof palette
 
-Status: vedtatt. `#14181E` og `#86B9CE` er faste designverdier. Matugen er deaktivert for DMS-tjenesten; custom theme er førsteinstallasjonsstandard og personlige senere valg beholdes.
+Status: accepted. Charcoal `#14181E` and ice-blue `#86B9CE` are fixed Wilsof values. Matugen is disabled for DMS, the custom theme is a first-install default, and later personal DMS choices are preserved.
 
-## D-004 — Super+Space er én programfokusert DMS Launcher-inngang
+## D-004 — One application-first launcher entry
 
-Status: vedtatt med begrensning. Wrapperen åpner DMS Launcher med `toggleWith apps`, slik at programlisten er den forventede førstevisningen og QR-generatorens fritekstresultat ikke er vanlig søkeutfall. DMS sine faktisk visuelt dokumenterte programtreff brukes; filer, vinduer og systemhandlinger blir ikke påstått som launcherfunksjoner før de er testet.
+Status: accepted with scope limit. `Super+Space` opens DMS Launcher in application mode. This gives a predictable program list and avoids unrelated provider matches. Files, windows, settings aliases and power actions are not claimed as launcher features until a supported path has been tested.
 
-## D-005 — ESP er `/boot`, ikke XBOOTLDR
+## D-005 — Local help is a DMS Notepad page
 
-Status: vedtatt. systemd-boot installeres med `--esp-path=/boot`; fallback-fil kontrolleres eksplisitt.
+Status: accepted. Ghostty command-mode startup in the active Arch session produced `PostForkError` and a broken terminal. Wilsof now renders its shared shortcut manifest locally and opens it with supported DMS Notepad IPC. This retains an offline, visible help route without creating another shell component.
+
+## D-006 — ESP is `/boot`, not XBOOTLDR
+
+Status: accepted. Install systemd-boot with `--esp-path=/boot` and verify the fallback file explicitly.
+
+## D-007 — Hyprlock owns authentication; Wilsof owns presentation
+
+Status: accepted. Wilsof supplies the lock surface and calls Hyprlock through an idempotent wrapper. PAM remains system-owned, and the agent does not handle account passwords.

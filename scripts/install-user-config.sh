@@ -35,7 +35,7 @@ for managed in \
   "$HOME/.local/share/wilsof-os/wilsof-shortcuts.json" \
   "$HOME/.local/share/wilsof-os/vm-test/wilsof-vm-test.lua" \
   "$HOME/.config/hypr/wilsof.conf" "$HOME/.config/hypr/wilsof.lua" \
-  "$HOME/.config/hypr/hypridle.conf" \
+  "$HOME/.config/hypr/hypridle.conf" "$HOME/.config/hypr/hyprlock.conf" \
   "$HOME/.config/systemd/user/wilsof-session.target" \
   "$HOME/.config/systemd/user/wilsof-wallpaper.service" \
   "$HOME/.config/systemd/user/dms.service.d/wilsof.conf" \
@@ -54,6 +54,7 @@ install -m 0644 "$root/config/hypr/wilsof-vm-test.lua" "$HOME/.local/share/wilso
 install -m 0644 "$root/config/hypr/wilsof.conf" "$HOME/.config/hypr/wilsof.conf"
 install -m 0644 "$root/config/hypr/wilsof.lua" "$HOME/.config/hypr/wilsof.lua"
 install -m 0644 "$root/config/hypr/hypridle.conf" "$HOME/.config/hypr/hypridle.conf"
+install -m 0644 "$root/config/hypr/hyprlock.conf" "$HOME/.config/hypr/hyprlock.conf"
 install -m 0644 "$root/config/systemd/wilsof-session.target" "$HOME/.config/systemd/user/wilsof-session.target"
 install -m 0644 "$root/config/systemd/wilsof-wallpaper.service" "$HOME/.config/systemd/user/wilsof-wallpaper.service"
 install -m 0644 "$root/config/systemd/dms-wilsof.conf" "$HOME/.config/systemd/user/dms.service.d/wilsof.conf"

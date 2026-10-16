@@ -120,3 +120,23 @@ def test_help_wrapper_delegates_to_the_supported_dms_keybind_view(tmp_path):
     result = run(helper, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
     assert result.returncode == 0, result.stderr
     assert log.read_text(encoding="utf-8").strip() == "ipc call keybinds open"
+
+
+def test_vm_test_binding_wrapper_is_opt_in_and_reversible(tmp_path):
+    wrapper = ROOT / "bin" / "wilsof-vm-test-binds"
+    source = tmp_path / ".local" / "share" / "wilsof-os" / "vm-test"
+    source.mkdir(parents=True)
+    (source / "wilsof-vm-test.lua").write_text("-- test\n", encoding="utf-8")
+    env = {"HOME": str(tmp_path), "PATH": os.environ["PATH"]}
+    assert run(wrapper, "status", env=env).stdout.strip() == "disabled"
+    assert run(wrapper, "enable", env=env).returncode == 0
+    assert run(wrapper, "status", env=env).stdout.strip() == "enabled"
+    assert run(wrapper, "disable", env=env).returncode == 0
+    assert run(wrapper, "status", env=env).stdout.strip() == "disabled"
+
+
+def test_vm_test_lua_has_only_the_four_requested_ctrl_alt_bindings():
+    config = (ROOT / "config" / "hypr" / "wilsof-vm-test.lua").read_text(encoding="utf-8")
+    for key in ("space", "L", "I", "F1"):
+        assert f'"CTRL + ALT + {key}"' in config
+    assert config.count("hl.bind(") == 4

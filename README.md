@@ -20,6 +20,10 @@ Kjør kun på den dedikerte Wilsof-VM-en som `wilsofdev`:
 
 Skriptet nekter andre operativsystemer, kopierer bare Wilsof-filer til brukerens hjemmekatalog og er idempotent. På første installasjon setter det en statisk DMS-palett og en minimal topplinje. Senere installasjoner beholder `~/.config/DankMaterialShell/settings.json`; tilbakestilling er dokumentert i `docs/vm-runbook.md`.
 
+## Valgfri VM-testbinding
+
+Hvis VM-klienten fanger Super, kan en Wilsof-bruker aktivere bare fire Ctrl+Alt-fallbacks med `wilsof-vm-test-binds enable`: Space (launcher), L (lås), I (innstillinger) og F1 (hjelp). Slå dem av igjen med `wilsof-vm-test-binds disable`. Wilsof-standardbindingene endres ikke.
+
 ## Utviklerkontroll
 
     pytest -q

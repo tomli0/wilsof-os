@@ -1,0 +1,39 @@
+#!/bin/sh
+# Enable or remove optional Ctrl+Alt VM fallback bindings for Wilsof.
+set -eu
+
+usage() {
+  printf '%s\n' "Usage: wilsof-vm-test-binds {enable|disable|status}" >&2
+  exit 64
+}
+
+[ "$#" -eq 1 ] || usage
+home=${HOME:?HOME is required}
+source="$home/.local/share/wilsof-os/vm-test/wilsof-vm-test.lua"
+enabled="$home/.config/hypr/wilsof-vm-test-enabled.lua"
+
+case "$1" in
+  enable)
+    [ -r "$source" ] || { printf '%s\n' "Missing VM-test binding source: $source" >&2; exit 69; }
+    install -d "$home/.config/hypr"
+    install -m 0644 "$source" "$enabled"
+    ;;
+  disable)
+    rm -f "$enabled"
+    ;;
+  status)
+    if [ -e "$enabled" ]; then
+      printf '%s\n' "enabled"
+    else
+      printf '%s\n' "disabled"
+    fi
+    exit 0
+    ;;
+  *) usage ;;
+esac
+
+if command -v hyprctl >/dev/null 2>&1 && hyprctl reload >/dev/null 2>&1; then
+  printf '%s\n' "$1 and reloaded"
+else
+  printf '%s\n' "$1; reload Hyprland from its graphical session to apply." >&2
+fi

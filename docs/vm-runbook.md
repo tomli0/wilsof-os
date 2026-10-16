@@ -19,6 +19,18 @@ Dette dokumentet gjelder bare autorisert, dedikert Wilsof-infrastruktur. VM 112/
 4. Installererens eneste DMS-Lua-endring er én markert `require("wilsof")`. Den må finnes én gang og stå etter `require("dms.binds-user")`.
 5. Start/reload bare avgrensede komponenter under aktiv sesjon: `hyprctl reload`, `systemctl --user restart dms.service`, `systemctl --user restart hypridle.service`, og start `wilsof-session.target`. Ikke logg ut/reboot mens arbeid pågår.
 
+## Valgfri VM-test for Super-fangende klienter
+
+På klienter som Omarchy der Super blir fanget før Proxmox-konsollen, aktiver alternativene fra en grafisk Wilsof-terminal:
+
+    wilsof-vm-test-binds enable
+
+Test `Ctrl+Alt+Space`, `Ctrl+Alt+L`, `Ctrl+Alt+I` og `Ctrl+Alt+F1` fysisk gjennom klienten. Dette er et testlag og endrer ikke Wilsof-standardbindingene. Slå det av med:
+
+    wilsof-vm-test-binds disable
+
+Begge kommandoer reloader Hyprland når de kjøres i den grafiske sesjonen.
+
 ## Tilbakestilling
 
 - Konfigurasjonsbackup ligger under `~/.local/state/wilsof-os/backups/`.

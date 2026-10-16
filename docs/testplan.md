@@ -31,6 +31,19 @@ Status er skilt mellom statisk kontroll, IPC og observert GUI. PASS betyr bare d
 | Persistens | observert etter ny grafisk innlogging/full omstart | IKKE TESTET | ikke logget ut eller rebootet aktiv økt |
 | Ytelse | måling | DELVIS PASS | DMS ca. 370 MiB RSS før siste reload; Hypridle ca. 1 MiB; VM-ytelse er ikke maskinvaregaranti |
 
+## Valgfritt VM-testoppsett for klienter som fanger Super
+
+Aktiveres bare i gjesten med `wilsof-vm-test-binds enable`. Dette lager en brukerfil under `~/.config/hypr/`, laster Hyprland på nytt og beholder alle Wilsof-standardbindingene. Kontrollert via Hyprland IPC: hver Ctrl+Alt-bind og den tilsvarende Super-binden forekommer nøyaktig én gang.
+
+Prøv fysisk fra Proxmox-konsollen:
+
+1. `Ctrl+Alt+Space` — launcher.
+2. `Ctrl+Alt+L` — lås.
+3. `Ctrl+Alt+I` — innstillinger.
+4. `Ctrl+Alt+F1` — snarveihjelp.
+
+Slå av med `wilsof-vm-test-binds disable` fra en grafisk Wilsof-terminal. Kommandoen fjerner bare den opt-in-filen og reloader Hyprland. Klientkonflikten fra Omarchy kan bare markeres fysisk kontrollert etter at disse fire tastetrykkene er observert i MacBook → Proxmox-konsoll → gjest-kjeden.
+
 ## Manuell sluttkontroll
 
 1. I Proxmox-konsollen: trykk hver Wilsof-bind, spesielt Super+Space, Super+I og Super+F1.

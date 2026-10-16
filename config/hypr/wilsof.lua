@@ -1,7 +1,9 @@
 -- Wilsof overrides for the DMS-generated Hyprland Lua configuration.
 -- Load this after DMS modules: generated DMS files remain untouched.
 
-local wilsof_bin = os.getenv("HOME") .. "/.local/bin/"
+local wilsof_home = os.getenv("HOME")
+local wilsof_bin = wilsof_home .. "/.local/bin/"
+local vm_test_enabled = wilsof_home .. "/.config/hypr/wilsof-vm-test-enabled.lua"
 
 hl.config({
     input = {
@@ -69,4 +71,11 @@ hl.bind("SUPER + SHIFT + space", hl.dsp.window.float({ action = "toggle" }))
 for workspace = 1, 9 do
     hl.bind("SUPER + " .. workspace, hl.dsp.focus({ workspace = workspace }))
     hl.bind("SUPER + SHIFT + " .. workspace, hl.dsp.window.move({ workspace = workspace }))
+end
+
+-- Deliberately opt-in: useful only when a VM client intercepts Super.
+local vm_test_file = io.open(vm_test_enabled, "r")
+if vm_test_file then
+    vm_test_file:close()
+    require("wilsof-vm-test-enabled")
 end

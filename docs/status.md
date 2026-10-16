@@ -30,6 +30,10 @@ Følgende er ekte DMS-skjermbilder fra VM 113, hentet via DMS sin støttede scre
 
 `launcher-empty.png` ble tatt i et toggletilstand uten synlig panel og er ikke brukt som positivt visuelt bevis.
 
+## Valgfritt VM-testoppsett
+
+For klienter som fanger Super før Proxmox-nettkonsollen kan `wilsof-vm-test-binds enable` aktiveres av `wilsofdev`. Det legger kun til fire Ctrl+Alt-bind: Space (launcher), L (lås), I (innstillinger) og F1 (hjelp). IPC-kontroll på VM 113 etter aktivering viste én forekomst av hver Ctrl+Alt-bind og fortsatt én tilsvarende Super-bind. `wilsof-vm-test-binds disable` fjerner oppsettet og reloader Hyprland. Fysisk klienttest fra Omarchy/MacBook er IKKE TESTET av agenten.
+
 ## Kjente begrensninger
 
 DMS Spotlight viser programmer og et lokalt Files-filter visuelt. Det er ikke etablert bevis for komplette vindus-, innstillings- og systemhandlingsleverandører, norsk/engelsk aliasering eller sikker lokal filavgrensning. Dette er derfor ikke markert implementert.

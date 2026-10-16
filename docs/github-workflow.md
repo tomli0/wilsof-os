@@ -20,6 +20,10 @@ A candidate must meet all of the following:
 
 The label alone is insufficient. The marker is intentionally checked with GitHub's reported comment author, so public comments, issue bodies, and comments by other accounts cannot authorize work. Tasks tagged blocked or ready-for-review are not relabelled as candidates and are not retried by the queue scanner.
 
+## Project synchronization
+
+Project #1 is the status board; moving an item to `Ready` never authorizes execution. The worker marks an approved item `In progress` only after its existing lock, approval, retry and OpenRouter budget gates pass. It returns a successfully completed bounded session to `Ready`; the worker prompt requires evidence-backed `Needs your testing` or `Blocked` status where appropriate. A retry-exhausted item is marked `Blocked`.
+
 ## Limits and coordination
 
 - One worker and one task at a time; an advisory `flock` protects both manual and scheduled work for the full model session.

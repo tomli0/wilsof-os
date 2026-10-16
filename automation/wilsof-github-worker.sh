@@ -12,6 +12,13 @@ readonly CONTROL_FILE="$ROOT/control.json"
 readonly ATTEMPTS_FILE="$ROOT/attempts.json"
 readonly MAX_ATTEMPTS="2"
 readonly WORK_SESSION_SECONDS="2700"
+readonly PROJECT_OWNER="tomli0"
+readonly PROJECT_NUMBER="1"
+readonly PROJECT_ID="PVT_kwHOAsFkgc4BnaXd"
+readonly PROJECT_STATUS_FIELD_ID="PVTSSF_lAHOAsFkgc4BnaXdzhl_IHM"
+readonly PROJECT_STATUS_IN_PROGRESS="47fc9ee4"
+readonly PROJECT_STATUS_READY="61e4505c"
+readonly PROJECT_STATUS_BLOCKED="1229321a"
 mkdir -p "$LOCK_DIR"
 
 usage() {
@@ -137,6 +144,23 @@ os.replace(tmp, p)
 PY
 }
 
+project_status() {
+  local issue=$1 option=$2 items item_id
+  items=$(gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --limit 500 --format json) || return 1
+  item_id=$(python3 - "$items" "$issue" <<'PY'
+import json, sys
+for item in json.loads(sys.argv[1]).get("items", []):
+    content = item.get("content") or {}
+    if content.get("type") == "Issue" and str(content.get("number")) == sys.argv[2]:
+        print(item["id"])
+        break
+PY
+)
+  [[ -n "$item_id" ]] || return 1
+  gh project item-edit --id "$item_id" --project-id "$PROJECT_ID" \
+    --field-id "$PROJECT_STATUS_FIELD_ID" --single-select-option-id "$option" >/dev/null
+}
+
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then usage; exit 0; fi
 if [[ "${1:-}" == "--status" ]]; then
   mapfile -t control < <(read_control)
@@ -182,16 +206,24 @@ then
   printf 'REJECTED_UNVERIFIED_APPROVAL: issue #%s has no exact owner approval marker from %s. No model started.\n' "$selected" "$OWNER"; exit 0
 fi
 failed=$(attempt_count "$selected")
-if (( failed >= MAX_ATTEMPTS )); then printf 'REJECTED_MAX_ATTEMPTS: issue #%s has %s failed attempts. No model started.\n' "$selected" "$failed"; exit 0; fi
+if (( failed >= MAX_ATTEMPTS )); then
+  project_status "$selected" "$PROJECT_STATUS_BLOCKED" || printf 'PROJECT_STATUS_WARNING: could not mark issue #%s blocked.\n' "$selected"
+  printf 'REJECTED_MAX_ATTEMPTS: issue #%s has %s failed attempts. No model started.\n' "$selected" "$failed"; exit 0
+fi
 budget=$(openrouter_budget) || { printf '%s\n' "$budget"; exit 0; }
 printf '%s\n' "$budget"
 if [[ "${WILSOF_DRY_RUN:-0}" == "1" ]]; then printf 'MODEL_START_READY: issue #%s passed all gates (dry run).\n' "$selected"; exit 0; fi
-prompt="Work only on GitHub issue #$selected in $REPO. You are the single bounded worker. Work for at most 45 minutes. Preserve repository safety rules, do not merge/deploy/release or perform power/session actions, and leave durable issue/PR checkpoint evidence. Stop and report blockers or checks requiring a physical client."
+if ! project_status "$selected" "$PROJECT_STATUS_IN_PROGRESS"; then
+  printf 'PROJECT_STATUS_DENIED: could not mark issue #%s in progress. No model started.\n' "$selected"; exit 0
+fi
+prompt="Work only on GitHub issue #$selected in $REPO. You are the single bounded worker. Work for at most 45 minutes. Preserve repository safety rules, do not merge/deploy/release or perform power/session actions, and leave durable issue/PR checkpoint evidence. Stop and report blockers or checks requiring a physical client. Update Project #1 to Ready only when durable issue/PR evidence is complete; use Needs your testing or Blocked when that is the actual state."
 if timeout --foreground "${WORK_SESSION_SECONDS}s" hermes chat -q "$prompt"; then
   clear_attempts "$selected"
+  project_status "$selected" "$PROJECT_STATUS_READY" || printf 'PROJECT_STATUS_WARNING: could not mark issue #%s ready.\n' "$selected"
   printf 'MODEL_COMPLETED: issue #%s completed within the bounded session.\n' "$selected"
 else
   failures=$(record_failed_attempt "$selected")
+  if (( failures >= MAX_ATTEMPTS )); then project_status "$selected" "$PROJECT_STATUS_BLOCKED" || true; else project_status "$selected" "$PROJECT_STATUS_READY" || true; fi
   printf 'MODEL_FAILED: issue #%s failed; recorded failed attempt %s/%s.\n' "$selected" "$failures" "$MAX_ATTEMPTS"
   exit 1
 fi

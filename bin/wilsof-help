@@ -1,0 +1,33 @@
+#!/bin/sh
+# Render Wilsof's local shortcut help from the shared manifest in DMS Notepad.
+set -eu
+
+if [ "$#" -ne 0 ]; then
+  printf '%s\n' "Usage: wilsof-help" >&2
+  exit 64
+fi
+
+home=${HOME:?HOME is required}
+manifest=${WILSOF_SHORTCUTS_FILE:-"$home/.local/share/wilsof-os/wilsof-shortcuts.json"}
+viewer=${WILSOF_HELP_VIEWER:-"$home/.local/bin/wilsof-help-view"}
+state_dir=${XDG_STATE_HOME:-"$home/.local/state"}/wilsof-os
+help_document=${WILSOF_HELP_DOCUMENT:-"$state_dir/Wilsof snarveier.txt"}
+vm_marker="$home/.config/hypr/wilsof-vm-test-enabled.lua"
+
+[ -r "$manifest" ] || { printf '%s\n' "wilsof-help: shortcut manifest is unavailable: $manifest" >&2; exit 69; }
+[ -x "$viewer" ] || { printf '%s\n' "wilsof-help: shortcut renderer is unavailable: $viewer" >&2; exit 69; }
+if ! command -v dms >/dev/null 2>&1; then
+  printf '%s\n' "wilsof-help: DankMaterialShell (dms) is not available." >&2
+  exit 69
+fi
+
+if [ -e "$vm_marker" ]; then
+  export WILSOF_VM_TEST_BINDS=enabled
+else
+  export WILSOF_VM_TEST_BINDS=disabled
+fi
+
+umask 077
+mkdir -p "$state_dir" "$(dirname -- "$help_document")"
+"$viewer" "$manifest" > "$help_document"
+exec dms ipc call notepad openFile "$help_document"

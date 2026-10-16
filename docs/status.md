@@ -1,37 +1,36 @@
-# Status — Wilsof OS første prototype
+# Status — Wilsof Arch prototype
 
-Oppdatert: 2026-10-14 UTC
+Updated: 2026-10-16 UTC
 
-## Faktisk implementert
+## Access and deployment
 
-- Godkjente WS-assets ligger i `assets/`; bakgrunn 1672×941, mockup 1672×941 og logo 2172×724 RGBA.
-- `config/hypr/wilsof.conf` definerer tomt skrivebord uten dock/ikoner, godkjente visuelle verdier og alle arbeidsområdebindinger `Super+1…9` / `Super+Shift+1…9`.
-- `bin/wilsof-search` er en minimal og testet bro: bare `wilsof-search toggle` godtas og den kaller den dokumenterte DMS-kommandoen `dms ipc call spotlight toggle`. Den har ikke egen gruppering, filindeks, vindussøk eller systemhandlinger.
-- `scripts/preflight-fedora.sh` er en read-only kontroll som avviser ikke-Fedora og kontrollerer kommandoer, user-systemd og SELinux.
-- `scripts/install-user-config.sh` krever eksplisitt `WILSOF_TARGET_VM=1`, kjører preflight og installerer bare i den valgte brukerens hjemmekatalog på test-VM-en. Den endrer ikke Hermes-VM og ber brukeren legge til én `source`-linje selv for å unngå å endre eller duplisere aktiv Hyprland-konfigurasjon.
-- Systemd-enheten bruker sitert bakgrunnsfil med mellomrom og `ExecCondition` for DMS. DMS er en hard avhengighet; den starter ikke wallpaper dersom `dms` mangler.
+- VM 113 is reachable as `wilsofdev` with the existing public-key SSH setup and strict host-key checking. Root SSH remains available through its existing authorized key. Password login and sudo policy were not changed.
+- The live target is Arch Linux with Hyprland 0.56.2 and DMS 1.6.3. After the controlled reboot it is intentionally at the greetd/tuigreet login; do not claim a new graphical session until it is observed.
+- The original deployment under `/opt/wilsof-os` had no Git metadata. The current working-tree changes to help and Hyprlock configuration were copied there and installed as `wilsofdev`; installed files were compared byte-for-byte after installation.
+- `wilsof-wallpaper.service` is a completed `Type=oneshot` unit, so `inactive (dead)` is expected after a successful run. It now directly requires DMS, and a fresh manual start returned DMS `SUCCESS`, the approved asset through `wallpaper get`, and systemd `Result=success`/`ExecMainStatus=0`. Startup behavior after a new graphical login still needs persistence testing.
 
-## Testresultater
+## Implemented and visually observed
 
-| Kontroll | Status | Evidens |
-|---|---|---|
-| Python-tester for konfigurasjon, assets, wrapper og sikkerhetsvakt | PASS | `pytest -q`: 10 passed (2026-10-14) |
-| Shell-syntaks | PASS | `sh -n bin/wilsof-search scripts/preflight-fedora.sh scripts/install-user-config.sh` |
-| Wrapper mot DMS-argumenter | PASS | Test med falsk `dms`; eksakt kall `ipc call spotlight toggle` |
-| Preflight på Hermes-VM | PASS (for avvisning) | Avviser korrekt ikke-Fedora uten endringer |
-| Systemd-parser med målplattformens enheter | IKKE TESTET | Lokal vert mangler både `dms` og `graphical-session.target` |
-| DMS/Hyprland/portal/SELinux GUI | IKKE TESTET | Ingen autorisert dedikert VM |
-| Låseskjerm/autentisering | IKKE TESTET | `loginctl lock-session` er binding, ikke bevis på locker |
-| Reboot/shutdown/logout-bekreftelse | IKKE TESTET | Krever Wilsof/DMS-provider eller egen godkjent utvidelse |
+- Empty desktop, approved WS wallpaper, charcoal `#14181E`, ice-blue `#86B9CE`, thin borders and restrained DMS top bar were visually inspected in the running VM.
+- `Super+Space` calls `dms ipc call spotlight toggle`. The visible Spotlight opens focused, begins with applications/DMS tools and has Apps, Files and Plugins categories. DMS reported that its supported local file provider (`dsearch`) is absent, so no file-search capability is claimed.
+- `Super+I` opens DMS Settings. Wallpaper, theme and colors, typography and motion, Hyprland, bar and workspace categories were visually inspected.
+- The original Ghostty shortcut help was broken in the active session: Ghostty 1.3.1 produced `PostForkError` and a configuration-error dialog. Wilsof help now renders the shared shortcut manifest into DMS Notepad through supported DMS IPC. The deployed page was visually inspected, including standard bindings, Super explanation, active VM-test section and visible close control.
+- A Wilsof Hyprlock configuration is installed. `/etc/pam.d/hyprlock` is present and includes the system `login` PAM stack. The user manually authenticated with the local password and unlocked successfully; this is explicitly one direct unlock observation, not idle/suspend validation.
+- Ghostty 1.3.1-2 opened as a normal active-session Wayland client and ran a harmless command. The observed configuration warning was tied to a zero-byte optional config file; its empty original was backed up and replaced with a comment-only file, preserving settings.
 
-## Pakkekilder og versjoner
+## Evidence
 
-- Fedora Workstation 44 er aktuell offisiell nedlasting ved kontroll. ISO skal hentes fra https://fedoraproject.org/workstation/download/ og verifiseres med Fedora-prosjektets publiserte SHA-256 og OpenPGP-instruks derfra før VM-opprettelse.
-- DMS-dokumentasjonen angir COPR-pakker for Fedora 43/44 og kommandoen `sudo dnf install dms`: https://danklinux.com/docs/dankmaterialshell/installation
-- Hyprland-versjon, DMS-versjon, COPR-navn, portals og alle RPM/Flatpak-versjoner er IKKE LÅST før de leses fra den faktiske Fedora-VM-en. De skal registreres med `rpm -qa`, `dnf repolist --enabled` og `flatpak remotes --show-details`.
+- `evidence/vm113-2026-10-16-desktop.png` — desktop/top bar.
+- `evidence/vm113-2026-10-16-launcher-apps.png` — installed application launcher.
+- `evidence/vm113-2026-10-16-settings.png` — DMS Settings.
+- `evidence/vm113-2026-10-16-powermenu.png` — power menu confirmation.
+- `evidence/vm113-2026-10-16-help.png` — deployed local shortcut help at 1280×800.
+- `evidence/vm113-2026-10-16-lock.png` — deployed Hyprlock surface at 1280×800.
 
-## Blokkeringer og neste handling
+## Not yet passed
 
-Lesekontroll lokalt fant ikke `qm`, `pvesh`, `virsh` eller `/dev/kvm`. Forsøk på den ene dokumenterte SSH-verten `hermes-vm` stoppet ved host-key-verifisering; ingen nøkkel ble akseptert eller endret. Det finnes dermed ingen bekreftet legitim Proxmox-tilgang i denne sesjonen.
-
-Nødvendig brukerinput: gi navnet/IP-en og SSH-host-key/tilgangsvei til en autorisert Proxmox-vert, eller opprett en isolert Fedora Workstation 44 test-VM. Bruk UEFI, q35, 4 vCPU, 6 GiB RAM (reduser ved dokumentert mangel), 40 GiB qcow2 virtio-disk, virtio-nett på privat/NAT-segment og standard virtio-grafikk/SPICE eller annen godkjent grafisk konsoll. Ikke bruk passthrough. Installer med standard diskvalg i VM-en; opprett separat testbruker og SSH-tilgang fra Hermes-VM. Deretter: kopier repoet, kjør `WILSOF_TARGET_VM=1 ./scripts/install-user-config.sh`, følg DMS sin dokumenterte Fedora-repoinstruks, og test grafisk.
+- The current launcher is application-focused, not a verified universal search for files, open windows, settings and system actions.
+- Physical MacBook → Omarchy → Proxmox → VM keyboard behavior, including Enter/Escape, remains untested.
+- DMS Notepad help opening and IPC close were tested; physical `Super+F1`, `Esc`, and keyboard closure of the help view remain untested.
+- The Hyprlock surface, local PAM unlock, five-minute idle lock, logout/login, reboot persistence, audio playback and screen sharing remain untested.
+- This is engineering validation and visual review, not usability testing with new people.

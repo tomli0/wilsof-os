@@ -1,6 +1,7 @@
 [Unit]
 Description=Apply approved Wilsof OS wallpaper
 PartOf=wilsof-session.target
+Requires=dms.service
 After=dms.service
 
 [Service]

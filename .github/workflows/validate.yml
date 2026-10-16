@@ -1,0 +1,29 @@
+name: Validate
+
+on:
+  push:
+    branches: [arch-install]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Run local checks
+        run: |
+          python -m pytest -q
+          python -m json.tool config/wilsof-shortcuts.json >/dev/null
+          python -m json.tool config/dms/settings-template.json >/dev/null
+          python -m json.tool config/dms/wilsof-theme.json >/dev/null
+          for script in bin/wilsof-help bin/wilsof-lock bin/wilsof-search bin/wilsof-vm-test-binds scripts/*.sh; do sh -n "$script"; done
+          git diff --check

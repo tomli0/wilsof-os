@@ -1,21 +1,21 @@
-# Avviksrapport og status
+# Deviations and known limits
 
-## Ressurser og design
+## Resolved
 
-PASS: Alle tre leverte grafiske filer er kopiert uendret til `assets/` og åpnet ved inspeksjon. Bakgrunnsfilen er 1672×941, ikke native 4K; dette stemmer med kravets merknad om en oppskalert eksport. Mockupen er 1672×941. Logoen er 2172×724 RGBA.
+- The DMS-generated bindings conflicted with Wilsof bindings. Wilsof now removes the relevant generated bindings before registering its own overrides.
+- Hypridle did not find `wilsof-lock` because its user-service PATH omitted `~/.local/bin`. The idle configuration now calls the wrapper by absolute user path.
+- The shortcut-help path used Ghostty with `--command`. In the running Arch session Ghostty 1.3.1 created a non-functional terminal with `PostForkError` and a configuration-error dialog. Help now uses supported DMS Notepad IPC and the existing shared manifest; it no longer depends on Ghostty.
+- The Command glyph was missing in the DMS Notepad font. The help text now says “Command key” rather than rendering the unsupported glyph.
 
-PASS: Designretningen er fanget i prototype og Hyprland-profil: koksgrå basis, isblå aktiv kant, små hjørner, moderate mellomrom, tom bakgrunn, diskret topplinje og felles søk.
+## Current limits
 
-## Miljøblokkering
+- DMS Launcher is deliberately application-focused. It is not presented as a complete universal search until local files, open windows, settings, aliases and power actions have been individually tested through a supported provider path.
+- DMS has no supported launcher widget in the installed minimal top bar. Wilsof does not add a decorative or fake search button.
+- DMS and several upstream views have English category labels. Wilsof does not fork DMS for translation.
+- A historical wallpaper oneshot run reached DMS before the target was available. The unit now directly requires DMS; a fresh manual start returned DMS `SUCCESS`, the expected `wallpaper get` value and systemd success. Login/reboot startup ordering still needs a real persistence test.
+- Hyprlock's PAM file exists and a Wilsof lock configuration is installed. Unlock requires a human entering the account password locally; the agent does not collect or enter it.
+- VM keyboard interception, idle lock, logout/login and reboot persistence require direct physical-console checks.
 
-IKKE TESTET / blokkert: Dette miljøet har Docker, men mangler Proxmox (`qm`), libvirt (`virsh`), VirtualBox og `/dev/kvm`. Maskinen har 4 CPU-er, 7,8 GiB RAM totalt og omtrent 6,2 GiB tilgjengelig under kartleggingen. Det er derfor ikke autorisert eller teknisk mulig å opprette den foreslåtte 4 vCPU/6 GiB/40 GiB test-VM-en her. Vertens nettverk, disker, pakker, cron og eksisterende arbeidslaster er ikke endret.
+## Boot history
 
-IKKE TESTET: Fedora/Hyprland/DMS-pakker, Wayland-portals, D-Bus, polkit, SELinux, lyd, innlogging, standardprogrammer og alle GUI-akseptkriterier. Ingen slik påstand gjøres av dette prosjektet.
-
-## Dokumenterte avvik fra mockup
-
-Mockupens profilmeny er ikke implementert som global inngang. `Super+Space` åpner den avtalte samlede søkeflaten, med søkefelt øverst. Arbeidsprofiler er en senere treffgruppe og ikke en eksisterende funksjon.
-
-## Neste nødvendige overtakelse
-
-Gi tilgang til en isolert, autorisert Fedora-VM eller en Proxmox-API/vert med kapasitet. Utfør deretter runbooken i `docs/vm-runbook.md`, ta tre faktiske skjermbilder (tomt skrivebord, søk, innstillinger) og fyll PASS/FAIL i testplanen.
+The active Arch disk uses an ESP at `/boot`, systemd-boot with fallback `EFI/BOOT/BOOTX64.EFI`, and Btrfs root parameters. The earlier failed disk boot was not retained, so its exact cause is unknown. The installation recipe validates the observed boot artifacts statically; it is not a substitute for a real reboot observation.

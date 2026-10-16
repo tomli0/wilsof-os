@@ -1,24 +1,27 @@
-# Arkitektur — første prototype
+# Architecture — Wilsof Arch prototype
 
-## Valgt retning
+## Stack
 
-Fedora i en dedikert VM, Hyprland som kompositor og DankMaterialShell (DMS) som eksisterende Wayland-shell. DMS dekker topplinje, varsler, låsing og utvider Spotlight med programmer, `dsearch`-filer, vinduer, kalkulator og kommandoer. Wilsof beholder én inngang gjennom en smal `wilsof-search`-utvidelse; den skal aggregere og gruppere alle treff i stedet for å åpne DMS sin standardmeny direkte.
+Arch Linux → systemd-boot/UEFI → greetd/tuigreet → Hyprland → DankMaterialShell (DMS). Wilsof is a versioned override layer over DMS-generated Hyprland configuration, not a DMS shell fork.
 
-`Super+Space` → `wilsof-search toggle` → DMS Spotlight/utvidelse → lokale leverandører: desktop entries, avgrenset filindeks, Hyprland-vinduer, innstillinger og eksplisitt tillatte systemhandlinger. Ingen vilkårlig shell-kommando eller nett-søk.
+DMS generates `~/.config/hypr/hyprland.lua`. The user-profile installer appends one marked `require("wilsof")` after DMS's own modules. `wilsof.lua` owns Wilsof colors, layout, agreed bindings and `wilsof-session.target`; it does not modify generated `dms/*.lua` files.
 
-## Sikkerhetsgrenser
+## Design tokens
 
-- SELinux beholdes enforcing; problemer analyseres med avc-meldinger og presise policy-tiltak, aldri global deaktivering.
-- `loginctl lock-session` er direkte; omstart, avslutning og utlogging får en tastaturstyrt bekreftelsesdialog.
-- Filindeks må avgrenses til brukerens eksplisitt valgte mapper og følge personvern-/ressursgrense før den aktiveres.
-- Systemhandlinger mappes fra norske og engelske aliaser til en fast handlingstabell.
+Wilsof-owned surfaces use charcoal `#14181E`, ice-blue `#86B9CE`, cool white `#E7EEF2`, inactive outline `#3A424B`, moderate 8/10 px gaps, 6 px rounding and a one-pixel focused border. Upstream DMS controls are themed through its supported custom-theme file rather than a DMS fork.
 
-## Sesjon og tjenester
+DMS is the wallpaper owner. Wilsof supplies the approved asset and fixed custom palette. The DMS systemd drop-in disables Matugen so wallpaper extraction cannot overwrite Wilsof colors. The installer seeds a DMS `settings.json` only once; later normal upgrades preserve personal settings.
 
-Hyprland eksporterer miljøet til brukerens systemd- og D-Bus-sesjon og starter `wilsof-session.target`. Målet drar inn DMS og den godkjente bakgrunnen. Dette følger DMS-dokumentasjonen for Hyprland; faktisk end-to-end-test er fortsatt ikke utført.
+## User flows
 
-## Pakkestrategi
+`wilsof-search` is an argument-validated bridge to `dms ipc call launcher toggleWith apps`. It deliberately provides application discovery, not unverified universal search providers.
 
-Systemet: Fedora-pakker for Hyprland, portals, PipeWire/WirePlumber, polkit og kjerneintegrasjon. DMS installeres fra dokumentert aktuell kilde etter lisens- og versjonskontroll. Brukerprogrammer primært Flatpak. Standardsettet er Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe og VLC; desktop-id-er og oppstart skal måles i VM før de låses.
+`wilsof-help` renders the shared JSON shortcut manifest into a local state file and opens it through supported DMS Notepad IPC. This avoids the active-session Ghostty `PostForkError` while preserving a single shortcut data source.
 
-Langsiktig: bootc-container som kilde til sannhet, med image-bygg og rollback etter at skrivebordet fungerer i vanlig Fedora-VM. ISO/installer er ikke i scope nå.
+`wilsof-lock` starts Hyprlock only when the current user has no existing Hyprlock process. The same wrapper is used by Super+L and Hypridle. `hyprlock.conf` defines only the lock presentation; `/etc/pam.d/hyprlock` remains system-owned authentication policy.
+
+DMS and Hypridle are user services. `wilsof-session.target` starts the wallpaper oneshot after DMS is requested. The wallpaper service must be verified for an actual successful IPC result, not only a systemd exit status.
+
+## Boot
+
+The ESP is mounted at `/boot`; install systemd-boot with `bootctl --esp-path=/boot install`. The installer validates the NVRAM loader, `EFI/BOOT/BOOTX64.EFI`, kernel/initramfs and root UUID/Btrfs subvolume. Do not treat `/boot` as an XBOOTLDR path.

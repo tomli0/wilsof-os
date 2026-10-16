@@ -1,0 +1,26 @@
+{
+  "dark": {
+    "name": "Wilsof Charcoal",
+    "primary": "#86B9CE",
+    "primaryText": "#14181E",
+    "primaryContainer": "#365362",
+    "secondary": "#A9C9D7",
+    "surface": "#14181E",
+    "surfaceText": "#E7EEF2",
+    "surfaceVariant": "#202830",
+    "surfaceVariantText": "#C8D7DE",
+    "surfaceTint": "#86B9CE",
+    "background": "#14181E",
+    "backgroundText": "#E7EEF2",
+    "outline": "#3A424B",
+    "surfaceContainerLowest": "#101419",
+    "surfaceContainerLow": "#181E25",
+    "surfaceContainer": "#202830",
+    "surfaceContainerHigh": "#29333C",
+    "surfaceContainerHighest": "#333E48",
+    "error": "#E6A0A0",
+    "warning": "#D8B36C",
+    "info": "#86B9CE",
+    "matugen_type": "scheme-neutral"
+  }
+}

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Start the installed PAM-backed locker exactly once for this user.
+set -eu
+
+if [ "$#" -ne 0 ]; then
+  printf '%s\n' "Usage: wilsof-lock" >&2
+  exit 64
+fi
+
+if ! command -v hyprlock >/dev/null 2>&1; then
+  printf '%s\n' "wilsof-lock: hyprlock is not available." >&2
+  exit 69
+fi
+
+if pgrep -x -u "$(id -u)" hyprlock >/dev/null 2>&1; then
+  printf '%s\n' "wilsof-lock: hyprlock is already active for this user." >&2
+  exit 0
+fi
+
+exec hyprlock

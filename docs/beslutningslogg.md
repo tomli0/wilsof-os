@@ -1,30 +1,29 @@
-# Beslutningslogg
+# Decisions
 
-## D-001 — Vanlig Fedora-VM før bootc
+## D-001 — Arch is the active prototype platform
 
-Status: vedtatt for prototype.
+Status: accepted. Arch VM 113 is the active test target. Fedora material is retained only as historical reference and is not the active installation path.
 
-Begrunnelse: Startprompten krever fungerende skrivebord før installer/image-løp. Fedora/Hyprland/DMS-integrasjonen må demonstreres i en isolert VM før bootc innføres. Fedora bootc-dokumentasjonen beskriver bootbare containere og installer-ISO via bootc-image-builder, men dette er ikke gjennomført her.
+## D-002 — Keep DMS; Wilsof is an override layer
 
-## D-002 — DMS som shell, Wilsof som smal søkutvidelse
+Status: accepted. DMS owns the shell, supported IPC and generated configuration. Wilsof loads separately after DMS so regeneration does not erase project changes.
 
-Status: vedtatt, integrasjon ikke testet.
+## D-003 — Use a fixed Wilsof palette
 
-Begrunnelse: DMS-dokumentasjonen beskriver støtte for Hyprland, Spotlight med apper, filer, vinduer, kalkulator og kommandoer, og `dms setup` for starterkonfigurasjon. Wilsof må eie samlet gruppering, lokalt personvern og bekreftelseskravene; å bruke rå DMS Spotlight direkte ville ikke dokumentere dem.
+Status: accepted. Charcoal `#14181E` and ice-blue `#86B9CE` are fixed Wilsof values. Matugen is disabled for DMS, the custom theme is a first-install default, and later personal DMS choices are preserved.
 
-## D-003 — Profilmeny i referansen er ikke hovedmeny
+## D-004 — One application-first launcher entry
 
-Status: vedtatt.
+Status: accepted with scope limit. `Super+Space` opens DMS Launcher in application mode. This gives a predictable program list and avoids unrelated provider matches. Files, windows, settings aliases and power actions are not claimed as launcher features until a supported path has been tested.
 
-Begrunnelse: Godkjent presisering overstyrer mockupens illustrative profilmeny. Profiltreff kommer først når profilfunksjonen finnes, inne i felles søk.
+## D-005 — Local help is a DMS Notepad page
 
-## Kilder kontrollert 2026-10-14
+Status: accepted. Ghostty command-mode startup in the active Arch session produced `PostForkError` and a broken terminal. Wilsof now renders its shared shortcut manifest locally and opens it with supported DMS Notepad IPC. This retains an offline, visible help route without creating another shell component.
 
-- https://danklinux.com/docs/dankmaterialshell/installation
-- https://danklinux.com/docs/dankmaterialshell/compositors
-- https://danklinux.com/docs/dankmaterialshell/cli-setup
-- https://github.com/AvengeMedia/DankMaterialShell
-- https://docs.fedoraproject.org/en-US/bootc/bare-metal/
-- https://osbuild.org/docs/user-guide/image-descriptions/fedora-44
+## D-006 — ESP is `/boot`, not XBOOTLDR
 
-Pakkerevisjoner, Fedora-repoer og lisenser er ikke låst før VM-installasjon og må registreres der.
+Status: accepted. Install systemd-boot with `--esp-path=/boot` and verify the fallback file explicitly.
+
+## D-007 — Hyprlock owns authentication; Wilsof owns presentation
+
+Status: accepted. Wilsof supplies the lock surface and calls Hyprlock through an idempotent wrapper. PAM remains system-owned, and the agent does not handle account passwords.

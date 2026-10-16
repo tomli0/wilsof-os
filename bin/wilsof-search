@@ -1,5 +1,5 @@
 #!/bin/sh
-# Minimal, documented bridge to DMS Spotlight. It does not claim custom providers.
+# Open DMS Spotlight: apps by default, supported local provider categories on demand.
 set -eu
 
 if [ "${1:-}" != "toggle" ] || [ "$#" -ne 1 ]; then

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "standard": [
+    {"keys": "Super+Space", "action": "Åpne launcher"},
+    {"keys": "Super+L", "action": "Lås økten"},
+    {"keys": "Super+I", "action": "Åpne innstillinger"},
+    {"keys": "Super+F1", "action": "Vis denne hjelpen"},
+    {"keys": "Super+Piler", "action": "Flytt fokus"},
+    {"keys": "Super+Shift+Piler", "action": "Flytt aktivt vindu"},
+    {"keys": "Super+Ctrl+Piler", "action": "Endre størrelse på aktivt vindu"},
+    {"keys": "Super+1–9", "action": "Bytt arbeidsområde"},
+    {"keys": "Super+Shift+1–9", "action": "Flytt aktivt vindu til arbeidsområde"},
+    {"keys": "Super+Q", "action": "Lukk aktivt vindu"},
+    {"keys": "Super+F", "action": "Fullskjerm"},
+    {"keys": "Super+Shift+Space", "action": "Veksle flytende vindu"}
+  ],
+  "vm_test": [
+    {"keys": "Ctrl+Alt+Space", "action": "Åpne launcher"},
+    {"keys": "Ctrl+Alt+L", "action": "Lås økten"},
+    {"keys": "Ctrl+Alt+I", "action": "Åpne innstillinger"},
+    {"keys": "Ctrl+Alt+F1", "action": "Vis denne hjelpen"}
+  ]
+}

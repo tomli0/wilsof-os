@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""Render the local Wilsof shortcut manifest in a keyboard-closing terminal."""
+
+import json
+import os
+import sys
+from pathlib import Path
+
+
+def fail(message: str, code: int = 64) -> int:
+    print(f"wilsof-help-view: {message}", file=sys.stderr)
+    return code
+
+
+def load_manifest(path: Path) -> dict:
+    try:
+        with path.open(encoding="utf-8") as handle:
+            manifest = json.load(handle)
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid shortcut manifest: {error}") from error
+    if not isinstance(manifest, dict) or manifest.get("schema") != 1:
+        raise ValueError("invalid shortcut manifest: expected schema 1")
+    for section in ("standard", "vm_test"):
+        rows = manifest.get(section)
+        if not isinstance(rows, list) or any(
+            not isinstance(row, dict)
+            or not isinstance(row.get("keys"), str)
+            or not isinstance(row.get("action"), str)
+            for row in rows
+        ):
+            raise ValueError(f"invalid shortcut manifest: invalid {section} section")
+    return manifest
+
+
+def render(title: str, rows: list[dict]) -> None:
+    print(title)
+    print("-" * len(title))
+    for row in rows:
+        print(f"{row['keys']:<28} {row['action']}")
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2:
+        return fail("usage: wilsof-help-view SHORTCUTS.json")
+    try:
+        manifest = load_manifest(Path(argv[1]))
+    except ValueError as error:
+        return fail(str(error), 65)
+
+    print("Wilsof snarveier")
+    print("Super er Command-tasten på mange Mac-tastaturer og Windows-tasten på PC-tastaturer.")
+    print("Lukk hjelpen med X øverst til høyre.")
+    print()
+    render("Standardbindinger", manifest["standard"])
+    print()
+    if os.environ.get("WILSOF_VM_TEST_BINDS") == "enabled":
+        render("Valgfrie VM-testbindinger (aktive)", manifest["vm_test"])
+    else:
+        print("VM-testbindinger er ikke aktivert. Aktiver med: wilsof-vm-test-binds enable")
+    if sys.stdin.isatty():
+        try:
+            input("\nTrykk Enter for å lukke hjelpen. ")
+        except (EOFError, KeyboardInterrupt):
+            pass
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

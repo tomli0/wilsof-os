@@ -19,7 +19,7 @@ def run(script, *args, env=None):
     )
 
 
-def test_search_delegates_to_documented_dms_spotlight_api(tmp_path):
+def test_search_delegates_to_the_single_dms_launcher_api(tmp_path):
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     log = tmp_path / "args"
@@ -28,7 +28,7 @@ def test_search_delegates_to_documented_dms_spotlight_api(tmp_path):
     dms.chmod(0o755)
     result = run(SEARCH, "toggle", env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
     assert result.returncode == 0, result.stderr
-    assert log.read_text(encoding="utf-8").strip() == "ipc call spotlight toggle"
+    assert log.read_text(encoding="utf-8").strip() == "ipc call launcher toggleWith apps"
 
 
 def test_search_rejects_unsupported_actions():

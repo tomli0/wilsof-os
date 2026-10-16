@@ -1,5 +1,5 @@
 #!/bin/sh
-# Minimal, documented bridge to DMS Spotlight. It does not claim custom providers.
+# Open DMS's single app launcher; it avoids unrelated provider matches.
 set -eu
 
 if [ "${1:-}" != "toggle" ] || [ "$#" -ne 1 ]; then
@@ -12,4 +12,4 @@ if ! command -v dms >/dev/null 2>&1; then
   exit 69
 fi
 
-exec dms ipc call spotlight toggle
+exec dms ipc call launcher toggleWith apps

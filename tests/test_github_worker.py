@@ -38,6 +38,7 @@ class GitHubWorkerTests(unittest.TestCase):
             "PATH": f"{self.bin}:{os.environ['PATH']}",
             "FAKE_ISSUES": self.issues,
             "FAKE_COMMENTS": self.comments,
+            "WILSOF_DRY_RUN": "1",
         }
         return subprocess.run([str(SCRIPT), *args], text=True, capture_output=True, env=env)
 
@@ -57,19 +58,19 @@ class GitHubWorkerTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("REJECTED_UNVERIFIED_APPROVAL", result.stdout)
 
-    def test_valid_owner_approval_stays_model_free(self) -> None:
+    def test_valid_owner_approval_reaches_model_start_gate(self) -> None:
         self.candidate()
         self.comments = json.dumps([{"user": {"login": "tomli0"}, "body": "<!-- hermes-approved -->"}])
         result = self.run_worker()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("ELIGIBLE_TASK", result.stdout)
-        self.assertIn("execution remains disabled", result.stdout)
+        self.assertIn("MODEL_START_READY", result.stdout)
 
-    def test_budget_and_time_safe_refusal(self) -> None:
-        result = self.run_worker("--model-start")
+    def test_status_reports_provider_budget_and_session_limits(self) -> None:
+        result = self.run_worker("--status")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("MODEL_START_DISABLED", result.stdout)
-        self.assertIn("5/day", result.stdout)
+        self.assertIn("model_start=enabled", result.stdout)
+        self.assertIn("max_failed_attempts=2", result.stdout)
+        self.assertIn("work_session_seconds=2700", result.stdout)
 
     def test_pause_stop_and_resume(self) -> None:
         self.assertIn("PAUSED", self.run_worker("--pause").stdout)
@@ -101,7 +102,8 @@ class GitHubWorkerTests(unittest.TestCase):
         source = SCRIPT.read_text()
         docs = (ROOT / "docs" / "github-workflow.md").read_text()
         self.assertIn('readonly MAX_ATTEMPTS="2"', source)
-        self.assertIn('readonly DAILY_CAP_USD="5"', source)
+        self.assertIn('readonly WORK_SESSION_SECONDS="2700"', source)
+        self.assertIn("openrouter.ai/api/v1/key", source)
         self.assertIn("45-minute", docs)
         self.assertIn("hermes-approved", docs)
         self.assertIn("<!-- hermes-approved -->", docs)

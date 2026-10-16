@@ -4,11 +4,9 @@ GitHub Issues are the task queue and GitHub pull requests/issues are the durable
 
 ## Current operating mode
 
-The scheduler runs one project-scoped, model-free queue check every hour. The check makes no model call when the queue is empty, rejected, paused, blocked, or ready for review. It never deploys, merges, releases, builds an ISO, logs out, reboots, locks a session, suspends, or performs a power action.
+The scheduler runs one project-scoped queue check every hour. It starts at most one model session only after the queue, owner-approval, retry, lock, and OpenRouter key-budget checks pass. The check makes no model call when the queue is empty, rejected, paused, stopped, retry-exhausted, or budget-denied. It never deploys, merges, releases, builds an ISO, logs out, reboots, locks a session, suspends, or performs a power action.
 
-Automatic model execution is disabled. Hermes can report provider-wide OpenRouter spend, but that value is neither atomic nor attributable to an individual task/run and cannot reliably enforce a shared USD 5/day ceiling across manual and scheduled starts. The same supervisor therefore refuses `--model-start`; enabling it would violate the budget requirement.
-
-The daily cap remains USD 5 as the approval boundary. Existing lower provider/account limits remain in effect. A later model-enabled design must first prove an atomic shared ledger/reservation that covers both manual and scheduled runs before this setting can change.
+Automatic model execution is enabled only behind OpenRouter's provider-enforced API-key limit. Immediately before model start, the worker queries `GET https://openrouter.ai/api/v1/key` without printing the credential, and refuses to start unless the key has an active positive `limit`, `limit_remaining`, and positive `effective_budget.remaining_usd`. No local USD ledger or extra daily USD cap is used.
 
 ## Selecting a task
 
@@ -24,8 +22,8 @@ The label alone is insufficient. The marker is intentionally checked with GitHub
 
 ## Limits and coordination
 
-- One worker and one task at a time; an advisory `flock` protects both manual and scheduled checks.
-- A future model-enabled runner must impose a 45-minute wall-clock limit and persist at most two failed attempts per issue before setting it blocked. The model-free supervisor does not consume retries.
+- One worker and one task at a time; an advisory `flock` protects both manual and scheduled work for the full model session.
+- Each model session has a 45-minute wall-clock limit. At most two failed attempts are persisted per issue; an issue at the limit is refused.
 - `flock` is released automatically if a process dies; no stale PID lock needs manual deletion.
 - `--pause` and `--stop` persist control state. `--resume` clears it. The cron job can additionally be paused/resumed through Hermes.
 - A run started while another check or a declared manual development session owns the same lock exits as `SKIPPED_BUSY`.
@@ -35,12 +33,11 @@ The label alone is insufficient. The marker is intentionally checked with GitHub
 The scheduler script is installed at `~/.hermes/scripts/wilsof-github-worker.sh` and its cron job id is recorded by `hermes cron list`.
 
 ```
-# Status and queue scan (manual; no model is started)
+# Status and queue scan (starts a model only when every gate passes)
 ~/.hermes/scripts/wilsof-github-worker.sh --status
 ~/.hermes/scripts/wilsof-github-worker.sh
 
-# Explicitly confirm that automatic model start is disabled
-~/.hermes/scripts/wilsof-github-worker.sh --model-start
+
 
 # Pause, stop, resume the project worker
 ~/.hermes/scripts/wilsof-github-worker.sh --pause
@@ -54,7 +51,7 @@ hermes cron pause <job-id>
 hermes cron resume <job-id>
 ```
 
-`hermes cron run` invokes the same script and lock as the hourly schedule. It remains model-free. Do not run a separate worker while an active manual implementation session is changing this repository.
+`hermes cron run` invokes the same script and lock as the hourly schedule. Do not run a separate worker while an active manual implementation session is changing this repository.
 
 ## Checkpoint and evidence rules
 

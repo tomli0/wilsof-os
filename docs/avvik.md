@@ -15,6 +15,7 @@
 - A historical wallpaper oneshot run reached DMS before the target was available. The unit now directly requires DMS; a fresh manual start returned DMS `SUCCESS`, the expected `wallpaper get` value and systemd success. Login/reboot startup ordering still needs a real persistence test.
 - Hyprlock's PAM file exists and a Wilsof lock configuration is installed. Unlock requires a human entering the account password locally; the agent does not collect or enter it.
 - VM keyboard interception, idle lock, logout/login and reboot persistence require direct physical-console checks.
+- The KVM test VM has no battery, ACPI platform-profile, or CPU-frequency interface. Before remediation DMS returned the exact status `ERROR: power-profiles-daemon not available`; the `power-profiles-daemon` package, system unit, and `net.hadess.PowerProfiles` D-Bus name were absent. The supported backend is now installed in VM 113 and new-image manifests; after a bounded DMS reload IPC returned `balanced`. Visual DMS control observation and physical laptop battery, thermal, or hardware-profile effects remain untested.
 
 ## Boot history
 

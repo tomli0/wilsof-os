@@ -16,3 +16,8 @@ def test_arch_installer_does_not_embed_desktop_passwords():
     content = INSTALLER.read_text(encoding="utf-8")
     assert "passwd wilsofdev" not in content
     assert "chpasswd" not in content
+
+
+def test_arch_installer_includes_dms_power_profile_backend():
+    content = INSTALLER.read_text(encoding="utf-8")
+    assert "power-profiles-daemon" in content

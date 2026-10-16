@@ -36,6 +36,12 @@ A PASS only covers the stated method. “IPC” is not physical keyboard evidenc
 | Persistence | logout/login and reboot observation | NOT TESTED | not yet performed |
 | Local quality gate | unit tests, shell syntax, theme JSON and diff whitespace | PASS | `33 passed`; shell/JSON/diff checks |
 | CI | GitHub Actions on current pushed commit | PENDING | must be rechecked after the final push |
+| Power profiles | DMS reported backend status before remediation | PASS (SSH/IPC) | Exact result: `ERROR: power-profiles-daemon not available`; package, unit and `net.hadess.PowerProfiles` D-Bus name were absent |
+| Power profiles | New-image manifest includes DMS backend | PASS (static) | `power-profiles-daemon` is in the VM installer and internal ISO package list |
+| Power profiles | Live backend package/service/D-Bus and DMS status after installation | PASS (SSH/IPC) | Installed `power-profiles-daemon 0.30-1`; no TLP/TuneD/auto-cpufreq; system unit active, `net.hadess.PowerProfiles` present, and after bounded DMS reload `dms ipc call powerprofile status` returned `balanced` |
+| Power profiles | Visible DMS control and unavailable-state presentation | NOT TESTED | requires visual/physical-client observation; no synthetic or destructive input was used |
+| Power profiles | Profile enumeration/selection and restoration | NOT TESTED | KVM exposes no battery, ACPI platform profile, or CPU frequency interface; do this only on supported hardware and restore the prior profile |
+| Power profiles | Laptop battery/thermal effects | NOT TESTED | requires physical laptop measurements; profile labels alone are not evidence |
 
 ## Physical-console checklist
 

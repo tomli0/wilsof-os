@@ -4,7 +4,7 @@ on:
   push:
     branches: [arch-install]
   pull_request:
-    branches: [main]
+    branches: [main, arch-install]
 
 permissions:
   contents: read

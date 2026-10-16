@@ -307,3 +307,21 @@ def test_iso_profile_and_builder_are_present_and_keep_secrets_out_of_the_profile
     assert "ghostty" in package_text
     assert "dms-shell" in package_text
     assert "mkarchiso" in builder.read_text(encoding="utf-8")
+
+
+def test_engineering_guide_and_audit_are_linked_from_the_readme():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    guide = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    audit = (ROOT / "docs" / "quality-audit.md").read_text(encoding="utf-8")
+    assert "[engineering guide](CONTRIBUTING.md)" in readme
+    assert "[quality audit](docs/quality-audit.md)" in readme
+    assert "physical client" in guide
+    assert "High: validation did not cover every executable shell path" in audit
+
+
+def test_validation_workflow_uses_shellcheck_for_each_shell_dialect():
+    workflow = (ROOT / ".github" / "workflows" / "validate.yml").read_text(encoding="utf-8")
+    assert "apt-get install --yes shellcheck" in workflow
+    assert "bin/wilsof-doctor" in workflow
+    assert "--shell=sh" in workflow
+    assert "--shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh" in workflow

@@ -58,8 +58,11 @@ The English [user guide](docs/brukerveiledning.md) covers opening applications, 
 
 ## Development checks
 
+Read the concise [engineering guide](CONTRIBUTING.md) before contributing. The [quality audit](docs/quality-audit.md) records the current evidence, fixes and bounded follow-ups.
+
     pytest -q
-    sh -n scripts/*.sh automation/*.sh bin/wilsof-*
+    shellcheck --exclude=SC1091 --shell=sh bin/wilsof-doctor bin/wilsof-help bin/wilsof-lock bin/wilsof-search bin/wilsof-vm-test-binds scripts/bootstrap-desktop.sh scripts/build-iso.sh scripts/install-user-config.sh scripts/preflight-arch.sh scripts/preflight-fedora.sh
+    shellcheck --shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh
     python3 -m json.tool config/dms/wilsof-theme.json
 
 The bounded [GitHub workflow](docs/github-workflow.md) documents the project queue, approval marker, hourly model-free queue check and the reason automatic model starts are disabled.

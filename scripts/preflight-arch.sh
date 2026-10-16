@@ -6,6 +6,7 @@ if [ ! -r /etc/os-release ]; then
   printf '%s\n' "Arch preflight: /etc/os-release is unavailable." >&2
   exit 1
 fi
+# shellcheck source=/etc/os-release
 . /etc/os-release
 if [ "${ID:-}" != "arch" ]; then
   printf '%s\n' "Arch preflight: target must be Arch Linux; found ${ID:-unknown}." >&2

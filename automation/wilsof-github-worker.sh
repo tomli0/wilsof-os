@@ -57,6 +57,12 @@ PY
 }
 
 openrouter_budget() {
+  # Test-only simulation: a dry run never starts a model, so a simulated OK is
+  # harmless there. Live runs (WILSOF_DRY_RUN unset) always hit the real gate.
+  if [[ "${WILSOF_DRY_RUN:-0}" == "1" && "${WILSOF_BUDGET_SIMULATED_OK:-0}" == "1" ]]; then
+    printf 'OPENROUTER_BUDGET_OK: simulated for dry-run tests.\n'
+    return 0
+  fi
   python3 - "${HERMES_HOME:-$HOME/.hermes}" <<'PY'
 import json, os, pathlib, sys, urllib.request
 home = pathlib.Path(sys.argv[1])

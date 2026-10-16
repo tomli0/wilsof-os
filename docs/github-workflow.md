@@ -20,6 +20,8 @@ A candidate must meet all of the following:
 
 The label alone is insufficient. The marker is intentionally checked with GitHub's reported comment author, so public comments, issue bodies, and comments by other accounts cannot authorize work. Tasks tagged blocked or ready-for-review are not relabelled as candidates and are not retried by the queue scanner.
 
+For dry-run contract tests only, `WILSOF_BUDGET_SIMULATED_OK=1` together with `WILSOF_DRY_RUN=1` substitutes the real OpenRouter key check. A live run (no dry run) ignores the simulation and always performs the real provider budget gate.
+
 ## Limits and coordination
 
 - One worker and one task at a time; an advisory `flock` protects both manual and scheduled work for the full model session.

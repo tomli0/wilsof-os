@@ -32,14 +32,20 @@ class GitHubWorkerTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def run_worker(self, *args: str) -> subprocess.CompletedProcess[str]:
+    def run_worker(self, *args: str, dry_run: bool = True, budget_sim: bool = False) -> subprocess.CompletedProcess[str]:
         env = os.environ | {
             "WILSOF_WORKER_STATE_DIR": str(self.state),
             "PATH": f"{self.bin}:{os.environ['PATH']}",
             "FAKE_ISSUES": self.issues,
             "FAKE_COMMENTS": self.comments,
-            "WILSOF_DRY_RUN": "1",
+            "HERMES_HOME": str(self.root / "empty-hermes-home"),
+            "OPENROUTER_API_KEY": "",
         }
+        env.pop("WILSOF_BUDGET_SIMULATED_OK", None)
+        if dry_run:
+            env["WILSOF_DRY_RUN"] = "1"
+        if budget_sim:
+            env["WILSOF_BUDGET_SIMULATED_OK"] = "1"
         return subprocess.run([str(SCRIPT), *args], text=True, capture_output=True, env=env)
 
     def candidate(self) -> None:
@@ -61,9 +67,21 @@ class GitHubWorkerTests(unittest.TestCase):
     def test_valid_owner_approval_reaches_model_start_gate(self) -> None:
         self.candidate()
         self.comments = json.dumps([{"user": {"login": "tomli0"}, "body": "<!-- hermes-approved -->"}])
-        result = self.run_worker()
+        result = self.run_worker(budget_sim=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("MODEL_START_READY", result.stdout)
+
+    def test_budget_gate_requires_explicit_dry_run_simulation(self) -> None:
+        source = SCRIPT.read_text()
+        self.assertIn('WILSOF_DRY_RUN:-0}" == "1" && "${WILSOF_BUDGET_SIMULATED_OK:-0', source)
+        self.candidate()
+        self.comments = json.dumps([{"user": {"login": "tomli0"}, "body": "<!-- hermes-approved -->"}])
+        # Live mode with no key: the real budget gate must run and refuse,
+        # even when the dry-run simulation flag is set.
+        result = self.run_worker(dry_run=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("MODEL_START_READY", result.stdout)
+        self.assertIn("OPENROUTER_BUDGET_DENIED: API key unavailable.", result.stdout)
 
     def test_status_reports_provider_budget_and_session_limits(self) -> None:
         result = self.run_worker("--status")

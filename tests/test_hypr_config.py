@@ -68,11 +68,32 @@ def test_dms_lua_integration_overrides_the_generated_defaults():
     assert 'hl.bind("SUPER + space", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-search toggle"))' in config
     assert 'hl.bind("SUPER + L", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-lock"))' in config
     assert 'active_border = "rgb(86b9ce)"' in config
+    assert 'kb_layout = "no"' in config
+    assert 'systemctl --user start wilsof-session.target' in config
     assert 'require("wilsof")' not in config
+
+
+def test_lua_owns_the_agreed_live_keybindings_with_supported_dispatchers():
+    config = read_lua_config()
+    for binding in (
+        '"SUPER + I", hl.dsp.exec_cmd("dms ipc call settings open")',
+        '"SUPER + F1", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-help")',
+        '"SUPER + Q", hl.dsp.window.close()',
+        '"SUPER + F", hl.dsp.exec_cmd("hyprctl dispatch fullscreen")',
+        '"SUPER + SHIFT + space", hl.dsp.window.float({ action = "toggle" })',
+        '"SUPER + CTRL + left", hl.dsp.exec_cmd("hyprctl dispatch resizeactive -40 0")',
+        'hl.dsp.focus({ workspace = workspace })',
+        'hl.dsp.window.move({ workspace = workspace })',
+    ):
+        assert binding in config
+    assert "hl.dsp.dispatch" not in config
+    assert 'hl.unbind(key)' in config
+    assert '"SUPER + L"' in config
 
 
 def test_idle_config_locks_with_the_wilsof_wrapper_before_sleep():
     config = read_idle_config()
-    assert "lock_cmd = wilsof-lock" in config
-    assert "before_sleep_cmd = wilsof-lock" in config
-    assert "on-timeout = wilsof-lock" in config
+    assert "lock_cmd = $HOME/.local/bin/wilsof-lock" in config
+    assert "before_sleep_cmd = $HOME/.local/bin/wilsof-lock" in config
+    assert "on-timeout = $HOME/.local/bin/wilsof-lock" in config
+    assert "dpms" not in config

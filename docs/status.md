@@ -1,42 +1,37 @@
-# Status — Wilsof OS første prototype
+# Status — Wilsof Arch-prototype
 
-Oppdatert: 2026-10-15 UTC
+Oppdatert: 2026-10-16 UTC
 
-## Faktisk implementert på VM 112 (`wilsof-test`)
+## Faktisk mål
 
-- Målmaskinen er Fedora Linux 44 Workstation på KVM. Rotfilsystemet er Btrfs på `/dev/sda3`; oppstartslinjen bruker diskens `root=UUID=…`. Ingen LiveOS-markør eller squashfs-mount er tilstede.
-- GNOME/GDM er beholdt og `gdm` er aktivert som reserveinnlogging.
-- Verifiserte pakker: DMS 1.6.3, Hyprland 0.56.2, Hyprlock 0.9.6, Hypridle 0.1.8 og xdg-desktop-portal-hyprland 1.4.1.
-- DMS sin offisielle headless-generator har opprettet den primære Hyprland Lua-konfigurasjonen. Wilsof installerer en separat `wilsof.lua`, lastet én gang etter DMS sine moduler; den overstyrer designverdier og `Super+Space`/`Super+L` uten å endre DMS-genererte filer.
-- `wilsof-search toggle` er en smal DMS Spotlight-bro. `wilsof-lock` starter den installerte PAM-baserte Hyprlock én gang; Hypridle bruker samme wrapper ved inaktivitet og før suspend.
-- Godkjent bakgrunn er installert i brukerens Wilsof-ressurser og `wilsof-wallpaper.service` er aktivert i Wilsof-sesjonsmålet. DMS må kjøre før tjenesten kan sette bakgrunnen.
-- Installasjonsskriptet er mål-VM-beskyttet, idempotent og aktiverer bare bruker-tjenester. Det oppretter ingen sudo-regler.
+- VM 113 `wilsof-arch-test`, Arch Linux på installert Btrfs-root (`@`) og `/home` (`@home`), ikke live-medie.
+- DMS 1.6.3-2, Hyprland 0.56.2-4, Hyprlock 0.9.6-3, Hypridle 0.1.8-2 og xdg-desktop-portal-hyprland 1.4.1-2.
+- DMS-generert `~/.config/hypr/hyprland.lua` eies av DMS. Wilsof lastes separat sist med `require("wilsof")` og endrer ikke DMS-fragmentene.
 
-## Testresultater
+## Rettet i denne økten
 
-| Kontroll | Status | Evidens |
-|---|---|---|
-| Lokale tester | PASS | `pytest -q`: 15 passed |
-| Shell-syntaks og whitespace | PASS | `sh -n` for alle shellskript; `git diff --check` |
-| Bootstrap kilde-/pakkevakt | PASS | Fedora 44- og pakkesjekk, RPM-signaturkontroll og GDM-vakt testet statisk; kjørt på VM |
-| Mål-VM preflight | PASS | Fedora, `dnf`, `hyprctl`, `dms`, user-systemd og SELinux Enforcing |
-| Pakker og kilder | PASS | RPM-versjoner og DMS/Hyprland COPR-er avlest på VM |
-| Installer-idempotens | PASS | To kjøringer; nøyaktig én `require("wilsof")` i Hyprland Lua-entrypoint |
-| Systemd-enheter | PASS | `systemd-analyze --user verify` uten feil |
-| Hyprland-konfigurasjon | PASS | `Hyprland --verify-config --config ~/.config/hypr/hyprland.lua` → `config ok` |
-| Wrapper-sikkerhet | PASS | ugyldige argumenter avvises med exit 64 |
-| DMS/Hyprland-grafisk økt | IKKE TESTET | SSH-økten står fortsatt i GNOME; DMS og Hypridle starter først i Hyprland-økten |
-| Bakgrunn og tomt skrivebord | IKKE TESTET | krever faktisk Hyprland-innlogging |
-| Super+Space / DMS Spotlight | IKKE TESTET | krever aktiv DMS i Hyprland-økten |
-| Hyprlock-autentisering | IKKE TESTET | krever faktisk lås, lokal autentisering og opplåsing |
-| Portal, lyd og skjermdeling | IKKE TESTET | krever aktiv Hyprland-økt |
+Den tidligere installasjonen skrev `wilsof-session.target` og aktiverte wallpaper-enheten, men DMS sin faktiske Lua-entrypoint startet `hyprland-session.target`, ikke Wilsof-målet. Wallpaper-enheten ble derfor aldri kjørt. DMS manglet også en fast custom-theme-konfigurasjon og brukte standardpaletten.
 
-## Pakkekilder
+Rettelsen:
 
-- Fedora 44: grunnsystem, GDM og standardkomponenter.
-- `copr:copr.fedorainfracloud.org:avengemedia:dms`: DMS 1.6.3; den aktiverte automatisk avhengigheten `avengemedia/danklinux`.
-- `copr:copr.fedorainfracloud.org:ashbuk:Hyprland-Fedora`: Hyprland, Hyprlock, Hypridle og Hyprland-portalen.
+- `wilsof.lua` starter Wilsof-targetet ved `hyprland.start`.
+- `wilsof-wallpaper.service` bruker dokumentert DMS-IPC med én eier av bakgrunnen.
+- En komplett statisk DMS custom theme-fil setter charcoal/isblå palett; `DMS_DISABLE_MATUGEN=1` hindrer wallpaper-avledet palette.
+- Førstegangsinnstillinger lager en minimal DMS-linje: workspace-switcher, klokke, tray/batteri/kontrollsenter. Eksisterende personlige `settings.json` overskrives ikke.
+- Wilsof fjerner bare kolliderende genererte DMS-binds via dokumentert `hl.unbind`, før de avtalte bindingene registreres.
+- Hypridle bruker `$HOME/.local/bin/wilsof-lock`; den kjørende user-tjenesten manglet ellers `~/.local/bin` i PATH.
 
-## Neste nødvendige manuelle handling
+## Grafisk evidens
 
-Velg **Hyprland** i GDM for `wilsofdev` og gjennomfør GUI-sjekklisten i `docs/testplan.md`. GNOME beholdes som reservevalg.
+Følgende er ekte DMS-skjermbilder fra VM 113, hentet via DMS sin støttede screenshot-funksjon:
+
+- `evidence/desktop-wilsof-clean.png`: PASS visuelt — godkjent WS-bakgrunn, tomt skrivebord, charcoal/isblå og redusert topplinje.
+- `evidence/launcher-firefox-query.png`: PASS visuelt — Spotlight viser søk øverst og Firefox som programtreff.
+
+`launcher-empty.png` ble tatt i et toggletilstand uten synlig panel og er ikke brukt som positivt visuelt bevis.
+
+## Kjente begrensninger
+
+DMS Spotlight viser programmer og et lokalt Files-filter visuelt. Det er ikke etablert bevis for komplette vindus-, innstillings- og systemhandlingsleverandører, norsk/engelsk aliasering eller sikker lokal filavgrensning. Dette er derfor ikke markert implementert.
+
+`pipewire-pulse.service` er socket-aktivert og var inaktiv ved kontroll; PipeWire og WirePlumber kjørte. Ingen lydavspilling eller skjermdeling ble prøvd. Hypridle-konfigurasjon og én instans er kontrollert, men faktisk låsflate/autentisering/opplåsing er ikke testet fordi det krever lokal passordinntasting.

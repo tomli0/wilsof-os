@@ -93,8 +93,9 @@ linux /vmlinuz-linux
 initrd /initramfs-linux.img
 options root=UUID=${root_uuid} rootflags=subvol=@ rw
 EOF
-# Populate both the NVRAM-selected loader and the removable-media fallback path.
-bootctl --esp-path=/boot --boot-path=/boot install
+# Install to the ESP. `bootctl install` creates both the NVRAM entry and the
+# removable-media fallback EFI/BOOT/BOOTX64.EFI; /boot is an ESP, not XBOOTLDR.
+bootctl --esp-path=/boot install
 for asset in /boot/EFI/systemd/systemd-bootx64.efi /boot/EFI/BOOT/BOOTX64.EFI /boot/vmlinuz-linux /boot/initramfs-linux.img /boot/loader/entries/arch.conf; do
   [ -s "$asset" ] || { echo "required boot asset missing: $asset" >&2; exit 1; }
 done

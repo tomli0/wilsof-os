@@ -1,25 +1,31 @@
-# Wilsof OS — første skrivebordsprototype
+# Wilsof OS — Arch-skrivebordsprototype
 
-Dette er et lokalt, reviewbart grunnlag for en Fedora-basert Wilsof OS-prototype. Det er ikke et ferdig OS eller en produksjonsklar distribusjon.
+Wilsof er foreløpig en Arch-basert skrivebordsprototype under utvikling. Dette er ikke et ferdig, selvstendig OS, et produksjonsklart installasjonsmedium eller en release.
 
-## Leveranse i dette revisjonssettet
+## Nåværende prototype
 
-- Godkjente logo-, bakgrunns- og mockupfiler under `assets/`.
-- Hyprland-profil med tomt skrivebord, 1 px aktiv isblå vinduskant, kompakt topplinje via DankMaterialShell og ingen dock/ikoner.
-- `Super+Space` reservert for én Wilsof-søkeflate (`wilsof-search toggle`), ikke profilmenyen fra mockupen.
-- Systemd-mål og wallpaper-enhet som dokumenterer D-Bus/systemd-integrasjon.
-- Arkitektur, beslutningslogg, installasjonsrunbook, testplan og avviksrapport.
-- En interaktiv, lokalt åpningbar referanseprototype i `prototype/`.
+- Arch Linux, Hyprland 0.56.2 og DankMaterialShell (DMS) 1.6.3 i den dedikerte test-VM-en.
+- Godkjent WS-bakgrunn, mørk `#14181E` overflate og isblå `#86B9CE` aksent.
+- Tomt skrivebord og en nedstrippet DMS-linje med arbeidsområder, klokke og nødvendig status.
+- `Super+Space` åpner DMS Spotlight. DMS leverer programmer og lokale filtreff; vinduer og systemhandlinger må fortsatt verifiseres separat.
+- `Super+L` og Hypridle bruker samme `wilsof-lock`-wrapper rundt Hyprlock. Autentisering/opplåsing er ikke testet av agenten.
 
-## Lokal kontroll
+Faktisk teststatus, begrensninger og skjermbilder står i `docs/status.md`, `docs/testplan.md` og `docs/avvik.md`.
 
-```sh
-pytest -q
-python3 -m http.server 8080 -d prototype
-```
+## Rask, kontrollert installasjon av brukerprofil
 
-Åpne deretter `http://localhost:8080` og trykk `Super+Space` (eller klikk søkeknappen) for prototypen. Dette verifiserer bare nettleserprototypen; det erstatter ikke Wayland/VM-test.
+Kjør kun på den dedikerte Wilsof-VM-en som `wilsofdev`:
 
-## Status
+    WILSOF_TARGET_VM=1 /opt/wilsof-os/scripts/install-user-config.sh
 
-Fedora-test-VM-en er nå klargjort med DMS, Hyprland, Hyprlock, Hypridle og Hyprland-portalen. Brukerkonfigurasjonen er installert og statisk validert; faktisk DMS/Hyprland-grafikk, Super+Space og lås er fortsatt IKKE TESTET før de observeres i en Hyprland-økt. Se `docs/status.md` og `docs/testplan.md`.
+Skriptet nekter andre operativsystemer, kopierer bare Wilsof-filer til brukerens hjemmekatalog og er idempotent. På første installasjon setter det en statisk DMS-palett og en minimal topplinje. Senere installasjoner beholder `~/.config/DankMaterialShell/settings.json`; tilbakestilling er dokumentert i `docs/vm-runbook.md`.
+
+## Utviklerkontroll
+
+    pytest -q
+    sh -n scripts/*.sh bin/wilsof-*
+    python3 -m json.tool config/dms/wilsof-theme.json
+
+## Om komponentene
+
+Wilsof integrerer eksisterende Arch-, Hyprland-, Hyprlock-, Hypridle- og DMS-komponenter. Prosjektet påstår ikke eierskap til disse. Se `docs/arkitektur.md` for integrasjonsgrensene og `docs/beslutningslogg.md` for beslutningene.

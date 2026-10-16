@@ -88,5 +88,35 @@ def test_installer_integrates_with_the_dms_lua_entrypoint_and_locking():
     assert 'config/hypr/wilsof.lua' in content
     assert 'config/hypr/hypridle.conf' in content
     assert 'bin/wilsof-lock' in content
+    assert 'bin/wilsof-help' in content
     assert 'require("wilsof")' in content
     assert 'systemctl --user enable dms.service hypridle.service' in content
+
+
+def test_installer_seeds_static_dms_theme_only_once():
+    content = INSTALL.read_text(encoding="utf-8")
+    assert 'config/dms/wilsof-theme.json' in content
+    assert 'config/dms/settings-template.json' in content
+    assert 'dms.service.d/wilsof.conf' in content
+    assert 'dms-defaults-v1' in content
+    assert 'if [ ! -e "$settings" ]' in content
+
+
+def test_static_theme_defines_the_approved_base_and_accent():
+    theme = (ROOT / "config" / "dms" / "wilsof-theme.json").read_text(encoding="utf-8")
+    assert '"primary": "#86B9CE"' in theme
+    assert '"surface": "#14181E"' in theme
+    assert '"background": "#14181E"' in theme
+
+
+def test_help_wrapper_delegates_to_the_supported_dms_keybind_view(tmp_path):
+    helper = ROOT / "bin" / "wilsof-help"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    log = tmp_path / "args"
+    dms = fake_bin / "dms"
+    dms.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" > {log}\n", encoding="utf-8")
+    dms.chmod(0o755)
+    result = run(helper, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
+    assert result.returncode == 0, result.stderr
+    assert log.read_text(encoding="utf-8").strip() == "ipc call keybinds open"

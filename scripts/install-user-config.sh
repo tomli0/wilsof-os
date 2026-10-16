@@ -17,15 +17,40 @@ case "${ID:-}" in
 esac
 
 install -d "$HOME/.local/bin" "$HOME/.local/share/wilsof-os/assets" \
-  "$HOME/.config/hypr" "$HOME/.config/systemd/user"
+  "$HOME/.config/hypr" "$HOME/.config/systemd/user/dms.service.d" \
+  "$HOME/.config/DankMaterialShell" "$HOME/.local/state/wilsof-os"
 install -m 0755 "$root/bin/wilsof-search" "$HOME/.local/bin/wilsof-search"
 install -m 0755 "$root/bin/wilsof-lock" "$HOME/.local/bin/wilsof-lock"
+install -m 0755 "$root/bin/wilsof-help" "$HOME/.local/bin/wilsof-help"
 install -m 0644 "$root/config/hypr/wilsof.conf" "$HOME/.config/hypr/wilsof.conf"
 install -m 0644 "$root/config/hypr/wilsof.lua" "$HOME/.config/hypr/wilsof.lua"
 install -m 0644 "$root/config/hypr/hypridle.conf" "$HOME/.config/hypr/hypridle.conf"
 install -m 0644 "$root/config/systemd/wilsof-session.target" "$HOME/.config/systemd/user/wilsof-session.target"
 install -m 0644 "$root/config/systemd/wilsof-wallpaper.service" "$HOME/.config/systemd/user/wilsof-wallpaper.service"
+install -m 0644 "$root/config/systemd/dms-wilsof.conf" "$HOME/.config/systemd/user/dms.service.d/wilsof.conf"
+install -m 0644 "$root/config/dms/wilsof-theme.json" "$HOME/.local/share/wilsof-os/wilsof-theme.json"
 install -m 0644 "$root/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png" "$HOME/.local/share/wilsof-os/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png"
+
+# Seed Wilsof's static DMS theme once, before any personal DMS settings exist.
+# Subsequent installs intentionally preserve settings.json and the marker records that fact.
+settings="$HOME/.config/DankMaterialShell/settings.json"
+marker="$HOME/.local/state/wilsof-os/dms-defaults-v1"
+if [ ! -e "$marker" ]; then
+  if [ ! -e "$settings" ]; then
+    python3 - "$root/config/dms/settings-template.json" "$settings" "$HOME/.local/share/wilsof-os/wilsof-theme.json" <<'PY'
+import json
+import sys
+source, destination, theme_path = sys.argv[1:]
+with open(source, encoding="utf-8") as handle:
+    settings = json.load(handle)
+settings["customThemeFile"] = theme_path
+with open(destination, "w", encoding="utf-8") as handle:
+    json.dump(settings, handle, separators=(",", ":"))
+    handle.write("\n")
+PY
+  fi
+  : > "$marker"
+fi
 
 # DMS owns the base Hyprland Lua configuration; generate it only when absent.
 if [ ! -f "$HOME/.config/hypr/hyprland.lua" ]; then

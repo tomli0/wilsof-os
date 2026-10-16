@@ -1,0 +1,15 @@
+#!/bin/sh
+# Open DMS's live keybinding view; it reads the active compositor bindings.
+set -eu
+
+if [ "$#" -ne 0 ]; then
+  printf '%s\n' "Usage: wilsof-help" >&2
+  exit 64
+fi
+
+if ! command -v dms >/dev/null 2>&1; then
+  printf '%s\n' "wilsof-help: DankMaterialShell (dms) is not available." >&2
+  exit 69
+fi
+
+exec dms ipc call keybinds open

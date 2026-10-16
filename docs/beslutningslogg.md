@@ -1,30 +1,21 @@
 # Beslutningslogg
 
-## D-001 — Vanlig Fedora-VM før bootc
+## D-001 — Arch som aktiv prototypeplattform
 
-Status: vedtatt for prototype.
+Status: vedtatt. Arch VM 113 er aktivt testmål. Fedora-materiale beholdes som historikk/referanse, men er ikke aktiv installasjonsvei.
 
-Begrunnelse: Startprompten krever fungerende skrivebord før installer/image-løp. Fedora/Hyprland/DMS-integrasjonen må demonstreres i en isolert VM før bootc innføres. Fedora bootc-dokumentasjonen beskriver bootbare containere og installer-ISO via bootc-image-builder, men dette er ikke gjennomført her.
+## D-002 — DMS beholdes, Wilsof er override-lag
 
-## D-002 — DMS som shell, Wilsof som smal søkutvidelse
+Status: vedtatt. DMS eier shell, bakgrunns-IPC og standardkonfigurasjon. Wilsof lastes separat sist, slik at DMS-generering ikke sletter prosjektets endringer.
 
-Status: vedtatt, integrasjon ikke testet.
+## D-003 — Fast Wilsof-palett, ikke wallpaper-avledet
 
-Begrunnelse: DMS-dokumentasjonen beskriver støtte for Hyprland, Spotlight med apper, filer, vinduer, kalkulator og kommandoer, og `dms setup` for starterkonfigurasjon. Wilsof må eie samlet gruppering, lokalt personvern og bekreftelseskravene; å bruke rå DMS Spotlight direkte ville ikke dokumentere dem.
+Status: vedtatt. `#14181E` og `#86B9CE` er faste designverdier. Matugen er deaktivert for DMS-tjenesten; custom theme er førsteinstallasjonsstandard og personlige senere valg beholdes.
 
-## D-003 — Profilmeny i referansen er ikke hovedmeny
+## D-004 — Super+Space er én DMS Spotlight-inngang
 
-Status: vedtatt.
+Status: vedtatt med begrensning. Wrapperen åpner DMS Spotlight. DMS sine faktiske, visuelt dokumenterte programtreff brukes; ikke-verifiserte aggregatorfunksjoner påstås ikke.
 
-Begrunnelse: Godkjent presisering overstyrer mockupens illustrative profilmeny. Profiltreff kommer først når profilfunksjonen finnes, inne i felles søk.
+## D-005 — ESP er `/boot`, ikke XBOOTLDR
 
-## Kilder kontrollert 2026-10-14
-
-- https://danklinux.com/docs/dankmaterialshell/installation
-- https://danklinux.com/docs/dankmaterialshell/compositors
-- https://danklinux.com/docs/dankmaterialshell/cli-setup
-- https://github.com/AvengeMedia/DankMaterialShell
-- https://docs.fedoraproject.org/en-US/bootc/bare-metal/
-- https://osbuild.org/docs/user-guide/image-descriptions/fedora-44
-
-Pakkerevisjoner, Fedora-repoer og lisenser er ikke låst før VM-installasjon og må registreres der.
+Status: vedtatt. systemd-boot installeres med `--esp-path=/boot`; fallback-fil kontrolleres eksplisitt.

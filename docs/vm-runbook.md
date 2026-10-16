@@ -1,27 +1,38 @@
-# VM-runbook (utføres bare på autorisert isolert infrastruktur)
+# VM-runbook — Arch testmål
 
-## Forhåndskontroll
+Dette dokumentet gjelder bare autorisert, dedikert Wilsof-infrastruktur. VM 112/Fedora endres ikke.
 
-1. Kartlegg vertens ledige CPU, RAM og datastore via lesekontroller. Ikke endre eksisterende VM-er, nettverk eller lagring.
-2. Opprett en ny dedikert VM bare når tilgang og kapasitet er uttrykkelig dekket. Bruk UEFI, q35, 4 vCPU, 6 GiB RAM og 40 GiB qcow2/virtio-disk som utgangspunkt; reduser kun etter målt kapasitet. Ingen passthrough.
-3. Last ned Fedora Workstation 44 fra https://fedoraproject.org/workstation/download/. Verifiser ISO mot den tilhørende, offisielle SHA-256- og OpenPGP-instruksen før den monteres.
-4. Bruk privat/NAT-nett eller annen godkjent intern nettprofil, virtio-nett og virtio-grafikk/SPICE (eller autorisert grafisk konsoll). Ikke eksponer nye tjenester mot internett.
+## Trygg tilgang
 
-## Installasjon og tilgang
+1. Bekreft target-OS, VM-navn og installert disk via lesekontroller.
+2. Sammenlign presentert ED25519-nøkkel mot registrert fingeravtrykk før den pins; bruk `StrictHostKeyChecking=yes` etterpå.
+3. Ta snapshot før skrivebordsarbeid når plattformen tilbyr det. Ikke reinstaller, formater eller endre VM-maskinvare som del av konfigurasjonstesting.
 
-1. Installer bare på VM-ens 40 GiB virtuelle disk. Behold standard SELinux enforcing og opprett en vanlig testbruker.
-2. Aktiver SSH bare på VM-ens godkjente interne nett og registrer vertsnøkkelen via normal administrasjonskanal. Fra Hermes-VM brukes `ssh testbruker@vm-ip`; ikke deaktiver host-key-kontroll som snarvei.
-3. Ta snapshot før egne desktopendringer dersom plattformen støtter det.
+## Installere Wilsof-brukerprofil
 
-## Desktop-spike
+1. Kontroller DMS, Hyprland, Hyprlock, Hypridle, portal og brukerens systemd-/D-Bus-sesjon med `scripts/preflight-arch.sh`.
+2. Kjør DMS sin headless setup som målbruker hvis `~/.config/hypr/hyprland.lua` mangler.
+3. Kopier prosjektet til VM-en og kjør:
 
-1. Oppdater Fedora i VM-en. Logg `cat /etc/os-release`, `rpm -qa`, `dnf repolist --enabled` og `getenforce`.
-2. Kontroller DMS-lisens og den gjeldende Fedora/COPR-kilden i DMS-dokumentasjonen før installasjon. Installer DMS med dokumentert repo og `dnf install dms`; installer Hyprland fra dokumentert aktiv kilde, nødvendige XDG-portals, PipeWire/WirePlumber, polkit-agent og de syv standardprogrammene.
-3. Kjør DMS sin aktuelle `dms setup` bare for testbrukeren. La DMS eie topplinje/varsler/lås; ikke start ekstra panel eller launcher.
-4. Kopier repoet til VM-en. Kjør `WILSOF_TARGET_VM=1 ./scripts/install-user-config.sh`. Legg manuelt til `source = ~/.config/hypr/wilsof.conf` én gang i testbrukerens aktive Hyprland-konfigurasjon etter at DMS-oppsettet er inspisert.
-5. Aktiver `wilsof-wallpaper.service` først etter at `dms --version`, brukerens D-Bus og user-systemd virker. Kontroller `systemctl --user --failed` før og etter.
-6. `wilsof-search toggle` åpner foreløpig DMS Spotlight. Den oppfyller ikke ennå kravene om Wilsof-gruppering, aliaser eller systemhandlingsbekreftelse; ikke marker disse som levert.
+       WILSOF_TARGET_VM=1 /opt/wilsof-os/scripts/install-user-config.sh
+
+4. Installererens eneste DMS-Lua-endring er én markert `require("wilsof")`. Den må finnes én gang og stå etter `require("dms.binds-user")`.
+5. Start/reload bare avgrensede komponenter under aktiv sesjon: `hyprctl reload`, `systemctl --user restart dms.service`, `systemctl --user restart hypridle.service`, og start `wilsof-session.target`. Ikke logg ut/reboot mens arbeid pågår.
+
+## Tilbakestilling
+
+- Konfigurasjonsbackup ligger under `~/.local/state/wilsof-os/backups/`.
+- For å velge nye personlige DMS-verdier, bruk DMS Settings. Reinstallasjon av Wilsof overskriver ikke eksisterende `settings.json` etter førsteinstallasjon.
+- For eksplisitt Wilsof-reset: sikkerhetskopier `~/.config/DankMaterialShell/settings.json`, slett `~/.local/state/wilsof-os/dms-defaults-v1` og ønsket settings-fil, og kjør installasjonsskriptet på nytt.
+- Ved skrivebordsfeil: velg lokal fallback-sesjon ved greetd/tuigreet, gjenopprett backupen og kontroller `journalctl --user -u dms -b` samt Hyprland-loggen før nye endringer.
+
+## Boot-recovery (uten formatering)
+
+1. Start et autorisert recovery-miljø, monter ESP på `/boot` og Btrfs `@`/`@home` på riktige steder.
+2. Kontroller `/boot/loader/entries/arch.conf`, kernel/initramfs, root UUID og `rootflags=subvol=@`.
+3. Kjør `bootctl --esp-path=/boot install` og kontroller både NVRAM-entry og `EFI/BOOT/BOOTX64.EFI`.
+4. Ikke påstå full reboot-PASS før én faktisk kontrollert reboot er observert.
 
 ## Bevis
 
-Test fra grafisk konsoll, ikke SSH alene. Logg portals, lyd, `loginctl`, `systemctl --user`, oppstartstid og RAM/CPU. Ta faktiske skjermbilder av tomt skrivebord, Spotlight og en eksisterende innstillingsflate. Fyll testplanen med PASS/FAIL/IKKE TESTET.
+Ta faktiske skjermbilder av tomt skrivebord, Spotlight og innstillinger. Skill IPC/bind-last fra fysisk Proxmox-tastetrykk og fra visuelt bevis. Fyll `docs/testplan.md` med PASS/FAIL/IKKE TESTET.

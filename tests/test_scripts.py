@@ -100,6 +100,7 @@ def test_installer_integrates_with_the_dms_lua_entrypoint_and_locking():
     assert 'bin/wilsof-help' in content
     assert 'require("wilsof")' in content
     assert 'systemctl --user enable dms.service hypridle.service' in content
+    assert 'assets/Wilsof OS-logo med geometrisk WS-monogram.png' in content
 
 
 def test_installer_seeds_static_dms_theme_only_once():

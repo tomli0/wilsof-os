@@ -255,6 +255,7 @@ def test_doctor_reports_missing_dependencies_with_a_nonzero_exit(tmp_path):
     assert result.returncode == 1
     assert "MISSING dms" in result.stdout
     assert "MISSING ghostty" in result.stdout
+    assert "MISSING busctl (cannot inspect the power-profile D-Bus backend)" in result.stdout
 
 
 def test_doctor_is_read_only_and_reports_a_present_empty_ghostty_config(tmp_path):
@@ -279,6 +280,12 @@ def test_doctor_is_read_only_and_reports_a_present_empty_ghostty_config(tmp_path
     assert result.returncode == 1
     assert "WARN Ghostty configuration is empty" in result.stdout
     assert (config / "config.ghostty").exists()
+
+
+def test_doctor_checks_the_power_profile_package_and_dbus_backend():
+    doctor = (ROOT / "bin" / "wilsof-doctor").read_text(encoding="utf-8")
+    assert 'pacman -Q power-profiles-daemon' in doctor
+    assert 'busctl --system status net.hadess.PowerProfiles' in doctor
 
 
 def test_search_uses_dms_spotlight_all_mode_and_rejects_other_actions(tmp_path):
@@ -306,4 +313,5 @@ def test_iso_profile_and_builder_are_present_and_keep_secrets_out_of_the_profile
     assert "openssh" not in package_text
     assert "ghostty" in package_text
     assert "dms-shell" in package_text
+    assert "power-profiles-daemon" in package_text
     assert "mkarchiso" in builder.read_text(encoding="utf-8")

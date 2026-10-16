@@ -18,6 +18,7 @@ Wilsof is under active development. It is not yet a production-ready distributio
 - Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe and VLC are part of the test-VM package set. Ghostty remains the standard terminal; its actual active-session launch is verified on VM 113.
 - `wilsof-doctor` is a read-only development/support check for dependencies, Wilsof-owned files, session units and relevant log locations.
 - [`docs/iso.md`](docs/iso.md) describes the internal-only Archiso test-image profile and its safety limits; no ISO is bundled or published.
+- [`docs/security.md`](docs/security.md) defines the threat model, audit results, security reporting policy and proposed release gates. Those gates are proposals, not release approval.
 
 ## Screenshots from the Arch test session
 

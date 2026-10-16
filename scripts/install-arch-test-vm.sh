@@ -31,7 +31,7 @@ mkdir -p /mnt/{boot,home}
 mount -o noatime,compress=zstd:3,subvol=@home "${DISK}2" /mnt/home
 mount "${DISK}1" /mnt/boot
 
-pacstrap -K /mnt base linux linux-firmware btrfs-progs networkmanager openssh sudo qemu-guest-agent \
+pacstrap -K /mnt base linux linux-firmware btrfs-progs networkmanager sudo qemu-guest-agent \
   hyprland hyprlock hypridle xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
   dms-shell greetd greetd-tuigreet firefox ghostty nautilus gnome-text-editor papers loupe vlc \
   pipewire pipewire-pulse wireplumber polkit-gnome
@@ -56,22 +56,7 @@ install -d -m 0750 /etc/sudoers.d
 printf '%%wheel ALL=(ALL:ALL) ALL\n' > /etc/sudoers.d/10-wheel
 chmod 0440 /etc/sudoers.d/10-wheel
 visudo -cf /etc/sudoers.d/10-wheel
-install -d -m 0700 /root/.ssh
-cat > /root/.ssh/authorized_keys <<'EOF'
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDT1WfMApHq1rps9gKb8tfbrjcDRI+Vz3KwXtf8DXMlP
-EOF
-chmod 0600 /root/.ssh/authorized_keys
-install -d -m 0755 /etc/ssh/sshd_config.d
-cat > /etc/ssh/sshd_config.d/10-wilsof-remote-access.conf <<'EOF'
-PermitRootLogin prohibit-password
-PasswordAuthentication no
-KbdInteractiveAuthentication no
-PubkeyAuthentication yes
-EOF
-# Generate host keys explicitly: ssh-keygen -A did not populate the target on this live-media path.
-[ -s /etc/ssh/ssh_host_ed25519_key ] || ssh-keygen -t ed25519 -N '' -f /etc/ssh/ssh_host_ed25519_key
-[ -s /etc/ssh/ssh_host_rsa_key ] || ssh-keygen -t rsa -b 4096 -N '' -f /etc/ssh/ssh_host_rsa_key
-sshd -t
+
 # Do not rely on Arch's agreety default: this VM must present tuigreet and
 # start Hyprland only after normal PAM authentication.
 install -d -m 0755 /etc/greetd
@@ -83,12 +68,12 @@ vt = 1
 command = "tuigreet --time --cmd Hyprland"
 user = "greeter"
 EOF
-systemctl enable NetworkManager.service sshd.service
+systemctl enable NetworkManager.service greetd.service
 systemctl enable greetd.service
 [ -s /etc/greetd/config.toml ] || { echo "greetd configuration missing" >&2; exit 1; }
 systemctl set-default graphical.target
 systemctl add-wants multi-user.target qemu-guest-agent.service
-for unit in NetworkManager.service sshd.service greetd.service qemu-guest-agent.service; do
+for unit in NetworkManager.service greetd.service qemu-guest-agent.service; do
   systemctl is-enabled "$unit" | grep -qx enabled || { echo "required unit not enabled: $unit" >&2; exit 1; }
 done
 root_uuid=$(blkid -s UUID -o value /dev/sda2)
@@ -114,6 +99,4 @@ done
 bootctl --path=/boot status
 CHROOT
 
-printf '\nInstallation complete. Installed ED25519 host-key fingerprint:\n'
-ssh-keygen -lf /mnt/etc/ssh/ssh_host_ed25519_key.pub -E sha256
-printf '\nDo not reboot until the orchestrator has recorded this fingerprint.\n'
+printf '\nInstallation complete. Remote administration is not installed or enabled.\n'

@@ -15,6 +15,7 @@ Wilsof is under active development. It is not yet a production-ready distributio
 - `Super+I` opens DMS Settings.
 - `Super+F1` opens local shortcut help generated from Wilsof's shared shortcut manifest in DMS Notepad.
 - `Super+L` and Hypridle call the same idempotent Hyprlock wrapper. The lock configuration and PAM wiring are present; real password unlock remains a manual check.
+- An unlocked, static/reduced-motion-capable WS ASCII screensaver preview is available at [`prototype/screensaver.html`](prototype/screensaver.html). It is deliberately not integrated with idle locking; see [`docs/screensaver.md`](docs/screensaver.md).
 - Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe and VLC are part of the test-VM package set. Ghostty remains the standard terminal; its actual active-session launch is verified on VM 113.
 - `wilsof-doctor` is a read-only development/support check for dependencies, Wilsof-owned files, session units and relevant log locations.
 - [`docs/iso.md`](docs/iso.md) describes the internal-only Archiso test-image profile and its safety limits; no ISO is bundled or published.

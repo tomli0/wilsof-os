@@ -15,6 +15,7 @@
 - A historical wallpaper oneshot run reached DMS before the target was available. The unit now directly requires DMS; a fresh manual start returned DMS `SUCCESS`, the expected `wallpaper get` value and systemd success. Login/reboot startup ordering still needs a real persistence test.
 - Hyprlock's PAM file exists and a Wilsof lock configuration is installed. Unlock requires a human entering the account password locally; the agent does not collect or enter it.
 - VM keyboard interception, idle lock, logout/login and reboot persistence require direct physical-console checks.
+- The WS ASCII screensaver is an unlocked browser preview only. Hyprlock has no verified supported integration for this animation, so the existing secure idle-lock policy is intentionally unchanged. See `docs/screensaver.md`.
 
 ## Boot history
 

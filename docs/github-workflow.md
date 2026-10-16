@@ -22,6 +22,10 @@ The label alone is insufficient. The marker is intentionally checked with GitHub
 
 For dry-run contract tests only, `WILSOF_BUDGET_SIMULATED_OK=1` together with `WILSOF_DRY_RUN=1` substitutes the real OpenRouter key check. A live run (no dry run) ignores the simulation and always performs the real provider budget gate.
 
+## Project synchronization
+
+Project #1 is the status board only; it never authorizes, gates or denies worker execution. Authorization is exactly the label plus the exact owner marker. The worker marks an approved item `In progress` only after its existing lock, approval, retry and OpenRouter budget gates pass, as a record of what it started — not as a precondition. After a bounded session the worker sets the item to `🔍 In review` only when an open PR delivers the work; otherwise it leaves the status unchanged, and the worker prompt requires durable checkpoint evidence on the issue so an incomplete state stays accurate. A retry-exhausted item is marked `🚧 Blocked`. Workers never set `📋 Ready`, `✅ Done`, close an issue, or merge a PR; those transitions remain human decisions, so no automated rule closes an issue before its acceptance criteria are satisfied.
+
 ## Limits and coordination
 
 - One worker and one task at a time; an advisory `flock` protects both manual and scheduled work for the full model session.

@@ -28,7 +28,9 @@ class GitHubWorkerTests(unittest.TestCase):
         self.comments = "[]"
         self.issues = "[]"
         self.project_items = json.dumps(
-            {"items": [{"id": "ITEM", "content": {"type": "Issue", "number": 42}, "fieldValues": {"nodes": []}}],
+            {"items": [{"id": "ITEM", "content": {"type": "Issue", "number": 42},
+                        "repository": "https://github.com/tomli0/wilsof-os",
+                        "fieldValues": {"nodes": []}}],
              "totalCount": 1}
         )
         self.prs = "[]"
@@ -256,17 +258,33 @@ class GitHubWorkerTests(unittest.TestCase):
         self.approved()
         self.project_items = json.dumps(
             {"items": [{"id": "ITEM", "content": {"type": "Issue", "number": 42},
+                        "repository": "https://github.com/tomli0/wilsof-os",
                         "fieldValues": {"nodes": [{"name": "✅ Done"}]}}], "totalCount": 1}
         )
         result = self.run_worker(budget_sim=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("MODEL_START_READY", result.stdout)
 
+    def test_project_lookup_is_repository_scoped(self) -> None:
+        self.candidate()
+        self.approved()
+        # Same issue number in a different repository must not be edited.
+        self.project_items = json.dumps(
+            {"items": [{"id": "OTHER", "content": {"type": "Issue", "number": 42},
+                        "repository": "https://github.com/tomli0/other-repo",
+                        "fieldValues": {"nodes": []}}], "totalCount": 1}
+        )
+        self.prs = json.dumps([{"number": 7, "headRefName": "issue-42-candidate", "title": "w", "body": ""}])
+        result = self.run_worker(dry_run=False, budget_sim=True, test_mode=True)
+        self.assertIn("could not mark issue #42 in review", result.stdout)
+        self.assertEqual(self.project_edits(), [])
+
     def test_board_status_alone_does_not_authorize(self) -> None:
         self.issues = "[]"
         self.comments = "[]"
         self.project_items = json.dumps(
             {"items": [{"id": "ITEM", "content": {"type": "Issue", "number": 42},
+                        "repository": "https://github.com/tomli0/wilsof-os",
                         "fieldValues": {"nodes": [{"name": "📋 Ready"}]}}], "totalCount": 1}
         )
         result = self.run_worker()

@@ -153,11 +153,16 @@ PY
 project_status() {
   local issue=$1 option=$2 items item_id
   items=$(gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --limit 500 --format json) || return 1
-  item_id=$(python3 - "$items" "$issue" <<'PY'
+  item_id=$(python3 - "$items" "$issue" "$REPO" <<'PY'
 import json, sys
-for item in json.loads(sys.argv[1]).get("items", []):
+items, issue, repo = json.loads(sys.argv[1]), sys.argv[2], sys.argv[3]
+for item in items.get("items", []):
     content = item.get("content") or {}
-    if content.get("type") == "Issue" and str(content.get("number")) == sys.argv[2]:
+    if content.get("type") != "Issue" or str(content.get("number")) != issue:
+        continue
+    # Issue numbers are repository-scoped: match the item's repository too.
+    repository = str(item.get("repository") or "")
+    if repository.rstrip("/").endswith("/" + repo):
         print(item["id"])
         break
 PY

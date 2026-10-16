@@ -19,7 +19,7 @@ Updated: 2026-10-16 UTC
 
 ## Exact remaining checks
 
-1. Complete one controlled reboot only after the current work is committed and pushed. Re-check the pinned host key, Btrfs root mount, greetd journal, user services, DMS wallpaper and SSH. Leave graphical login for the user if it is required.
+1. One controlled reboot was completed after commit `8c7628d`. SSH returned, the pinned ED25519 fingerprint matched, root remained `/dev/sda2[/@]` Btrfs, and `greetd` is enabled/active with `tuigreet --cmd Hyprland`. The VM is intentionally stopped at the greetd login; DMS, Hypridle, Wilsof target and wallpaper await the next authenticated graphical session.
 2. Physically test `Super+Space`, arrows, Enter and Esc; then DMS power menu keyboard navigation/cancellation and the 500 ms hold explanation without running a power action.
 3. Install/configure `dsearch` only on a separately approved disposable target if file search is required; the current VM does not provide it. Do not claim complete universal search until files, windows and actions are demonstrated.
 4. Observe actual five-minute idle lock and suspend independently from the manually confirmed direct Hyprlock unlock.

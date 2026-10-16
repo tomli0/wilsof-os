@@ -2,7 +2,7 @@
 # Build an internal live-test ISO only when explicitly requested.
 set -eu
 
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 overlay="$root/iso"
 work=${WILSOF_ISO_WORKDIR:-"$root/.iso-work"}
 out=${WILSOF_ISO_OUTDIR:-"$root/.iso-out"}

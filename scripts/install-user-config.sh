@@ -7,8 +7,9 @@ if [ "${WILSOF_TARGET_VM:-}" != "1" ]; then
   exit 64
 fi
 
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 [ -r /etc/os-release ] || { printf '%s\n' "Target OS cannot be identified." >&2; exit 1; }
+# shellcheck source=/etc/os-release
 . /etc/os-release
 case "${ID:-}" in
   fedora) "$root/scripts/preflight-fedora.sh" ;;

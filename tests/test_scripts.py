@@ -28,7 +28,7 @@ def test_search_delegates_to_the_single_dms_launcher_api(tmp_path):
     dms.chmod(0o755)
     result = run(SEARCH, "toggle", env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
     assert result.returncode == 0, result.stderr
-    assert log.read_text(encoding="utf-8").strip() == "ipc call launcher toggleWith apps"
+    assert log.read_text(encoding="utf-8").strip() == "ipc call spotlight toggle"
 
 
 def test_search_rejects_unsupported_actions():
@@ -238,3 +238,72 @@ def test_shared_shortcut_manifest_covers_all_wilsof_action_bindings():
         assert keys in standard
     for keys in ("Ctrl+Alt+Space", "Ctrl+Alt+L", "Ctrl+Alt+I", "Ctrl+Alt+F1"):
         assert keys in vm_test
+
+
+def test_doctor_reports_missing_dependencies_with_a_nonzero_exit(tmp_path):
+    doctor = ROOT / "bin" / "wilsof-doctor"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    result = run(
+        doctor,
+        env={
+            "HOME": str(tmp_path),
+            "PATH": str(fake_bin),
+            "WILSOF_DOCTOR_SKIP_SESSION": "1",
+        },
+    )
+    assert result.returncode == 1
+    assert "MISSING dms" in result.stdout
+    assert "MISSING ghostty" in result.stdout
+
+
+def test_doctor_is_read_only_and_reports_a_present_empty_ghostty_config(tmp_path):
+    doctor = ROOT / "bin" / "wilsof-doctor"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    for command in ("dms", "ghostty", "hyprland", "hypridle", "hyprlock", "systemctl"):
+        executable = fake_bin / command
+        executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        executable.chmod(0o755)
+    config = tmp_path / ".config" / "ghostty"
+    config.mkdir(parents=True)
+    (config / "config.ghostty").touch()
+    result = run(
+        doctor,
+        env={
+            "HOME": str(tmp_path),
+            "PATH": str(fake_bin),
+            "WILSOF_DOCTOR_SKIP_SESSION": "1",
+        },
+    )
+    assert result.returncode == 1
+    assert "WARN Ghostty configuration is empty" in result.stdout
+    assert (config / "config.ghostty").exists()
+
+
+def test_search_uses_dms_spotlight_all_mode_and_rejects_other_actions(tmp_path):
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    log = tmp_path / "args"
+    dms = fake_bin / "dms"
+    dms.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" > {log}\n", encoding="utf-8")
+    dms.chmod(0o755)
+    result = run(SEARCH, "toggle", env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
+    assert result.returncode == 0, result.stderr
+    assert log.read_text(encoding="utf-8").strip() == "ipc call spotlight toggle"
+    assert run(SEARCH, "files", env={"PATH": f"{fake_bin}:{os.environ['PATH']}"}).returncode == 64
+
+
+def test_iso_profile_and_builder_are_present_and_keep_secrets_out_of_the_profile():
+    profile = ROOT / "iso" / "profiledef.sh"
+    packages = ROOT / "iso" / "packages.x86_64"
+    builder = ROOT / "scripts" / "build-iso.sh"
+    assert profile.is_file()
+    assert packages.is_file()
+    assert builder.is_file()
+    package_text = packages.read_text(encoding="utf-8")
+    assert "archiso" not in package_text
+    assert "openssh" not in package_text
+    assert "ghostty" in package_text
+    assert "dms-shell" in package_text
+    assert "mkarchiso" in builder.read_text(encoding="utf-8")

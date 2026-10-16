@@ -11,11 +11,13 @@ Wilsof is under active development. It is not yet a production-ready distributio
 - Arch Linux, greetd/tuigreet, Hyprland and DankMaterialShell (DMS).
 - An intentionally empty desktop using the approved WS wallpaper, charcoal `#14181E`, ice-blue `#86B9CE`, thin window borders and restrained rounding.
 - A minimal top bar for workspace orientation, time and essential system status.
-- `Super+Space` opens the single DMS application launcher. It starts with installed applications and keeps search local; it is not yet a complete universal search for open windows, files, settings and system actions.
+- `Super+Space` opens the single DMS Spotlight entry. Empty search starts with installed applications; supported local categories expose applications, DMS tools/settings and files when `dsearch` is installed. It is not yet a complete universal search for open windows or every system action.
 - `Super+I` opens DMS Settings.
 - `Super+F1` opens local shortcut help generated from Wilsof's shared shortcut manifest in DMS Notepad.
 - `Super+L` and Hypridle call the same idempotent Hyprlock wrapper. The lock configuration and PAM wiring are present; real password unlock remains a manual check.
-- Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe and VLC are part of the test-VM package set.
+- Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe and VLC are part of the test-VM package set. Ghostty remains the standard terminal; its actual active-session launch is verified on VM 113.
+- `wilsof-doctor` is a read-only development/support check for dependencies, Wilsof-owned files, session units and relevant log locations.
+- [`docs/iso.md`](docs/iso.md) describes the internal-only Archiso test-image profile and its safety limits; no ISO is bundled or published.
 
 ## Screenshots from the Arch test session
 

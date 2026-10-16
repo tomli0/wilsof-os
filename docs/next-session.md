@@ -4,21 +4,22 @@ Updated: 2026-10-16 UTC
 
 ## Checkpoint
 
-- Branch: `arch-install`; verify `git rev-parse HEAD` before new work.
-- Deployment source: `/opt/wilsof-os` has no Git metadata. The installed user profile was refreshed from the current working-tree copies of `wilsof-help`, `wilsof-help-view`, `hyprlock.conf` and `install-user-config.sh`.
-- SSH access: root and wilsofdev public-key connections work with strict host checking. Do not weaken host-key policy, enable password login or change sudo policy.
-- Session state: `wilsofdev` Hyprland session is currently locked by the deployed Hyprlock process. The lock surface was visually captured; only the authorized local user can perform PAM unlock. Optional VM fallback bindings were reset to disabled.
+- Branch: `arch-install`; confirm `git rev-parse HEAD` before new work.
+- VM 113: `wilsofdev@192.168.10.250`; pin the ED25519 host key `SHA256:0IOuFZDTGymRZzoa5kSAO1x8FCo+ZO1khL3q/xqNAqw` before connecting.
+- The current session is unlocked. The authorized local user manually authenticated to Hyprlock successfully at 17:45 CEST. This confirms only that one local authentication/unlock; it does not validate idle locking or suspend.
+- SSH inspection found active greetd, Hyprland, DMS, Wilsof session target, Hypridle and Hyprland portal. Root filesystem is Btrfs `/dev/sda2[/@]`.
 
-## Completed in this session
+## Current development findings
 
-- Diagnosed the Ghostty help failure as a real active-session `PostForkError`, not a keyboard-input failure.
-- Replaced Ghostty help with a local DMS Notepad page generated from the shared manifest; deployed, opened, captured at 1280×800 and closed via supported IPC.
-- Corrected the Command-key explanation after visual review exposed an unsupported glyph.
-- Added and deployed a Wilsof Hyprlock presentation configuration. PAM wiring and prior missing-config failures were inspected.
+- Ghostty 1.3.1-2 launched successfully inside the active Wayland session, was listed by Hyprland, and ran a harmless command. No `PostForkError` occurred in this reproduction.
+- The observed Ghostty configuration error was reproduced as the zero-byte `~/.config/ghostty/config.ghostty`: Ghostty logs `error.FileIsEmpty`. The empty file was backed up under `~/.local/state/wilsof-os/backups/ghostty/`, then replaced with a comment-only harmless configuration; no personal setting was overwritten.
+- `Super+Space` now invokes DMS Spotlight rather than apps-only launcher. Empty search visibly begins with applications and local DMS tools/settings; file mode explicitly reported that the supported `dsearch` provider is absent. Open-window search and complete power-action search are still not implemented.
+- `wilsof-doctor` is installed and read-only. It reports packages, Wilsof files, Ghostty empty-config hazard, user/session units and journal locations.
+- `iso/` plus `scripts/build-iso.sh` prepares an internal Archiso overlay. No ISO was built, published or installed; see `docs/iso.md`.
 
-## Exact next steps
+## Exact remaining checks
 
-1. The authorized local user must perform PAM unlock before further graphical tests; do not work around the lock.
-2. From the physical Proxmox console, test standard and optional VM bindings: launcher search, arrows, Enter, Escape, settings and help closure. Then observe five-minute idle lock.
-3. After human GUI work is saved, execute one controlled logout/login or reboot and verify the pinned host key, greetd, DMS, wallpaper, launcher and user services.
-4. Refresh this file with the final commit, deployed checksum/version and exact session state.
+1. Complete one controlled reboot only after the current work is committed and pushed. Re-check the pinned host key, Btrfs root mount, greetd journal, user services, DMS wallpaper and SSH. Leave graphical login for the user if it is required.
+2. Physically test `Super+Space`, arrows, Enter and Esc; then DMS power menu keyboard navigation/cancellation and the 500 ms hold explanation without running a power action.
+3. Install/configure `dsearch` only on a separately approved disposable target if file search is required; the current VM does not provide it. Do not claim complete universal search until files, windows and actions are demonstrated.
+4. Observe actual five-minute idle lock and suspend independently from the manually confirmed direct Hyprlock unlock.

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Open DMS's single app launcher; it avoids unrelated provider matches.
+# Open DMS Spotlight: apps by default, supported local provider categories on demand.
 set -eu
 
 if [ "${1:-}" != "toggle" ] || [ "$#" -ne 1 ]; then
@@ -12,4 +12,4 @@ if ! command -v dms >/dev/null 2>&1; then
   exit 69
 fi
 
-exec dms ipc call launcher toggleWith apps
+exec dms ipc call spotlight toggle

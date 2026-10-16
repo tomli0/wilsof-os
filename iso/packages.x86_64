@@ -1,0 +1,17 @@
+base
+linux
+linux-firmware
+systemd
+systemd-sysvcompat
+networkmanager
+hyprland
+hypridle
+hyprlock
+dms-shell
+xdg-desktop-portal
+xdg-desktop-portal-hyprland
+ghostty
+firefox
+nautilus
+gnome-text-editor
+polkit-gnome

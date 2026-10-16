@@ -1,0 +1,69 @@
+#!/bin/sh
+# Read-only diagnostic for Wilsof development and support.
+set -u
+
+status=0
+ok() { printf '%s\n' "OK $*"; }
+warn() { printf '%s\n' "WARN $*"; status=1; }
+missing() { printf '%s\n' "MISSING $*"; status=1; }
+
+printf '%s\n' "Wilsof doctor (read-only)"
+for command in dms ghostty Hyprland hypridle hyprlock; do
+    if command -v "$command" >/dev/null 2>&1; then
+        # Do not run daemon binaries here: several use an unbounded default action.
+        if command -v pacman >/dev/null 2>&1; then
+            package=$(pacman -Qqo "$(command -v "$command")" 2>/dev/null || true)
+            version=$(pacman -Q "$package" 2>/dev/null || true)
+            ok "$command${version:+: $version}"
+        else
+            ok "$command"
+        fi
+    else
+        missing "$command"
+    fi
+done
+
+for path in \
+    "$HOME/.local/bin/wilsof-search" \
+    "$HOME/.local/bin/wilsof-lock" \
+    "$HOME/.config/hypr/wilsof.lua" \
+    "$HOME/.config/hypr/hypridle.conf" \
+    "$HOME/.config/hypr/hyprlock.conf" \
+    "$HOME/.config/systemd/user/wilsof-session.target"; do
+    if [ -f "$path" ]; then
+        ok "file $path"
+    else
+        missing "file $path"
+    fi
+done
+
+config="$HOME/.config/ghostty/config.ghostty"
+if [ -e "$config" ] && [ ! -s "$config" ]; then
+    warn "Ghostty configuration is empty: $config (Ghostty reports this as a configuration read error)"
+elif [ -f "$config" ]; then
+    ok "Ghostty configuration present: $config"
+else
+    ok "Ghostty uses its built-in defaults (no user configuration file)"
+fi
+
+if [ "${WILSOF_DOCTOR_SKIP_SESSION:-}" = "1" ]; then
+    ok "session checks skipped by WILSOF_DOCTOR_SKIP_SESSION=1"
+elif command -v systemctl >/dev/null 2>&1; then
+    for unit in dms.service hypridle.service wilsof-session.target; do
+        if systemctl --user is-active --quiet "$unit" 2>/dev/null; then
+            ok "user unit active: $unit"
+        else
+            warn "user unit inactive: $unit"
+        fi
+    done
+    if systemctl is-active --quiet greetd.service 2>/dev/null; then
+        ok "system unit active: greetd.service"
+    else
+        warn "system unit inactive: greetd.service"
+    fi
+else
+    missing "systemctl (cannot inspect services)"
+fi
+
+printf '%s\n' "Logs: journalctl --user -b -u dms.service; journalctl --user -b -u hypridle.service; journalctl -b -u greetd.service"
+exit "$status"

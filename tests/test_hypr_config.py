@@ -104,10 +104,22 @@ def test_idle_config_locks_with_the_wilsof_wrapper_before_sleep():
 
 def test_lock_surface_uses_approved_wilsof_tokens_and_password_feedback():
     config = LOCK_CONFIG.read_text(encoding="utf-8")
-    assert "Wilsof OS" in config
+    assert "text = Wilsof OS" not in config
+    assert "image {" in config
+    assert "Wilsof OS-logo med geometrisk WS-monogram.png" in config
+    assert "size = 280, 0" in config
+    assert "position = 0, 120" in config
     assert "rgb(20, 24, 30)" in config
     assert "rgb(134, 185, 206)" in config
     assert "rgb(230, 160, 160)" in config
     assert "Skriv passord for å låse opp" in config
     assert "Feil passord" in config
     assert "Mørk geometrisk bakgrunn med isblått WS-monogram.png" in config
+
+
+def test_lock_logo_is_an_approved_transparent_asset():
+    logo = ROOT / "assets" / "Wilsof OS-logo med geometrisk WS-monogram.png"
+    data = logo.read_bytes()
+    assert data.startswith(b"\x89PNG\r\n\x1a\n")
+    # PNG IHDR's ninth byte is the colour type; 6 is truecolour with alpha.
+    assert data[25] == 6

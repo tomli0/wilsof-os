@@ -7,7 +7,7 @@ Oppdatert: 2026-10-16 UTC
 - VM 113 `wilsof-arch-test` svarer med korrekt pinnet ED25519-fingeravtrykk: `SHA256:0IOuFZDTGymRZzoa5kSAO1x8FCo+ZO1khL3q/xqNAqw`.
 - `root`-SSH med eksisterende ED25519-nøkkel fungerte. Årsaken til avvisning for `wilsofdev` var konkret: `/home/wilsofdev/.ssh/` og `authorized_keys` manglet. Kontoen var ikke låst, og ingen begrensende sshd-regel ble funnet.
 - Den eksisterende offentlige nøkkelen ble lagt tilbake med katalog `0700`, nøkkelfil `0600` og korrekt eierskap. En ny, separat `wilsofdev` nøkkelinnlogging med kun publickey ble verifisert før utplassering.
-- Commit `94ebc4a` er utplassert under `/opt/wilsof-os`. Installering som `wilsofdev` passerte Arch-preflight, og installerte kopier av `wilsof-search` ble sammenlignet byte-for-byte med kildeversjonen.
+- Commit `94ebc4a` (desktop-utplassering) er utplassert under `/opt/wilsof-os`. Installering som `wilsofdev` passerte Arch-preflight, og installerte kopier av `wilsof-search` ble sammenlignet byte-for-byte med kildeversjonen. Den senere installasjonsrettingen `e192b17` konfigurerer greetd med tuigreet/Hyprland på fremtidige rene installasjoner; den er ikke kjørt mot eksisterende VM 113.
 
 ## Brukeropplevelse og design
 

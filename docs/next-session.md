@@ -5,7 +5,7 @@ Oppdatert: 2026-10-16 UTC
 ## Kontrollpunkt
 
 - Gren: `arch-install`.
-- Siste lokale commit ved dette kontrollpunktet: `94ebc4a` før dokumentasjonscommit; kontroller `git rev-parse HEAD` før videre arbeid.
+- Siste kontrollpunktscommit: `e192b17`; kontroller `git rev-parse HEAD` før videre arbeid.
 - VM 113 har fortsatt pinnet ED25519-hostnøkkel `SHA256:0IOuFZDTGymRZzoa5kSAO1x8FCo+ZO1khL3q/xqNAqw`.
 - Tilgangsstatus: `root` og `wilsofdev` fungerer med eksisterende ED25519-nøkkel og `StrictHostKeyChecking=yes`. `wilsofdev` ble reparert ved å gjenopprette manglende `~/.ssh/authorized_keys` med katalogmodus `0700` og filmodus `0600`.
 - VM-status: aktiv Hyprland/DMS-sesjon for `wilsofdev`, ulåst. Ikke rebootet, logget ut eller låst.

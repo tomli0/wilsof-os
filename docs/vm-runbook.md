@@ -8,6 +8,10 @@ Dette dokumentet gjelder bare autorisert, dedikert Wilsof-infrastruktur. VM 112/
 2. Sammenlign presentert ED25519-nøkkel mot registrert fingeravtrykk før den pins; bruk `StrictHostKeyChecking=yes` etterpå.
 3. Ta snapshot før skrivebordsarbeid når plattformen tilbyr det. Ikke reinstaller, formater eller endre VM-maskinvare som del av konfigurasjonstesting.
 
+## Før første grafiske innlogging
+
+`install-arch-test-vm.sh` konfigurerer greetd med tuigreet og Hyprland, men inneholder aldri et passord eller en passordhash. Før første grafiske innlogging må den autoriserte operatøren ved lokal konsoll sette `wilsofdev` sitt passord med vanlig interaktiv systemadministrasjon. Ikke legg passord, hash eller nøkkelmateriale i prosjektet, miljøfiler eller chat.
+
 ## Installere Wilsof-brukerprofil
 
 1. Kontroller DMS, Hyprland, Hyprlock, Hypridle, portal og brukerens systemd-/D-Bus-sesjon med `scripts/preflight-arch.sh`.

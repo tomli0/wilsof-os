@@ -72,8 +72,20 @@ EOF
 [ -s /etc/ssh/ssh_host_ed25519_key ] || ssh-keygen -t ed25519 -N '' -f /etc/ssh/ssh_host_ed25519_key
 [ -s /etc/ssh/ssh_host_rsa_key ] || ssh-keygen -t rsa -b 4096 -N '' -f /etc/ssh/ssh_host_rsa_key
 sshd -t
+# Do not rely on Arch's agreety default: this VM must present tuigreet and
+# start Hyprland only after normal PAM authentication.
+install -d -m 0755 /etc/greetd
+cat > /etc/greetd/config.toml <<'EOF'
+[terminal]
+vt = 1
+
+[default_session]
+command = "tuigreet --time --cmd Hyprland"
+user = "greeter"
+EOF
 systemctl enable NetworkManager.service sshd.service
 systemctl enable greetd.service
+[ -s /etc/greetd/config.toml ] || { echo "greetd configuration missing" >&2; exit 1; }
 systemctl set-default graphical.target
 systemctl add-wants multi-user.target qemu-guest-agent.service
 for unit in NetworkManager.service sshd.service greetd.service qemu-guest-agent.service; do

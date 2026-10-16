@@ -59,8 +59,10 @@ The English [user guide](docs/brukerveiledning.md) covers opening applications, 
 ## Development checks
 
     pytest -q
-    sh -n scripts/*.sh bin/wilsof-*
+    sh -n scripts/*.sh automation/*.sh bin/wilsof-*
     python3 -m json.tool config/dms/wilsof-theme.json
+
+The bounded [GitHub workflow](docs/github-workflow.md) documents the project queue, approval marker, hourly model-free queue check and the reason automatic model starts are disabled.
 
 GitHub Actions runs these local validation checks without secrets, homelab access, deployment or destructive disk operations.
 

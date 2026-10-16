@@ -13,7 +13,7 @@ Wilsof must not call the existing DMS Spotlight integration “universal search�
 DMS documents Spotlight IPC with application and file entry modes (`openWith apps` and `toggleWith files`):
 
 - https://danklinux.com/docs/dankmaterialshell/keybinds-ipc
-- https://github.com/AvengeMedia/DankMaterialShell/blob/master/docs/IPC.md
+- https://github.com/AvengeMedia/DankMaterialShell/commit/39220704883f2766facb541623fcdbb54e3ea907 (commit-pinned upstream implementation adding Spotlight `openWith`/`toggleWith` modes)
 
 The upstream DMS project describes Spotlight as searching applications, `dsearch`-backed files, emojis, running windows, calculator results and commands; it also describes a plugin system:
 
@@ -58,9 +58,9 @@ Confirmed from the upstream example configuration:
 - The example binds its server to `127.0.0.1:43654`.
 - The example's coverage and exclusions are configuration-dependent; it shows an indexed home path, hidden-file controls, depth limits, excluded directories and `max_file_bytes`.
 
-Source: https://github.com/AvengeMedia/danksearch/blob/master/config.example.toml
+Source: https://github.com/AvengeMedia/danksearch/blob/v1.6.0/config.example.toml
 
-Therefore “local” does not mean “minimal data collection.” A broad home-directory index may create searchable local copies of file names, text content and image metadata in the user cache. The cited configuration does not by itself establish encryption at rest, access-control separation between local processes, deletion semantics, telemetry behavior, or every network behavior. Those remain unconfirmed and must not be asserted without a version-pinned source/audit and runtime observation.
+Therefore “local” does not mean “minimal data collection.” A broad home-directory index may create searchable local copies of file names, text content and image metadata in the user cache. A loopback bind is host-wide, not automatically user-scoped: upstream issue #28 reports that its HTTP API can be reachable by every local account without per-user authentication (https://github.com/AvengeMedia/danksearch/issues/28). The cited configuration does not by itself establish encryption at rest, effective cross-account access control, deletion semantics, telemetry behavior, or every network behavior. Those remain unconfirmed and must not be asserted without a version-pinned source/audit and runtime observation.
 
 Privacy-safe default for any later evaluation:
 
@@ -79,7 +79,7 @@ No installation is proposed by this document. Before a future change can claim u
 2. Windows: an open window appears in Spotlight and selects/focuses correctly.
 3. Settings: a defined settings-search provider exists and returns an approved settings result, or the product wording remains “open Settings,” not “search settings.”
 4. Actions: permitted non-destructive commands are enumerated and tested; destructive power/session actions are excluded or require their documented confirmation without executing them.
-5. Privacy: index location, configured paths, extracted fields, local listener, log contents and cleanup are inspected on the exact versions used.
+5. Privacy: index location, configured paths, extracted fields, local listener, log contents and cleanup are inspected on the exact versions used. On a multi-user target, a second local account must be unable to query the first account’s index, or an effective authentication/isolation mitigation must be demonstrated before broader or sensitive indexing.
 6. Physical client: the MacBook → Omarchy → Proxmox input path must verify `Super+Space`, query typing, arrows, Enter and Esc. That check cannot be completed from this worker.
 
 Until those gates are met, the accurate product statement is: Wilsof provides local application/DMS-tool entry through Spotlight; file, window, settings and action search are not demonstrated as a universal search experience.

@@ -3,6 +3,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config" / "hypr" / "wilsof.conf"
+LUA_CONFIG = ROOT / "config" / "hypr" / "wilsof.lua"
+IDLE_CONFIG = ROOT / "config" / "hypr" / "hypridle.conf"
+
+
+def read_lua_config():
+    return LUA_CONFIG.read_text(encoding="utf-8")
+
+
+def read_idle_config():
+    return IDLE_CONFIG.read_text(encoding="utf-8")
 
 
 def read_config():
@@ -51,3 +61,18 @@ def test_assets_are_included_in_project():
     assert (assets / "Mørk geometrisk bakgrunn med isblått WS-monogram.png").is_file()
     assert (assets / "Wilsof OS-logo med geometrisk WS-monogram.png").is_file()
     assert (assets / "exec-92ed0dcf-0232-4ba6-a50e-52edcc98abbd.png").is_file()
+
+
+def test_dms_lua_integration_overrides_the_generated_defaults():
+    config = read_lua_config()
+    assert 'hl.bind("SUPER + space", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-search toggle"))' in config
+    assert 'hl.bind("SUPER + L", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-lock"))' in config
+    assert 'active_border = "rgb(86b9ce)"' in config
+    assert 'require("wilsof")' not in config
+
+
+def test_idle_config_locks_with_the_wilsof_wrapper_before_sleep():
+    config = read_idle_config()
+    assert "lock_cmd = wilsof-lock" in config
+    assert "before_sleep_cmd = wilsof-lock" in config
+    assert "on-timeout = wilsof-lock" in config

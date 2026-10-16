@@ -1,37 +1,42 @@
 # Status — Wilsof OS første prototype
 
-Oppdatert: 2026-10-14 UTC
+Oppdatert: 2026-10-15 UTC
 
-## Faktisk implementert
+## Faktisk implementert på VM 112 (`wilsof-test`)
 
-- Godkjente WS-assets ligger i `assets/`; bakgrunn 1672×941, mockup 1672×941 og logo 2172×724 RGBA.
-- `config/hypr/wilsof.conf` definerer tomt skrivebord uten dock/ikoner, godkjente visuelle verdier og alle arbeidsområdebindinger `Super+1…9` / `Super+Shift+1…9`.
-- `bin/wilsof-search` er en minimal og testet bro: bare `wilsof-search toggle` godtas og den kaller den dokumenterte DMS-kommandoen `dms ipc call spotlight toggle`. Den har ikke egen gruppering, filindeks, vindussøk eller systemhandlinger.
-- `scripts/preflight-fedora.sh` er en read-only kontroll som avviser ikke-Fedora og kontrollerer kommandoer, user-systemd og SELinux.
-- `scripts/install-user-config.sh` krever eksplisitt `WILSOF_TARGET_VM=1`, kjører preflight og installerer bare i den valgte brukerens hjemmekatalog på test-VM-en. Den endrer ikke Hermes-VM og ber brukeren legge til én `source`-linje selv for å unngå å endre eller duplisere aktiv Hyprland-konfigurasjon.
-- Systemd-enheten bruker sitert bakgrunnsfil med mellomrom og `ExecCondition` for DMS. DMS er en hard avhengighet; den starter ikke wallpaper dersom `dms` mangler.
+- Målmaskinen er Fedora Linux 44 Workstation på KVM. Rotfilsystemet er Btrfs på `/dev/sda3`; oppstartslinjen bruker diskens `root=UUID=…`. Ingen LiveOS-markør eller squashfs-mount er tilstede.
+- GNOME/GDM er beholdt og `gdm` er aktivert som reserveinnlogging.
+- Verifiserte pakker: DMS 1.6.3, Hyprland 0.56.2, Hyprlock 0.9.6, Hypridle 0.1.8 og xdg-desktop-portal-hyprland 1.4.1.
+- DMS sin offisielle headless-generator har opprettet den primære Hyprland Lua-konfigurasjonen. Wilsof installerer en separat `wilsof.lua`, lastet én gang etter DMS sine moduler; den overstyrer designverdier og `Super+Space`/`Super+L` uten å endre DMS-genererte filer.
+- `wilsof-search toggle` er en smal DMS Spotlight-bro. `wilsof-lock` starter den installerte PAM-baserte Hyprlock én gang; Hypridle bruker samme wrapper ved inaktivitet og før suspend.
+- Godkjent bakgrunn er installert i brukerens Wilsof-ressurser og `wilsof-wallpaper.service` er aktivert i Wilsof-sesjonsmålet. DMS må kjøre før tjenesten kan sette bakgrunnen.
+- Installasjonsskriptet er mål-VM-beskyttet, idempotent og aktiverer bare bruker-tjenester. Det oppretter ingen sudo-regler.
 
 ## Testresultater
 
 | Kontroll | Status | Evidens |
 |---|---|---|
-| Python-tester for konfigurasjon, assets, wrapper og sikkerhetsvakt | PASS | `pytest -q`: 10 passed (2026-10-14) |
-| Shell-syntaks | PASS | `sh -n bin/wilsof-search scripts/preflight-fedora.sh scripts/install-user-config.sh` |
-| Wrapper mot DMS-argumenter | PASS | Test med falsk `dms`; eksakt kall `ipc call spotlight toggle` |
-| Preflight på Hermes-VM | PASS (for avvisning) | Avviser korrekt ikke-Fedora uten endringer |
-| Systemd-parser med målplattformens enheter | IKKE TESTET | Lokal vert mangler både `dms` og `graphical-session.target` |
-| DMS/Hyprland/portal/SELinux GUI | IKKE TESTET | Ingen autorisert dedikert VM |
-| Låseskjerm/autentisering | IKKE TESTET | `loginctl lock-session` er binding, ikke bevis på locker |
-| Reboot/shutdown/logout-bekreftelse | IKKE TESTET | Krever Wilsof/DMS-provider eller egen godkjent utvidelse |
+| Lokale tester | PASS | `pytest -q`: 15 passed |
+| Shell-syntaks og whitespace | PASS | `sh -n` for alle shellskript; `git diff --check` |
+| Bootstrap kilde-/pakkevakt | PASS | Fedora 44- og pakkesjekk, RPM-signaturkontroll og GDM-vakt testet statisk; kjørt på VM |
+| Mål-VM preflight | PASS | Fedora, `dnf`, `hyprctl`, `dms`, user-systemd og SELinux Enforcing |
+| Pakker og kilder | PASS | RPM-versjoner og DMS/Hyprland COPR-er avlest på VM |
+| Installer-idempotens | PASS | To kjøringer; nøyaktig én `require("wilsof")` i Hyprland Lua-entrypoint |
+| Systemd-enheter | PASS | `systemd-analyze --user verify` uten feil |
+| Hyprland-konfigurasjon | PASS | `Hyprland --verify-config --config ~/.config/hypr/hyprland.lua` → `config ok` |
+| Wrapper-sikkerhet | PASS | ugyldige argumenter avvises med exit 64 |
+| DMS/Hyprland-grafisk økt | IKKE TESTET | SSH-økten står fortsatt i GNOME; DMS og Hypridle starter først i Hyprland-økten |
+| Bakgrunn og tomt skrivebord | IKKE TESTET | krever faktisk Hyprland-innlogging |
+| Super+Space / DMS Spotlight | IKKE TESTET | krever aktiv DMS i Hyprland-økten |
+| Hyprlock-autentisering | IKKE TESTET | krever faktisk lås, lokal autentisering og opplåsing |
+| Portal, lyd og skjermdeling | IKKE TESTET | krever aktiv Hyprland-økt |
 
-## Pakkekilder og versjoner
+## Pakkekilder
 
-- Fedora Workstation 44 er aktuell offisiell nedlasting ved kontroll. ISO skal hentes fra https://fedoraproject.org/workstation/download/ og verifiseres med Fedora-prosjektets publiserte SHA-256 og OpenPGP-instruks derfra før VM-opprettelse.
-- DMS-dokumentasjonen angir COPR-pakker for Fedora 43/44 og kommandoen `sudo dnf install dms`: https://danklinux.com/docs/dankmaterialshell/installation
-- Hyprland-versjon, DMS-versjon, COPR-navn, portals og alle RPM/Flatpak-versjoner er IKKE LÅST før de leses fra den faktiske Fedora-VM-en. De skal registreres med `rpm -qa`, `dnf repolist --enabled` og `flatpak remotes --show-details`.
+- Fedora 44: grunnsystem, GDM og standardkomponenter.
+- `copr:copr.fedorainfracloud.org:avengemedia:dms`: DMS 1.6.3; den aktiverte automatisk avhengigheten `avengemedia/danklinux`.
+- `copr:copr.fedorainfracloud.org:ashbuk:Hyprland-Fedora`: Hyprland, Hyprlock, Hypridle og Hyprland-portalen.
 
-## Blokkeringer og neste handling
+## Neste nødvendige manuelle handling
 
-Lesekontroll lokalt fant ikke `qm`, `pvesh`, `virsh` eller `/dev/kvm`. Forsøk på den ene dokumenterte SSH-verten `hermes-vm` stoppet ved host-key-verifisering; ingen nøkkel ble akseptert eller endret. Det finnes dermed ingen bekreftet legitim Proxmox-tilgang i denne sesjonen.
-
-Nødvendig brukerinput: gi navnet/IP-en og SSH-host-key/tilgangsvei til en autorisert Proxmox-vert, eller opprett en isolert Fedora Workstation 44 test-VM. Bruk UEFI, q35, 4 vCPU, 6 GiB RAM (reduser ved dokumentert mangel), 40 GiB qcow2 virtio-disk, virtio-nett på privat/NAT-segment og standard virtio-grafikk/SPICE eller annen godkjent grafisk konsoll. Ikke bruk passthrough. Installer med standard diskvalg i VM-en; opprett separat testbruker og SSH-tilgang fra Hermes-VM. Deretter: kopier repoet, kjør `WILSOF_TARGET_VM=1 ./scripts/install-user-config.sh`, følg DMS sin dokumenterte Fedora-repoinstruks, og test grafisk.
+Velg **Hyprland** i GDM for `wilsofdev` og gjennomfør GUI-sjekklisten i `docs/testplan.md`. GNOME beholdes som reservevalg.

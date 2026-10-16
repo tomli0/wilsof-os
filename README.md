@@ -22,4 +22,4 @@ python3 -m http.server 8080 -d prototype
 
 ## Status
 
-VM-opprettelse og GUI-kjøring er blokkert i dette miljøet: ingen Proxmox-/libvirt-/QEMU-tilgang og ingen `/dev/kvm`. Se `docs/avvik.md` og `docs/testplan.md` for nøyaktig teststatus og overtakelsessteg.
+Fedora-test-VM-en er nå klargjort med DMS, Hyprland, Hyprlock, Hypridle og Hyprland-portalen. Brukerkonfigurasjonen er installert og statisk validert; faktisk DMS/Hyprland-grafikk, Super+Space og lås er fortsatt IKKE TESTET før de observeres i en Hyprland-økt. Se `docs/status.md` og `docs/testplan.md`.

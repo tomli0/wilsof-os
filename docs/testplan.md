@@ -2,22 +2,29 @@
 
 | Område | Kriterium | Status | Evidens |
 |---|---|---|---|
-| Assets | Alle tre leverte filer finnes i prosjektet | PASS | statisk pytest-kontroll |
-| Konfigurasjon | Én Super+Space-inngang og vindu-/arbeidsområdebindinger 1–9 | PASS | statisk pytest-kontroll |
-| Konfigurasjon | Aktiv/inaktiv kant, avrunding og mellomrom følger designretning | PASS | statisk pytest-kontroll |
+| Assets | Alle tre leverte filer finnes i prosjektet | PASS | pytest |
+| Konfigurasjon | Wilsof Lua lastes etter DMS-modulene; Super+Space og Super+L overstyres | PASS | pytest og `Hyprland --verify-config` på VM |
+| Design | Aktiv/inaktiv kant, avrunding og mellomrom følger designretning | PASS | pytest og validert Lua-konfigurasjon |
 | DMS-bro | Kun `toggle` aksepteres og delegeres til DMS Spotlight | PASS | isolert test med falsk `dms` |
+| Låsebro | Kun argumentfri låsing godtas; Hyprlock startes maksimalt én gang | PASS | isolert test med falsk `hyprlock` |
 | Målmaskinvakt | Installasjon krever `WILSOF_TARGET_VM=1` | PASS | isolert test |
-| Script-syntaks | Alle shellskript parses av `/bin/sh` | PASS | `sh -n` |
-| Wallpaper | Filsti med mellomrom er sitert; DMS sjekkes før kjøring | PASS | statisk pytest-kontroll |
-| Browserprototype | Samlet lokalt søk, grupper og bekreftelsesdialog vises | IKKE TESTET | Ikke del av aktiv OS-konfigurasjon |
-| GUI | Tomt skrivebord og topplinje | IKKE TESTET | Krever autorisert VM + grafisk konsoll |
-| GUI | Syv standardprogrammer åpner og desktop-id-er er riktige | IKKE TESTET | Krever autorisert VM |
-| GUI | Super+Space, filter, piler, Enter og Esc | IKKE TESTET | Krever autorisert VM |
-| GUI | Fokus, flislegging, flytting og arbeidsområder | IKKE TESTET | Krever autorisert VM |
-| Sikkerhet | Lås autentiserer; reboot/shutdown/logout bekreftes | IKKE TESTET | Krever autorisert VM og faktisk DMS/provider-integrasjon |
-| Plattform | D-Bus, polkit, SELinux, lyd og portals | IKKE TESTET | Krever autorisert VM |
-| Robusthet | Overlever restart; ingen duplisert autostart | IKKE TESTET | Krever autorisert VM |
-| Fysisk | GPU, Wi-Fi, suspend og Secure Boot | IKKE TESTET | Ikke verifisert i VM |
-| Installer/bootc | Bygg, installasjon og rollback | IKKE TESTET | Utenfor dette spiket |
+| Installer | DMS/Hyrland Lua-integrasjon og user-unit enablement er idempotent | PASS | to VM-kjøringer; én `require("wilsof")` |
+| Systemd | Wilsof-enheter parses | PASS | `systemd-analyze --user verify` på VM |
+| Plattform | Fedora 44, installert disk, pakker og SELinux Enforcing | PASS | VM-kontroll via SSH |
+| GUI | Godkjent bakgrunn, tomt skrivebord og DMS-topplinje | IKKE TESTET | krever Hyprland-innlogging ved grafisk konsoll |
+| GUI | Super+Space åpner DMS Spotlight; Esc lukker den | IKKE TESTET | krever aktiv DMS i Hyprland-økten |
+| GUI | Fokus, flislegging, flytting og arbeidsområder | IKKE TESTET | krever Hyprland-økt |
+| Sikkerhet | Super+L og idle-lock starter Hyprlock; autentisering låser opp | IKKE TESTET | må observeres lokalt uten å dele passord |
+| Plattform | Portal, lyd og skjermdeling | IKKE TESTET | krever Hyprland-økt |
+| Robusthet | DMS, Hypridle og wallpaper starter igjen etter ut-/innlogging | IKKE TESTET | krever grafisk omstart |
 
-Alle PASS-markeringer over er statiske eller isolerte scriptkontroller der dette er eksplisitt oppgitt. Ingen GUI-status blir PASS uten grafisk kjøring.
+## Kort GUI-sjekkliste
+
+1. I GDM, velg **Hyprland** for `wilsofdev` og logg inn. GNOME skal fortsatt vises som alternativ.
+2. Bekreft tomt skrivebord, godkjent mørk WS-bakgrunn og DMS-topplinje.
+3. Trykk `Super+Space`; verifiser at DMS Spotlight åpnes. Lukk med `Esc`.
+4. Trykk `Super+L`; bekreft at Hyprlock vises og at lokal autentisering låser opp igjen.
+5. Vent fem minutter eller test Hypridle etter ønsket lokal metode; bekreft at skjermen låses uten duplikat locker.
+6. Logg ut og inn i Hyprland én gang; gjenta punkt 2–4.
+
+Ingen GUI-rad skal merkes PASS uten at den er observert i den grafiske økten.

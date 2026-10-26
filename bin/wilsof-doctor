@@ -76,7 +76,8 @@ else
 fi
 
 if command -v busctl >/dev/null 2>&1; then
-    if busctl --system status net.hadess.PowerProfiles >/dev/null 2>&1; then
+    if busctl --system status net.hadess.PowerProfiles >/dev/null 2>&1 ||
+       busctl --system --no-pager --no-legend --activatable list 2>/dev/null | grep -q '^net\.hadess\.PowerProfiles[[:space:]]\|^net\.hadess\.PowerProfiles$'; then
         ok "D-Bus power-profile backend: net.hadess.PowerProfiles"
     else
         warn "D-Bus power-profile backend unavailable: net.hadess.PowerProfiles (DMS will show 'ERROR: power-profiles-daemon not available')"

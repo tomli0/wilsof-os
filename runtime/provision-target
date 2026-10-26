@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+"""Provision the Wilsof desktop in a mounted Arch target, not storage itself."""
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+
+def validate_target(target, username, live):
+    target = Path(target).resolve()
+    if target == Path('/') and not live:
+        raise ValueError('Refusing to provision the running system')
+    if live and (target != Path('/') or username != 'live' or not Path('/run/archiso/bootmnt').is_mount()):
+        raise ValueError('Live provisioning requires the booted Archiso evaluation environment')
+    if not re.fullmatch(r'[a-z_][a-z0-9_-]{0,31}', username):
+        raise ValueError('Invalid username')
+    paths = ['etc/passwd', 'usr/lib/os-release', f'home/{username}', 'usr/share/wilsof/source',
+             'usr/local/lib/wilsof/provision-target', 'usr/local/bin/wilsof-config-update',
+             'etc/greetd/config.toml', 'etc/systemd/system', 'etc']
+    for relative in paths:
+        current = target
+        for part in Path(relative).parts:
+            current = current / part
+            if current.is_symlink():
+                raise ValueError(f'Refusing target symlink: {relative}')
+    release = target / 'usr/lib/os-release'
+    if not release.exists():
+        release = target / 'etc/os-release'
+    if release.is_symlink() or 'ID=arch' not in release.read_text().splitlines():
+        raise ValueError('Target must be an initialized Arch installation')
+    accounts = [line.split(':') for line in (target / 'etc/passwd').read_text().splitlines()]
+    account = next((row for row in accounts if row[0] == username), None)
+    if account is None or int(account[2]) < 1000 or account[5] != f'/home/{username}':
+        raise ValueError('Expected a non-root target account with a dedicated home')
+    return target
+
+
+def main():
+    if os.geteuid() != 0 or len(sys.argv) not in (3, 4):
+        raise SystemExit('Usage (root): provision-target MOUNTPOINT USER [--live]')
+    target = Path(sys.argv[1]).resolve()
+    username = sys.argv[2]
+    if len(sys.argv) == 4 and sys.argv[3] != '--live':
+        raise SystemExit('Unknown provisioning mode')
+    live = len(sys.argv) == 4
+    target = validate_target(target, username, live)
+    if not live and not target.is_mount():
+        raise SystemExit('Installed target must be a mounted root filesystem')
+    source = Path('/usr/share/wilsof/source')
+    destination = target / 'usr/share/wilsof/source'
+    if source.resolve() != destination.resolve():
+        if destination.exists():
+            raise SystemExit('Refusing to overwrite an existing system source bundle')
+        shutil.copytree(source, destination)
+    lib = target / 'usr/local/lib/wilsof'
+    lib.mkdir(parents=True, exist_ok=True)
+    if Path(__file__).resolve() != (lib / 'provision-target').resolve():
+        shutil.copy2(__file__, lib / 'provision-target')
+    (lib / 'provision-target').chmod(0o755)
+    bindir = target / 'usr/local/bin'
+    bindir.mkdir(parents=True, exist_ok=True)
+    for name in ('wilsof-config-update',):
+        shutil.copy2(destination / 'bin' / name, bindir / name)
+        (bindir / name).chmod(0o755)
+    if not live:
+        greetd = target / 'etc/greetd'
+        greetd.mkdir(parents=True, exist_ok=True)
+        (greetd / 'config.toml').write_text('[terminal]\nvt = 1\n[default_session]\ncommand = "tuigreet --time --cmd Hyprland"\nuser = "greeter"\n')
+        subprocess.run(['systemctl', '--root', str(target), 'enable', 'greetd.service', 'NetworkManager.service', 'systemd-resolved.service'], check=True)
+        subprocess.run(['systemctl', '--root', str(target), 'set-default', 'graphical.target'], check=True)
+        resolver = target / 'etc/resolv.conf'
+        if resolver.exists() or resolver.is_symlink():
+            resolver.unlink()
+        resolver.symlink_to('/run/systemd/resolve/stub-resolv.conf')
+    command = ['chroot', str(target), 'runuser', '-u', username, '--', 'python3', '/usr/share/wilsof/source/runtime/desktop.py']
+    if live:
+        command.append('--live')
+    subprocess.run(command, check=True)
+
+
+if __name__ == '__main__':
+    main()

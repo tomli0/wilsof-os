@@ -107,7 +107,7 @@ def test_lock_surface_uses_approved_wilsof_tokens_and_password_feedback():
     assert "text = Wilsof OS" not in config
     assert "image {" in config
     assert "Wilsof OS-logo med geometrisk WS-monogram.png" in config
-    assert "size = 280, 0" in config
+    assert "size = 93" in config
     assert "position = 0, 120" in config
     assert "rgb(20, 24, 30)" in config
     assert "rgb(134, 185, 206)" in config

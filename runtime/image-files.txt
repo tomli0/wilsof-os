@@ -1,0 +1,25 @@
+bin/wilsof-search
+bin/wilsof-lock
+bin/wilsof-help
+bin/wilsof-help-view
+bin/wilsof-doctor
+bin/wilsof-vm-test-binds
+bin/wilsof-config-update
+config/hypr/wilsof.lua
+config/hypr/wilsof.conf
+config/hypr/hypridle.conf
+config/hypr/hyprlock.conf
+config/hypr/wilsof-vm-test.lua
+config/systemd/wilsof-session.target
+config/systemd/wilsof-wallpaper.service
+config/systemd/dms-wilsof.conf
+config/dms/settings-template.json
+config/dms/wilsof-theme.json
+config/wilsof-shortcuts.json
+runtime/desktop.py
+runtime/provision-target
+runtime/desktop-packages.txt
+runtime/image-files.txt
+schemas/installation-plan.schema.json
+assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png
+assets/Wilsof OS-logo med geometrisk WS-monogram.png

@@ -64,7 +64,7 @@ Read the concise [engineering guide](CONTRIBUTING.md) before contributing. The [
     python3 -m pip install -r requirements-dev.txt
     python3 -m pytest -q
     shellcheck --exclude=SC1091 --shell=sh bin/wilsof-doctor bin/wilsof-help bin/wilsof-lock bin/wilsof-search bin/wilsof-vm-test-binds scripts/bootstrap-desktop.sh scripts/build-iso.sh scripts/install-user-config.sh scripts/preflight-arch.sh scripts/preflight-fedora.sh
-    shellcheck --shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh
+    shellcheck --shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh iso/profiledef.sh
 
     python3 -m json.tool config/dms/wilsof-theme.json
 

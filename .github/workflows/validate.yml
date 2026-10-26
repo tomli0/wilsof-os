@@ -28,5 +28,5 @@ jobs:
           python -m json.tool config/dms/settings-template.json >/dev/null
           python -m json.tool config/dms/wilsof-theme.json >/dev/null
           shellcheck --exclude=SC1091 --shell=sh bin/wilsof-doctor bin/wilsof-help bin/wilsof-lock bin/wilsof-search bin/wilsof-vm-test-binds scripts/bootstrap-desktop.sh scripts/build-iso.sh scripts/install-user-config.sh scripts/preflight-arch.sh scripts/preflight-fedora.sh
-          shellcheck --shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh
+          shellcheck --shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh iso/profiledef.sh
           git diff --check

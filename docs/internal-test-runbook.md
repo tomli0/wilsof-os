@@ -34,11 +34,24 @@ or attach images. The evidence records the actual environment and command.
 ## Live environment
 
 The `live` account is an ephemeral evaluation account, not a development account
-or installed administrator. It has no usable password and no persistent private
-identity. The ISO intentionally opens an unlocked graphical session. Lock
-requests route to an explicit warning; idle locking is disabled for that account.
-Do not use it for private work. It may run only the root-owned installer through
-the dedicated sudo rule; there is no blanket passwordless sudo policy.
+or installed administrator. A fresh password is generated at boot, displayed only
+on the local console banner, and never embedded in the image. Use Ctrl+Alt+F2,
+log in as `live` with that boot's displayed password (input is hidden), then run
+`sudo wilsof-live-recover` for relevant logs or add `--restart` to retry desktop
+setup. Ctrl+Alt+F1 returns to graphics. Root remains locked; do not try empty-root
+login. No network login is enabled. Recovery starts independently before graphical
+setup; failures reveal the console and useful journals rather than hide them.
+
+The ISO intentionally opens an unlocked graphical session. Lock requests route
+to an explicit warning; idle locking is disabled for the evaluation account.
+Do not use it for private work. Its only root commands are the root-owned
+installer and exact diagnostics/retry helper; there is no blanket passwordless
+sudo policy. This account, credential banner and recovery policy are live-only.
+
+See [boot menu/splash limitations](../iso/boot/README.md): Try Wilsof OS is the
+safe no-install default, with optional RAM copying, speech and diagnostic entries.
+Esc reveals Plymouth boot details. The RAM-copy entry leaves real upstream `pv`
+progress visible; the normal splash is indeterminate, not a fake percentage.
 
 The intended session is Hyprland/DMS with the approved WS assets, Spotlight
 (`Super+Space`), help (`Super+F1`), Ghostty, Firefox, Nautilus, Text Editor, Papers,

@@ -34,4 +34,11 @@ PY
 mkdir -p "$WILSOF_ISO_OUTDIR"
 python3 "$root/scripts/prepare-iso.py" --upstream /usr/share/archiso/configs/releng \
     --output "${WILSOF_ISO_WORKDIR}-profile" --source "$root" --commit "$WILSOF_SOURCE_COMMIT"
+python3 - "$root" "${WILSOF_ISO_WORKDIR}-profile" <<'PY'
+from pathlib import Path
+from runpy import run_path
+import sys
+source, profile = map(Path, sys.argv[1:])
+run_path(str(source / 'scripts/boot-profile.py'))['configure_boot'](profile, source)
+PY
 exec mkarchiso -v -r -w "$WILSOF_ISO_WORKDIR" -o "$WILSOF_ISO_OUTDIR" "${WILSOF_ISO_WORKDIR}-profile"

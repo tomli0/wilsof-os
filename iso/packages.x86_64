@@ -16,3 +16,5 @@ nautilus
 gnome-text-editor
 polkit-gnome
 power-profiles-daemon
+plymouth
+pv

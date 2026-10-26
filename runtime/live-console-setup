@@ -20,7 +20,7 @@ def prepare_console(root=Path('/')):
         '\nWilsof OS — temporary local recovery console\n'
         'Ctrl+Alt+F2 opens this console; Ctrl+Alt+F1 returns to graphics.\n'
         f'Username: live    This boot only password: {password}\n'
-        'Password input is hidden. No root login or network access is enabled.\n'
+        'Password input is hidden. No root or remote login is enabled.\n'
         'After login: sudo wilsof-live-recover (logs)\n'
         'Retry desktop: sudo wilsof-live-recover --restart\n'
         'This live session is public evaluation space, not a private account.\n\n')

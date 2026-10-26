@@ -32,6 +32,8 @@ def test_recovery_password_is_runtime_only_and_not_in_command_arguments(tmp_path
     assert len(password) >= 12
     assert password not in str([c[0] for c in calls])
     assert password in issue and 'live' in issue and 'Ctrl+Alt+F2' in issue
+    assert 'remote login' in issue
+    assert 'network access is enabled' not in issue
     assert password_call[1]['check'] is True
     assert not list(tmp_path.rglob('*.secret'))
 

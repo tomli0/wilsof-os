@@ -52,7 +52,7 @@ def install_user(source, home, *, live=False):
             if os.path.exists(temporary):
                 os.unlink(temporary)
 
-    for name in ('wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-vm-test-binds'):
+    for name in ('wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper'):
         write(f'.local/bin/{name}', (source / 'bin' / name).read_bytes(), 0o755)
     for name in ('wilsof.lua', 'wilsof.conf', 'hypridle.conf', 'hyprlock.conf'):
         write(f'.config/hypr/{name}', (source / 'config/hypr' / name).read_bytes())
@@ -71,7 +71,8 @@ def install_user(source, home, *, live=False):
     settings = confined('.config/DankMaterialShell/settings.json')
     if live or not settings.exists():
         data = json.loads(settings.read_text() if settings.exists() else (source / 'config/dms/settings-template.json').read_text())
-        data.setdefault('customThemeFile', str(home / '.local/share/wilsof-os/wilsof-theme.json'))
+        if data.get('customThemeFile') in (None, '', '__WILSOF_THEME_PATH__'):
+            data['customThemeFile'] = str(home / '.local/share/wilsof-os/wilsof-theme.json')
         data['customPowerActionLock'] = str(home / '.local/bin/wilsof-lock')
         if live:
             data.update(loginctlLockIntegration=False, lockBeforeSuspend=False, lockAtStartup=False,

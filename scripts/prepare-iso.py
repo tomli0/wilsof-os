@@ -73,7 +73,7 @@ def prepare(upstream, output, source, commit):
     write('etc/shadow', 'root:!:14871::::::\n', 0o400)
     write('etc/hostname', 'wilsof-live\n')
     write('etc/greetd/config.toml', '[terminal]\nvt = 1\n[default_session]\ncommand = "tuigreet --cmd Hyprland"\nuser = "greeter"\n[initial_session]\ncommand = "Hyprland"\nuser = "live"\n')
-    write('usr/local/lib/wilsof/live-setup', '#!/bin/sh\nset -eu\nid live >/dev/null 2>&1 || useradd -m -s /bin/bash live\n/usr/local/lib/wilsof/provision-target / live --live\n', 0o755)
+    write('usr/local/lib/wilsof/live-setup', '#!/bin/sh\nset -eu\nid live >/dev/null 2>&1 || useradd -m -s /bin/bash live\nrunuser -u live -- dbus-run-session -- gsettings set org.gnome.desktop.media-handling automount false\nrunuser -u live -- dbus-run-session -- gsettings set org.gnome.desktop.media-handling automount-open false\n/usr/local/lib/wilsof/provision-target / live --live\n', 0o755)
     write('etc/sudoers.d/wilsof-live-installer', 'live ALL=(root) NOPASSWD: /usr/local/bin/wilsof-install\n', 0o440)
     write('etc/systemd/system/wilsof-live-setup.service', '[Unit]\nDescription=Prepare ephemeral Wilsof live desktop\nAfter=systemd-sysusers.service local-fs.target\nBefore=greetd.service\n[Service]\nType=oneshot\nExecStart=/usr/local/lib/wilsof/live-setup\nRemainAfterExit=yes\n[Install]\nWantedBy=multi-user.target\n')
     write('etc/systemd/system/greetd.service.d/live.conf', '[Unit]\nRequires=wilsof-live-setup.service\nAfter=wilsof-live-setup.service\n')

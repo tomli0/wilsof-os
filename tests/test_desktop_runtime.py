@@ -57,6 +57,20 @@ def test_live_configuration_updates_keep_all_lock_paths_harmless(tmp_path):
     assert not (home / '.config/systemd/user/graphical-session.target.wants/hypridle.service').is_symlink()
 
 
+def test_new_desktop_resolves_theme_placeholder(tmp_path):
+    desktop = load_runtime()
+    entry = tmp_path / '.config/hypr/hyprland.lua'
+    entry.parent.mkdir(parents=True)
+    entry.write_text('-- base\n')
+    desktop.install_user(ROOT, tmp_path)
+    settings = json.loads((tmp_path / '.config/DankMaterialShell/settings.json').read_text())
+    assert settings['customThemeFile'] == str(tmp_path / '.local/share/wilsof-os/wilsof-theme.json')
+
+
+def test_desktop_startup_has_bounded_slow_vm_allowance():
+    assert 'TimeoutStartSec=300' in (ROOT / 'config/systemd/dms-wilsof.conf').read_text()
+
+
 def test_desktop_provisioning_preserves_personal_settings_and_backs_up_managed_files(tmp_path):
     desktop = load_runtime()
     home = tmp_path / "home"

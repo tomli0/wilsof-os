@@ -37,6 +37,9 @@ def test_profile_keeps_boot_dependencies_but_removes_remote_access_and_host_data
     assert (payload / 'runtime/desktop.py').exists()
     assert (payload / 'SOURCE_COMMIT').read_text().strip() == 'a' * 40
     assert (destination / 'airootfs/etc/greetd/config.toml').is_file()
+    live_setup = (destination / 'airootfs/usr/local/lib/wilsof/live-setup').read_text()
+    assert 'gsettings set org.gnome.desktop.media-handling automount false' in live_setup
+    assert 'gsettings set org.gnome.desktop.media-handling automount-open false' in live_setup
 
 
 def test_payload_manifest_excludes_private_extras_and_rejects_symlinks(tmp_path):

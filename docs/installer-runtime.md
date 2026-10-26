@@ -25,12 +25,19 @@ The relevant upstream modules and calls are:
   device_modifications=[modification])`, then
   `FilesystemHandler(config).perform_filesystem_operations()`.
 - `Installer(target, config, base_packages=packages, kernels=['linux'])` as a
-  context manager; `mount_ordered_layout()`, `minimal_installation(...)`,
+  context manager; `mount_ordered_layout()`, `minimal_installation(..., locale_config=None)`,
+  `set_vconsole(locale)` and one checked
   `set_locale(LocaleConfiguration('us', 'en_US.UTF-8', 'UTF-8'))`,
   `create_users(User(name, Password(plaintext=secret), True))`,
   `set_user_password(user)`, `mkinitcpio(['-P'])`,
   `add_bootloader(Bootloader.Systemd)`, `arch_chroot(...)`, `enable_service(...)`,
   `genfstab()`, and `post_install_check()`.
+
+Archinstall 4.5's locale setter is non-idempotent: it only matches commented
+`locale.gen` entries. Its minimal installer discards that setter's result, so
+Wilsof passes no locale into the minimal step and performs one checked locale
+generation afterwards, with explicit vconsole configuration. A stateful regression
+fixture models this upstream behavior rather than always returning success.
 
 The explicit password call is necessary because 4.5's `create_users()` discards
 its password setter's failure result. Password/hash input reaches `chpasswd
@@ -94,7 +101,11 @@ The parent build must supply, root-owned and not writable by live users:
    per line; blank lines and whole-line `#` comments are supported. No options,
    repository-qualified names, URLs or shell syntax. It must include all core
    desktop, greeter/frontend and DMS dependencies. The adapter adds base, linux,
-   linux-firmware, mkinitcpio, networkmanager, sudo and greetd. Online official
+   linux-firmware, mkinitcpio, networkmanager, sudo and greetd. It also explicitly
+   reviews efibootmgr, filesystem tools, Intel/AMD microcode and the possible
+   upstream accessibility package additions. The digest binds requested packages;
+   official repository dependencies are resolved by pacman and recorded separately.
+   Online official
    repositories/mirrors must work; offline package availability is not promised.
 3. Executable `/usr/local/lib/wilsof/provision-target TARGET USER [--live]`.
    The adapter calls exactly `provision-target /mnt/wilsof USER` after the account

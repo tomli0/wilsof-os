@@ -33,6 +33,7 @@ for managed in \
   "$HOME/.local/bin/wilsof-search" "$HOME/.local/bin/wilsof-lock" \
   "$HOME/.local/bin/wilsof-help" "$HOME/.local/bin/wilsof-help-view" \
   "$HOME/.local/bin/wilsof-doctor" \
+  "$HOME/.local/bin/wilsof-apply-wallpaper" \
   "$HOME/.local/bin/wilsof-vm-test-binds" \
   "$HOME/.local/share/wilsof-os/wilsof-shortcuts.json" \
   "$HOME/.local/share/wilsof-os/assets/Wilsof OS-logo med geometrisk WS-monogram.png" \
@@ -51,6 +52,7 @@ install -m 0755 "$root/bin/wilsof-lock" "$HOME/.local/bin/wilsof-lock"
 install -m 0755 "$root/bin/wilsof-help" "$HOME/.local/bin/wilsof-help"
 install -m 0755 "$root/bin/wilsof-help-view" "$HOME/.local/bin/wilsof-help-view"
 install -m 0755 "$root/bin/wilsof-doctor" "$HOME/.local/bin/wilsof-doctor"
+install -m 0755 "$root/bin/wilsof-apply-wallpaper" "$HOME/.local/bin/wilsof-apply-wallpaper"
 install -m 0755 "$root/bin/wilsof-vm-test-binds" "$HOME/.local/bin/wilsof-vm-test-binds"
 install -d "$HOME/.local/share/wilsof-os/vm-test"
 install -m 0644 "$root/config/wilsof-shortcuts.json" "$HOME/.local/share/wilsof-os/wilsof-shortcuts.json"

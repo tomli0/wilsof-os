@@ -84,11 +84,14 @@ def test_installer_selects_arch_or_fedora_preflight_explicitly():
     assert 'arch) "$root/scripts/preflight-arch.sh"' in content
 
 
-def test_wallpaper_unit_requires_dms_and_quotes_asset_path_with_spaces():
+def test_wallpaper_unit_requires_dms_and_uses_argument_safe_readiness_helper():
     content = WALLPAPER_UNIT.read_text(encoding="utf-8")
     assert "Requires=dms.service" in content
     assert "After=dms.service" in content
-    assert '"%h/.local/share/wilsof-os/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png"' in content
+    assert 'ExecStart=%h/.local/bin/wilsof-apply-wallpaper' in content
+    helper = (ROOT / 'bin/wilsof-apply-wallpaper').read_text()
+    assert "['dms', 'ipc', 'call', 'wallpaper', 'set', str(image)]" in helper
+    assert 'Mørk geometrisk bakgrunn med isblått WS-monogram.png' in helper
 
 
 def test_installer_integrates_with_the_dms_lua_entrypoint_and_locking():

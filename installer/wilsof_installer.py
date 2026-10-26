@@ -163,6 +163,9 @@ class ArchinstallExecutor:
         self.guest_enabled = guest[1]
         self.packages = list(dict.fromkeys([
             'base', 'linux', 'linux-firmware', 'mkinitcpio', 'networkmanager', 'sudo', 'greetd',
+            # Include upstream bootloader/microcode/accessibility additions in review.
+            'efibootmgr', 'dosfstools', 'e2fsprogs', 'intel-ucode', 'amd-ucode',
+            'brltty', 'espeakup', 'alsa-utils',
             *read_manifest(manifest), *guest[0],
         ]))
         self.manifest_digest = 'sha256-' + hashlib.sha256(
@@ -206,7 +209,10 @@ class ArchinstallExecutor:
                            kernels=['linux']) as installation:
             installation.mount_ordered_layout()
             locale = api.LocaleConfiguration('us', 'en_US.UTF-8', 'UTF-8')
-            installation.minimal_installation(mkinitcpio=False, hostname='wilsof', locale_config=locale)
+            # 4.5 minimal_installation discards set_locale's result, and set_locale
+            # is not idempotent. Perform one checked locale call after base install.
+            installation.minimal_installation(mkinitcpio=False, hostname='wilsof', locale_config=None)
+            installation.set_vconsole(locale)
             if not installation.set_locale(locale):
                 raise Refusal('Target locale generation failed')
             user = api.User(plan['account']['username'], api.Password(plaintext=password), True)

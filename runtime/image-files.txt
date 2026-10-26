@@ -5,6 +5,7 @@ bin/wilsof-help-view
 bin/wilsof-doctor
 bin/wilsof-vm-test-binds
 bin/wilsof-config-update
+bin/wilsof-apply-wallpaper
 bin/wilsof-install
 installer/__init__.py
 installer/wilsof_installer.py

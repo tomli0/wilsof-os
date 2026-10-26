@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""Apply the approved wallpaper only after DMS's QML IPC target is ready."""
+from pathlib import Path
+import subprocess
+import sys
+import time
+
+
+def apply_wallpaper(image, *, run=subprocess.run, wait=time.sleep, timeout=120):
+    image = Path(image)
+    if not image.is_file():
+        raise RuntimeError('Approved wallpaper is missing')
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            result = run(['dms', 'ipc', 'call', 'wallpaper', 'set', str(image)],
+                         capture_output=True, text=True, timeout=5, check=False)
+            if result.returncode == 0 and result.stdout.startswith('SUCCESS: Wallpaper set to '):
+                result = run(['dms', 'ipc', 'call', 'wallpaper', 'get'],
+                             capture_output=True, text=True, timeout=5, check=False)
+                if result.returncode == 0 and result.stdout.strip() == str(image):
+                    return
+        except subprocess.TimeoutExpired:
+            pass
+        wait(1)
+    raise RuntimeError('DMS did not confirm the approved wallpaper within the bounded startup window')
+
+
+if __name__ == '__main__':
+    try:
+        apply_wallpaper(Path.home() / '.local/share/wilsof-os/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png')
+    except (OSError, RuntimeError) as error:
+        print(f'wilsof-wallpaper: {error}', file=sys.stderr)
+        raise SystemExit(1)

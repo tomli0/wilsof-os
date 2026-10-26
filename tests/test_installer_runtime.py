@@ -184,7 +184,18 @@ def fake_arch(tmp_path):
     session.__enter__ = Mock(return_value=session)
     session.__exit__ = Mock(return_value=False)
     session.mkinitcpio.return_value = True
-    session.set_locale.return_value = True
+    locale_generated = False
+    def generate_locale(locale):
+        nonlocal locale_generated
+        if locale_generated:
+            return False  # archinstall 4.5 only matches commented locale.gen entries.
+        locale_generated = True
+        return True
+    session.set_locale.side_effect = generate_locale
+    def minimal_installation(**kwargs):
+        if kwargs.get('locale_config') is not None:
+            session.set_locale(kwargs['locale_config'])
+    session.minimal_installation.side_effect = minimal_installation
     session.set_user_password.return_value = True
     session.post_install_check.return_value = []
     session.create_users.side_effect = lambda user: events.append('user')
@@ -252,8 +263,13 @@ def test_arch_executor_orders_guard_and_propagates_failures(fake_arch, monkeypat
         f.session.add_bootloader.assert_called_once_with('systemd')
         f.session.enable_service.assert_called_once_with(['NetworkManager', 'greetd'])
         f.session.genfstab.assert_called_once()
+        f.session.set_locale.assert_called_once()
+        f.session.set_vconsole.assert_called_once_with(('us', 'en_US.UTF-8', 'UTF-8'))
+        assert f.session.minimal_installation.call_args.kwargs['locale_config'] is None
         assert 'linux-firmware' in f.api.Installer.call_args.kwargs['base_packages']
         assert 'mkinitcpio' in f.api.Installer.call_args.kwargs['base_packages']
+        assert 'efibootmgr' in executor.packages
+        assert {'intel-ucode', 'amd-ucode', 'brltty', 'espeakup', 'alsa-utils'} <= set(executor.packages)
         f.api.device_handler.load_devices.assert_not_called()
     assert f.events[0] == 'guard'
     if failure == 'guard':

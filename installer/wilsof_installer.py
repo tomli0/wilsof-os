@@ -203,7 +203,9 @@ class ArchinstallExecutor:
         config = api.DiskLayoutConfiguration(
             config_type=api.DiskLayoutType.Default, device_modifications=[modification])
         handler = api.FilesystemHandler(config)
-        guard()  # Last call before partitioning/formatting, with no user interaction after it.
+        guard()  # Reprobe identity/blankness after all interactive input.
+        # The full-disk scan may be lengthy: revalidate the destination last too.
+        check_target_mount(self.target)
         handler.perform_filesystem_operations()
         with api.Installer(self.target, config, base_packages=list(self.packages),
                            kernels=['linux']) as installation:
@@ -302,7 +304,8 @@ def main(argv=None):
             raise Refusal('Installation requires root and an interactive terminal')
         check_platform(platform.machine(), Path('/sys/firmware/efi').is_dir())
         check_firmware()
-        if not Path('/run/archiso/bootmnt').is_mount():
+        # copytoram unmounts bootmnt; the immutable live root remains mounted.
+        if not Path('/run/archiso/airootfs').is_mount():
             raise Refusal('Installation is available only from booted Archiso live media')
         with warnings.catch_warnings():
             warnings.simplefilter('error', getpass.GetPassWarning)

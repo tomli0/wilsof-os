@@ -224,6 +224,29 @@ def fake_arch(tmp_path):
               manifest=manifest, hook=hook, target=target)
 
 
+@pytest.mark.parametrize('mutation', ['file', 'symlink', 'mount'])
+def test_executor_rechecks_mount_destination_after_final_disk_scan(fake_arch, monkeypatch, mutation):
+    m, f = runtime(), fake_arch
+    monkeypatch.setattr(m, 'load_archinstall', lambda: f.api)
+    mounts = []
+    monkeypatch.setattr(m, 'read_json', lambda argv: {'filesystems': mounts})
+    executor = m.ArchinstallExecutor(f.manifest, f.hook, f.target)
+    plan = signed_plan()
+    plan['plan_id'] = executor.manifest_digest
+    plan['review_digest'] = m.review_digest(plan)
+    def guard():
+        if mutation == 'file':
+            (f.target / 'unexpected').write_text('concurrent state')
+        elif mutation == 'symlink':
+            f.target.rmdir()
+            f.target.symlink_to(f.target.parent, target_is_directory=True)
+        else:
+            mounts.append({'target': str(f.target)})
+    with pytest.raises(m.Refusal, match='Target mount directory'):
+        executor.execute(plan, 'transient-only', guard)
+    f.fs.perform_filesystem_operations.assert_not_called()
+
+
 @pytest.mark.parametrize('failure', [None, 'guard', 'password', 'initramfs', 'provision', 'postcheck'])
 def test_arch_executor_orders_guard_and_propagates_failures(fake_arch, monkeypatch, failure):
     m = runtime()

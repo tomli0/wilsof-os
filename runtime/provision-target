@@ -12,7 +12,7 @@ def validate_target(target, username, live):
     target = Path(target).resolve()
     if target == Path('/') and not live:
         raise ValueError('Refusing to provision the running system')
-    if live and (target != Path('/') or username != 'live' or not Path('/run/archiso/bootmnt').is_mount()):
+    if live and (target != Path('/') or username != 'live' or not Path('/run/archiso/airootfs').is_mount()):
         raise ValueError('Live provisioning requires the booted Archiso evaluation environment')
     if not re.fullmatch(r'[a-z_][a-z0-9_-]{0,31}', username):
         raise ValueError('Invalid username')

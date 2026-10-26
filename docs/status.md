@@ -1,6 +1,18 @@
 # Status — Wilsof Arch prototype
 
-Updated: 2026-10-16 UTC
+Updated: 2026-10-26 UTC
+
+## Current internal ISO checkpoint
+
+- Draft integration PR #27 contains the selected source changes; no shared branch was merged and no feature is marked Done.
+- Internal image source is `21214fc4c0674775918cb5b36099616ef1bcedb5`. Exact artifact identity, VM evidence and remaining gaps: [internal ISO QA checkpoint](checkpoints/internal-iso-qa-20261026.md).
+- Optical UEFI boot, raw USB mass-storage emulation, installation to a new disposable virtual disk, installed-disk-only boot, normal greeter login and documented update/file-recovery paths were exercised.
+- GTK default software rendering and synthetic Hyprlock unlock remain unpassed; physical hardware/USB/keyboard/audio/Wi-Fi/suspend checks are not claimed.
+- Development scheduler and worker remain paused. No OpenRouter/Terra invocation or Proxmox/VM 113 change was made in this session.
+
+## Historical VM 113 baseline — 2026-10-16
+
+The following records are historical observations, not assertions of current reachability, login state or deployment. The October 26 session could not reach the existing Proxmox environment and used a separate local disposable VM instead.
 
 ## Access and deployment
 

@@ -1,6 +1,19 @@
-# Next session — Wilsof Arch VM 113
+# Next session — internal ISO and preserved VM 113 history
 
-Updated: 2026-10-16 UTC
+Updated: 2026-10-26 UTC
+
+## Current entry point
+
+- Use draft PR #27 and branch `integration/internal-iso-20261026`, not the historical branch below. Preserve unrelated work and acquire the existing worker lock before development.
+- The tested image source is `21214fc4c0674775918cb5b36099616ef1bcedb5`; later documentation commits are not rebuilds of that image.
+- Read [the QA checkpoint](checkpoints/internal-iso-qa-20261026.md), [source composition](checkpoints/internal-iso-integration.json) and [runbook](internal-test-runbook.md) before repeating tests.
+- First remaining task: isolate GTK default software rendering and real Hyprlock unlock/input on an accelerated disposable VM or controlled physical live session. Do not assume every observed failure is caused by TCG.
+- Keep scheduled development paused and retain the original provider budget gate. Use only the verified subscription route; quota/auth failure means checkpoint/stop, not fallback.
+- No merge, release, physical USB write or spare-PC installation is approved by this checkpoint. Obtain separate approval and verify disk ownership/identity before any such action.
+
+## Historical VM 113 checkpoint — not today's test target
+
+The observations below are retained from October 16 and must be reverified before use. Do not infer that the historical VM is reachable or unlocked now.
 
 ## Checkpoint
 

@@ -17,4 +17,6 @@ file_permissions=(
   ["/etc/sudoers.d/wilsof-live-installer"]="0:0:440"
   ["/usr/local/lib/wilsof/live-setup"]="0:0:755"
   ["/usr/local/lib/wilsof/provision-target"]="0:0:755"
+  ["/usr/local/bin/wilsof-install"]="0:0:755"
+  ["/usr/local/bin/wilsof-config-update"]="0:0:755"
 )

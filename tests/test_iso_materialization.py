@@ -5,6 +5,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_runtime_entrypoints_have_explicit_archiso_executable_permissions():
+    profile = (ROOT / 'iso/profiledef.sh').read_text()
+    assert '["/usr/local/bin/wilsof-install"]="0:0:755"' in profile
+    assert '["/usr/local/bin/wilsof-config-update"]="0:0:755"' in profile
+
+
 def test_profile_uses_supported_archiso_bootmode_and_desktop_manifest():
     profile = (ROOT / 'iso/profiledef.sh').read_text()
     assert 'bootmodes=("uefi.systemd-boot")' in profile

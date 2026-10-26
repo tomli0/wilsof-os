@@ -98,7 +98,13 @@ Base kernel support and redistributable firmware needed for normal operation bel
 }
 ```
 
-Validation rejects any non-GPT/UEFI first-alpha plan, unknown keys, missing target identity, a non-whole-disk layout, a target that is mounted/non-empty, passwords in the plan, unsupported architecture, arbitrary repositories, or an unsupported rule status. The UI and executor render the same canonical plan; the review digest is checked before execution.
+This schema is non-destructive scaffolding, not authorization to execute an installation. `layout.partitions` is exactly the two symbolic entries `["ESP", "root"]`, in that order; nulls, objects, other names and additional partitions are rejected. These are reviewed layout roles, not arbitrary backend partition parameters. A future pinned adapter must define and test their concrete sizes, filesystems and mount options before disk operations are enabled.
+
+`encryption` contains only the required boolean `enabled`. Both choices are valid plan data, but passwords, passphrases, key-file paths, nested credentials and all other properties are rejected regardless of that choice. A future executor must obtain secrets through a separate transient input channel, never from the canonical plan or its logs; this schema does not implement encryption.
+
+Schema validation checks the represented GPT/UEFI, whole-disk and expected-empty constants, required target identity, and object/field constraints. It cannot inspect disk state or prove identity freshness. The future read-only probe, compatibility resolver and executor must additionally reject mounted/non-empty targets, unsupported architecture, arbitrary repositories and unsupported rule status, and revalidate the target immediately before execution. The UI and executor must render the same canonical plan and check its review digest. No executor is enabled here.
+
+Run the non-destructive contract tests with `python3 -m pip install -r requirements-dev.txt` and `python3 -m pytest -q`. Tests validate the documented example and malformed plans with a Draft 2020-12 validator; they do not probe or modify a disk.
 
 ## Recommended-driver and codec UI
 

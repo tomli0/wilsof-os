@@ -58,7 +58,8 @@ The English [user guide](docs/brukerveiledning.md) covers opening applications, 
 
 ## Development checks
 
-    pytest -q
+    python3 -m pip install -r requirements-dev.txt
+    python3 -m pytest -q
     sh -n scripts/*.sh automation/*.sh bin/wilsof-*
     python3 -m json.tool config/dms/wilsof-theme.json
 

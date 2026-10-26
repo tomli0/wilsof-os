@@ -47,6 +47,9 @@ This is the next authorized test. It produces a local artifact on the separate b
        test -d /usr/share/archiso/configs/releng
        df -h /srv/wilsof-iso-work /srv/wilsof-iso-out
        git status --short
+       : "${WILSOF_APPROVED_COMMIT:?Set the independently approved full source commit}"
+       git rev-parse HEAD
+       test "$(git rev-parse HEAD)" = "$WILSOF_APPROVED_COMMIT"
 
    Continue only when the architecture is `x86_64`, the `releng` directory and `mkarchiso` exist, both directories are dedicated, and the filesystem has at least 25 GiB available. The checkout must be the reviewed commit with no unexpected changes.
 
@@ -58,7 +61,9 @@ This is the next authorized test. It produces a local artifact on the separate b
 
        find /srv/wilsof-iso-out -maxdepth 1 -type f -name '*.iso' -printf '%f %s bytes\n'
        sha256sum /srv/wilsof-iso-out/*.iso
-       ls -ld /srv/wilsof-iso-work /srv/wilsof-iso-out
+       ls -ld /srv/wilsof-iso-out
+
+   `mkarchiso -r` removes the work directory after success; only the surviving output directory is required for artifact validation.
 
    Record the command exit status, ISO filename, byte size, SHA-256, build-host OS version, and repository commit in the issue or pull request. Treat a successful profile test or CI run as different evidence; neither proves that an ISO was built.
 

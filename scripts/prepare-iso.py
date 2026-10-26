@@ -22,6 +22,7 @@ def prepare(upstream, output, source, commit):
     packages.difference_update({'openssh', 'cloud-init', 'clonezilla', 'drbl'})
     (output / 'packages.x86_64').write_text('\n'.join(sorted(p for p in packages if p and not p.startswith('#'))) + '\n')
     root = output / 'airootfs'
+    (root / 'mnt/wilsof').mkdir(parents=True, exist_ok=True)
     for relative in ('root', 'etc/ssh', 'etc/systemd/network',
                      'etc/systemd/system/getty@tty1.service.d',
                      'etc/systemd/system/cloud-init.target.wants'):

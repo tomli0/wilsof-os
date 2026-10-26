@@ -5,6 +5,9 @@ bin/wilsof-help-view
 bin/wilsof-doctor
 bin/wilsof-vm-test-binds
 bin/wilsof-config-update
+bin/wilsof-install
+installer/__init__.py
+installer/wilsof_installer.py
 config/hypr/wilsof.lua
 config/hypr/wilsof.conf
 config/hypr/hypridle.conf

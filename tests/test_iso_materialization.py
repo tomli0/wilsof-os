@@ -42,7 +42,7 @@ def test_profile_keeps_boot_dependencies_but_removes_remote_access_and_host_data
 def test_payload_manifest_excludes_private_extras_and_rejects_symlinks(tmp_path):
     import shutil
     source = tmp_path / 'source'
-    for folder in ('runtime', 'bin', 'config', 'assets', 'schemas', 'iso'):
+    for folder in ('runtime', 'bin', 'config', 'assets', 'schemas', 'iso', 'installer'):
         shutil.copytree(ROOT / folder, source / folder)
     (source / 'bin/private-note').write_text('private fixture, not image data')
     upstream = tmp_path / 'upstream'

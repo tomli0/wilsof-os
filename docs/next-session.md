@@ -1,13 +1,13 @@
 # Next session — internal ISO and preserved VM 113 history
 
-Updated: 2026-10-26 UTC
+Updated: 2026-10-27 UTC
 
 ## Current entry point
 
 - Use draft PR #27 and branch `integration/internal-iso-20261026`, not the historical branch below. Preserve unrelated work and acquire the existing worker lock before development.
-- The tested image source is `21214fc4c0674775918cb5b36099616ef1bcedb5`; later documentation commits are not rebuilds of that image.
-- Read [the QA checkpoint](checkpoints/internal-iso-qa-20261026.md), [source composition](checkpoints/internal-iso-integration.json) and [runbook](internal-test-runbook.md) before repeating tests.
-- First remaining task: isolate GTK default software rendering and real Hyprlock unlock/input on an accelerated disposable VM or controlled physical live session. Do not assume every observed failure is caused by TCG.
+- Read the latest [candidate 2 continuation checkpoint](checkpoints/resume-20261027.md) first. The newer private checkpoint confirms candidate 2 was already built from `e2561399e5ac5add3711549f9c48e1bcab1486d1`; do not rebuild it.
+- Candidate 2 RAM boot and real PTY invalid-target/cancellation gates passed. Its one fresh installation is in progress on the existing disposable QA disk. Query the saved process before any new work; do not duplicate or interrupt installation.
+- Earlier [QA evidence](checkpoints/internal-iso-qa-20261026.md), [source composition](checkpoints/internal-iso-integration.json) and [runbook](internal-test-runbook.md) remain relevant history, not acceptance of the later artifact. Older-image GTK/Hyprlock evidence must not be promoted to final-candidate evidence.
 - Keep scheduled development paused and retain the original provider budget gate. Use only the verified subscription route; quota/auth failure means checkpoint/stop, not fallback.
 - No merge, release, physical USB write or spare-PC installation is approved by this checkpoint. Obtain separate approval and verify disk ownership/identity before any such action.
 

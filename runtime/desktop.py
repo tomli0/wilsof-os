@@ -68,7 +68,13 @@ def install_user(source, home, *, live=False):
     for name in ('Mørk geometrisk bakgrunn med isblått WS-monogram.png', 'Wilsof OS-logo med geometrisk WS-monogram.png'):
         write(f'.local/share/wilsof-os/assets/{name}', (source / 'assets' / name).read_bytes())
 
-    settings = confined('.config/DankMaterialShell/settings.json')
+    settings_relative = '.config/DankMaterialShell/settings.json'
+    legacy_settings_dir = confined('.config/DankMaterialShell', allow_leaf_link=True)
+    # Dux 2 migrates this directory to the literal sibling "dms". Select its
+    # canonical path rather than following arbitrary links or relaxing confinement.
+    if legacy_settings_dir.is_symlink() and os.readlink(legacy_settings_dir) == 'dms':
+        settings_relative = '.config/dms/settings.json'
+    settings = confined(settings_relative)
     if live or not settings.exists():
         data = json.loads(settings.read_text() if settings.exists() else (source / 'config/dms/settings-template.json').read_text())
         if data.get('customThemeFile') in (None, '', '__WILSOF_THEME_PATH__'):
@@ -77,7 +83,7 @@ def install_user(source, home, *, live=False):
         if live:
             data.update(loginctlLockIntegration=False, lockBeforeSuspend=False, lockAtStartup=False,
                         acLockTimeout=0, batteryLockTimeout=0)
-        write('.config/DankMaterialShell/settings.json', (json.dumps(data) + '\n').encode())
+        write(settings_relative, (json.dumps(data) + '\n').encode())
     entry = confined('.config/hypr/hyprland.lua')
     if not entry.exists():
         subprocess.run(['dms', 'setup', 'headless', '--compositor', 'hyprland', '--skip-existing'],

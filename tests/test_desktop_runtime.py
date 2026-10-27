@@ -89,3 +89,94 @@ def test_desktop_provisioning_preserves_personal_settings_and_backs_up_managed_f
     assert entry.read_text().count('require("wilsof")') == 1
     assert any(p.read_text() == '-- old managed file\n' for p in (home / '.local/state/wilsof-os/backups').rglob('wilsof.lua'))
     assert managed.read_bytes() == (ROOT / 'config/hypr/wilsof.lua').read_bytes()
+
+
+def test_config_update_preserves_dux_migrated_settings_and_file_recovery(tmp_path):
+    desktop = load_runtime()
+    home = tmp_path / 'home'
+    entry = home / '.config/hypr/hyprland.lua'
+    entry.parent.mkdir(parents=True)
+    entry.write_text('-- generated base\n')
+    settings = home / '.config/dms/settings.json'
+    settings.parent.mkdir(parents=True)
+    preference = b'{"clockFormat":"24h","personal":true}\n'
+    settings.write_bytes(preference)
+    legacy = home / '.config/DankMaterialShell'
+    legacy.symlink_to('dms', target_is_directory=True)
+    helper = home / '.local/bin/wilsof-help-view'
+    helper.parent.mkdir(parents=True)
+    fixture = b'#!/bin/sh\n# harmless owned fixture\n'
+    helper.write_bytes(fixture)
+    backup = desktop.install_user(ROOT, home)
+    assert legacy.is_symlink() and legacy.readlink() == Path('dms')
+    assert settings.read_bytes() == preference
+    assert helper.read_bytes() == (ROOT / 'bin/wilsof-help-view').read_bytes()
+    saved = backup / '.local/bin/wilsof-help-view'
+    assert saved.read_bytes() == fixture
+    helper.write_bytes(saved.read_bytes())
+    assert helper.read_bytes() == fixture
+    desktop.install_user(ROOT, home)
+    assert helper.read_bytes() == (ROOT / 'bin/wilsof-help-view').read_bytes()
+    assert settings.read_bytes() == preference
+
+
+def test_migrated_settings_live_policy_uses_confined_canonical_directory(tmp_path):
+    desktop = load_runtime()
+    home = tmp_path / 'home'
+    entry = home / '.config/hypr/hyprland.lua'
+    entry.parent.mkdir(parents=True)
+    entry.write_text('-- generated base\n')
+    (home / '.config/DankMaterialShell').symlink_to('dms', target_is_directory=True)
+    canonical = home / '.config/dms/settings.json'
+    canonical.parent.mkdir()
+    original = b'{"clockFormat":"24h","personal":true}\n'
+    canonical.write_bytes(original)
+    backup = desktop.install_user(ROOT, home, live=True)
+    settings = json.loads(canonical.read_text())
+    assert settings['clockFormat'] == '24h' and settings['personal'] is True
+    assert settings['loginctlLockIntegration'] is False
+    assert settings['lockBeforeSuspend'] is False
+    assert settings['lockAtStartup'] is False
+    assert settings['acLockTimeout'] == settings['batteryLockTimeout'] == 0
+    assert (backup / '.config/dms/settings.json').read_bytes() == original
+    assert (home / '.config/DankMaterialShell').is_symlink()
+
+
+def test_migrated_settings_reject_other_links_and_linked_destinations(tmp_path):
+    import pytest
+    desktop = load_runtime()
+    outside = tmp_path / 'outside'
+    outside.mkdir()
+    victim = outside / 'settings.json'
+    victim.write_text('{"untouched":true}\n')
+    for case in ('outside-legacy', 'dot-alias', 'absolute-alias', 'linked-canonical', 'linked-settings', 'linked-config'):
+        home = tmp_path / case
+        entry = home / '.config/hypr/hyprland.lua'
+        entry.parent.mkdir(parents=True)
+        entry.write_text('-- generated base\n')
+        legacy = home / '.config/DankMaterialShell'
+        if case == 'outside-legacy':
+            legacy.symlink_to(outside, target_is_directory=True)
+        elif case in ('dot-alias', 'absolute-alias'):
+            canonical = home / '.config/dms'
+            canonical.mkdir()
+            (canonical / 'settings.json').write_text('{"untouched":true}\n')
+            legacy.symlink_to('./dms' if case == 'dot-alias' else canonical, target_is_directory=True)
+        elif case == 'linked-config':
+            import shutil
+            config = home / '.config'
+            target = home / 'config-real'
+            shutil.move(config, target)
+            config.symlink_to(target, target_is_directory=True)
+            legacy.symlink_to('dms', target_is_directory=True)
+        else:
+            legacy.symlink_to('dms', target_is_directory=True)
+            canonical = home / '.config/dms'
+            if case == 'linked-canonical':
+                canonical.symlink_to(outside, target_is_directory=True)
+            else:
+                canonical.mkdir()
+                (canonical / 'settings.json').symlink_to(victim)
+        with pytest.raises(RuntimeError, match='symlink'):
+            desktop.install_user(ROOT, home, live=True)
+        assert victim.read_text() == '{"untouched":true}\n'

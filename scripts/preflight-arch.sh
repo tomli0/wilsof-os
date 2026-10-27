@@ -23,7 +23,7 @@ for command in systemctl pacman hyprctl dms loginctl; do
   fi
 done
 
-for package in dms-shell hyprland hyprlock hypridle xdg-desktop-portal-hyprland ghostty firefox nautilus gnome-text-editor papers loupe vlc; do
+for package in dux-shell hyprland hyprlock hypridle xdg-desktop-portal-hyprland ghostty firefox nautilus gnome-text-editor papers loupe vlc; do
   if pacman -Q "$package" >/dev/null 2>&1; then
     printf 'PASS package: %s\n' "$package"
   else

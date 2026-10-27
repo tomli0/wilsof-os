@@ -1,7 +1,7 @@
 hyprland
 hyprlock
 hypridle
-dms-shell
+dux-shell
 greetd
 greetd-tuigreet
 networkmanager

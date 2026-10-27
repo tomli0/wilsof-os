@@ -316,7 +316,7 @@ def test_iso_profile_and_builder_are_present_and_keep_secrets_out_of_the_profile
     assert "archiso" not in package_text
     assert "openssh" not in package_text
     assert "ghostty" in package_text
-    assert "dms-shell" in package_text
+    assert "dux-shell" in package_text
     assert "power-profiles-daemon" in package_text
     assert "mkarchiso" in builder.read_text(encoding="utf-8")
 

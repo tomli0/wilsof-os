@@ -5,12 +5,13 @@ Updated: 2026-10-27 UTC
 ## Current internal ISO checkpoint
 
 - Continue draft integration PR #27 on `integration/internal-iso-20261026`; no shared branch was merged and no feature is marked Done.
-- Current artifact remains candidate 2 from `e2561399e5ac5add3711549f9c48e1bcab1486d1`. The [post-reboot stabilization checkpoint](checkpoints/post-reboot-20261027.md) supersedes the earlier in-progress installation note. No rebuild/reinstall occurred.
+- Current artifact remains candidate 2 from `e2561399e5ac5add3711549f9c48e1bcab1486d1`. Read the [bounded close-out checkpoint](checkpoints/bounded-20261027.md) first; [post-reboot evidence](checkpoints/post-reboot-20261027.md) is retained history. No new ISO/reinstall occurred.
+- Existing rendering/native-Dux package adjustments are now source-ready with 27 focused passing tests. The upstream Hypridle teardown patch is preserved separately, not included or full-package/runtime-verified; #31 remains open. No further broad investigation or parallel coding is queued.
 - Existing-disk-only UEFI boot, ordinary greeter password login, WS desktop, synthetic help/settings/launcher/terminal and default GTK rendering passed. Installed Hyprlock rejected a wrong password and genuinely unlocked the same session with the correct one.
 - Real full package upgrade replaced DMS 1.6.3 with Dux 2.0 and exposed a config-migration failure in the immutable bundled updater (#30). Separately reviewed source fix `e38902b` passed 163 tests, exact-head CI and actual local-source config preservation/backups/manual file recovery. The ISO does not contain that fix; it is not unconditionally accepted.
 - Earlier-image and candidate1 results remain historical; candidate2 and post-upgrade evidence are separated in the checkpoint.
 - Physical hardware/USB/keyboard/audio/Wi-Fi/suspend checks remain unverified. Five-minute automatic idle lock and genuine post-upgrade unlock passed functionally, with severe cold TCG rendering delay; upstream crash/latency follow-up #31 remains open.
-- Final guest poweroff was blocked by agent tool policy. The owned QEMU guest and exclusive-lock supervisor remain running pending human-operated controlled shutdown and offline disk check. Read the newest private checkpoint before further VM work.
+- Original candidate2 was cleanly powered off and its offline disk/firmware checks verified. Only the later disposable diagnostic overlay remains running with its exclusive-lock supervisor, pending human-operated guest shutdown. Its temporary idle inhibitor is disabled and no diagnostic application units remain running. Read the newest private checkpoint before any VM work.
 - Development scheduler and worker remain paused. The live session verified Codex subscription billing; no paid fallback or Proxmox/VM 113 change.
 
 ## Historical VM 113 baseline — 2026-10-16

@@ -27,3 +27,4 @@ runtime/image-files.txt
 schemas/installation-plan.schema.json
 assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png
 assets/Wilsof OS-logo med geometrisk WS-monogram.png
+assets/Wilsof lock background.png

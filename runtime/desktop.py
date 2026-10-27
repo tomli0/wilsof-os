@@ -65,7 +65,7 @@ def install_user(source, home, *, live=False):
         ('vm-test/wilsof-vm-test.lua', 'config/hypr/wilsof-vm-test.lua'),
     ):
         write(f'.local/share/wilsof-os/{name}', (source / origin).read_bytes())
-    for name in ('Mørk geometrisk bakgrunn med isblått WS-monogram.png', 'Wilsof OS-logo med geometrisk WS-monogram.png'):
+    for name in ('Mørk geometrisk bakgrunn med isblått WS-monogram.png', 'Wilsof OS-logo med geometrisk WS-monogram.png', 'Wilsof lock background.png'):
         write(f'.local/share/wilsof-os/assets/{name}', (source / 'assets' / name).read_bytes())
 
     settings_relative = '.config/DankMaterialShell/settings.json'

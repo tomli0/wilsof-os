@@ -37,6 +37,7 @@ for managed in \
   "$HOME/.local/bin/wilsof-vm-test-binds" \
   "$HOME/.local/share/wilsof-os/wilsof-shortcuts.json" \
   "$HOME/.local/share/wilsof-os/assets/Wilsof OS-logo med geometrisk WS-monogram.png" \
+  "$HOME/.local/share/wilsof-os/assets/Wilsof lock background.png" \
   "$HOME/.local/share/wilsof-os/vm-test/wilsof-vm-test.lua" \
   "$HOME/.config/hypr/wilsof.conf" "$HOME/.config/hypr/wilsof.lua" \
   "$HOME/.config/hypr/hypridle.conf" "$HOME/.config/hypr/hyprlock.conf" \
@@ -67,6 +68,7 @@ install -m 0644 "$root/config/systemd/dms-wilsof.conf" "$HOME/.config/systemd/us
 install -m 0644 "$root/config/dms/wilsof-theme.json" "$HOME/.local/share/wilsof-os/wilsof-theme.json"
 install -m 0644 "$root/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png" "$HOME/.local/share/wilsof-os/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png"
 install -m 0644 "$root/assets/Wilsof OS-logo med geometrisk WS-monogram.png" "$HOME/.local/share/wilsof-os/assets/Wilsof OS-logo med geometrisk WS-monogram.png"
+install -m 0644 "$root/assets/Wilsof lock background.png" "$HOME/.local/share/wilsof-os/assets/Wilsof lock background.png"
 
 # Seed Wilsof's static DMS theme once, before any personal DMS settings exist.
 # Subsequent installs intentionally preserve settings.json and the marker records that fact.

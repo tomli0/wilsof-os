@@ -1,0 +1,15 @@
+WIP — NOT EXECUTED AFTER COPYING/ADAPTATION
+
+These files preserve the earlier focused extracted-loop regression harness.
+The run script was adapted to require explicit source/output paths, avoid
+output overwrites and use only an already-cached Docker image. That adapted
+entry point has NOT been exercised. It is not a passing result or CI gate.
+
+Earlier private RED/GREEN/UBSan logs remain preserved separately. They do not
+prove that this portable copy passes, nor that a real compositor teardown of
+the new native package has passed. ThreadSanitizer mapping failures are not
+a pass. Do not close issue31 or include this package in an accepted ISO on
+these files alone.
+
+No test is started by preserving this WIP. Further execution requires a later,
+explicitly resumed, bounded verification task.

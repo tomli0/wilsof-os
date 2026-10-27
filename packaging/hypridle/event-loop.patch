@@ -1,0 +1,164 @@
+diff --git a/src/core/Hypridle.cpp b/src/core/Hypridle.cpp
+index df0f177..1aa3f1e 100644
+--- a/src/core/Hypridle.cpp
++++ b/src/core/Hypridle.cpp
+@@ -9,8 +9,11 @@
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <algorithm>
++#include <array>
+ #include <thread>
+ #include <mutex>
++#include <cerrno>
++#include <stdexcept>
+ #include <hyprutils/os/Process.hpp>
+ 
+ CHypridle::CHypridle() {
+@@ -183,20 +186,31 @@ void CHypridle::enterEventLoop() {
+         },
+     };
+ 
+-    std::thread pollThr([this, &pollfds, &pollfdsCount]() {
+-        while (1) {
+-            int ret = poll(pollfds, pollfdsCount, 5000 /* 5 seconds, reasonable. It's because we might need to terminate */);
++    std::jthread pollThr([this, &pollfds, pollfdsCount, workerPollfds = std::to_array(pollfds)](std::stop_token stop) mutable {
++        // poll writes revents: keep its array private and publish under loopMutex.
++        while (!stop.stop_requested()) {
++            int ret = poll(workerPollfds.data(), pollfdsCount, 5000 /* bounded so stop/join can finish */);
++            const int pollErrno = errno;
++            if (ret < 0 && pollErrno == EINTR)
++                continue;
++
++            if (stop.stop_requested())
++                break;
++
++            std::unique_lock lk(m_sEventLoopInternals.loopMutex);
+             if (ret < 0) {
+-                Debug::log(CRIT, "[core] Polling fds failed with {}", errno);
++                Debug::log(CRIT, "[core] Polling fds failed with {}", pollErrno);
+                 m_bTerminate = true;
+-                exit(1);
++                m_sEventLoopInternals.loopSignal.notify_all();
++                return;
+             }
+ 
+             for (size_t i = 0; i < pollfdsCount; ++i) {
+-                if (pollfds[i].revents & POLLHUP) {
++                if (workerPollfds[i].revents & (POLLHUP | POLLERR | POLLNVAL)) {
+                     Debug::log(CRIT, "[core] Disconnected from pollfd id {}", i);
+                     m_bTerminate = true;
+-                    exit(1);
++                    m_sEventLoopInternals.loopSignal.notify_all();
++                    return;
+                 }
+             }
+ 
+@@ -205,22 +219,23 @@ void CHypridle::enterEventLoop() {
+ 
+             if (ret != 0) {
+                 Debug::log(TRACE, "[core] got poll event");
+-                std::lock_guard<std::mutex> lg(m_sEventLoopInternals.loopRequestMutex);
++                for (size_t i = 0; i < pollfdsCount; ++i)
++                    pollfds[i].revents |= workerPollfds[i].revents;
+                 m_sEventLoopInternals.shouldProcess = true;
+                 m_sEventLoopInternals.loopSignal.notify_all();
++                // Do not poll the same readiness again until dispatch has consumed it.
++                // The stop-aware wait also permits exception unwinding to join us.
++                m_sEventLoopInternals.loopSignal.wait(lk, stop, [this] { return !m_sEventLoopInternals.shouldProcess; });
+             }
+         }
+     });
+ 
+     while (1) { // dbus events
+         // wait for being awakened
+-        m_sEventLoopInternals.loopRequestMutex.unlock(); // unlock, we are ready to take events
+-
+         std::unique_lock lk(m_sEventLoopInternals.loopMutex);
+-        if (!m_sEventLoopInternals.shouldProcess) // avoid a lock if a thread managed to request something already since we .unlock()ed
+-            m_sEventLoopInternals.loopSignal.wait_for(lk, std::chrono::seconds(5), [this] { return m_sEventLoopInternals.shouldProcess == true; }); // wait for events or timeout (for condition_cmd retries)
+-
+-        m_sEventLoopInternals.loopRequestMutex.lock(); // lock incoming events
++        m_sEventLoopInternals.loopSignal.wait_for(lk, std::chrono::seconds(5), [this] {
++            return m_sEventLoopInternals.shouldProcess || m_bTerminate;
++        }); // wait for events or timeout (for condition_cmd retries)
+ 
+         if (m_bTerminate)
+             break;
+@@ -278,9 +293,14 @@ void CHypridle::enterEventLoop() {
+                 Debug::log(LOG, "Condition still not met, retrying in {}s", l.conditionRetry);
+             }
+         }
++        for (size_t i = 0; i < pollfdsCount; ++i)
++            pollfds[i].revents = 0;
++        m_sEventLoopInternals.loopSignal.notify_all();
+     }
+ 
+-    Debug::log(ERR, "[core] Terminated");
++    pollThr.request_stop();
++    pollThr.join();
++    throw std::runtime_error("[core] Event loop disconnected");
+ }
+ 
+ static void spawn(const std::string& args) {
+diff --git a/src/core/Hypridle.hpp b/src/core/Hypridle.hpp
+index 5e1af27..9555e28 100644
+--- a/src/core/Hypridle.hpp
++++ b/src/core/Hypridle.hpp
+@@ -5,6 +5,7 @@
+ #include <sdbus-c++/sdbus-c++.h>
+ #include <hyprutils/os/FileDescriptor.hpp>
+ #include <condition_variable>
++#include <atomic>
+ 
+ #include "wayland.hpp"
+ #include "ext-idle-notify-v1.hpp"
+@@ -59,7 +60,7 @@ class CHypridle {
+     void    setupDBUS();
+     void    enterEventLoop();
+ 
+-    bool    m_bTerminate    = false;
++    std::atomic<bool> m_bTerminate = false;
+     bool    isIdled         = false;
+     bool    m_isLocked      = false;
+     int64_t m_iInhibitLocks = 0;
+@@ -94,10 +95,9 @@ class CHypridle {
+     } m_sDBUSState;
+ 
+     struct {
+-        std::condition_variable loopSignal;
++        std::condition_variable_any loopSignal;
+         std::mutex              loopMutex;
+         std::atomic<bool>       shouldProcess = false;
+-        std::mutex              loopRequestMutex;
+         std::mutex              eventLock;
+     } m_sEventLoopInternals;
+ };
+diff --git a/src/main.cpp b/src/main.cpp
+index cd7541e..acec900 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -3,6 +3,7 @@
+ #include "core/Hypridle.hpp"
+ #include "helpers/Log.hpp"
+ #include <memory>
++#include <exception>
+ 
+ int main(int argc, char** argv, char** envp) {
+     std::string configPath;
+@@ -68,8 +69,14 @@ int main(int argc, char** argv, char** envp) {
+ 
+     g_pConfigManager->init();
+ 
+-    g_pHypridle = std::make_unique<CHypridle>();
+-    g_pHypridle->run();
++    try {
++        g_pHypridle = std::make_unique<CHypridle>();
++        g_pHypridle->run();
++    } catch (const std::exception& e) {
++        Debug::log(CRIT, "Hypridle failed: {}", e.what());
++        g_pHypridle.reset(); // enterEventLoop has already stopped and joined its worker.
++        return 1;
++    }
+ 
+     return 0;
+ }

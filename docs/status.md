@@ -5,8 +5,8 @@ Updated: 2026-10-27 UTC
 ## Current internal ISO checkpoint
 
 - Continue draft integration PR #27 on `integration/internal-iso-20261026`; no shared branch was merged and no feature is marked Done.
-- Current artifact remains candidate 2 from `e2561399e5ac5add3711549f9c48e1bcab1486d1`. Read the [bounded close-out checkpoint](checkpoints/bounded-20261027.md) first; [post-reboot evidence](checkpoints/post-reboot-20261027.md) is retained history. No new ISO/reinstall occurred.
-- Existing rendering/native-Dux package adjustments are now source-ready with 27 focused passing tests. The upstream Hypridle teardown patch is preserved separately, not included or full-package/runtime-verified; #31 remains open. No further broad investigation or parallel coding is queued.
+- Current artifact remains candidate 2 from `e2561399e5ac5add3711549f9c48e1bcab1486d1`. Read the [controlled session close](checkpoints/session-close-20261027.md) first; earlier checkpoints remain history. No new ISO/reinstall occurred.
+- A full native Hypridle verification package now builds and its packaged CLI/ELF/linking checks pass. Recipe/patch/provenance are preserved. The portable regression entry point is explicitly WIP and real-session teardown is unverified; #31 remains open. The session is closed, not dispatching more work.
 - Existing-disk-only UEFI boot, ordinary greeter password login, WS desktop, synthetic help/settings/launcher/terminal and default GTK rendering passed. Installed Hyprlock rejected a wrong password and genuinely unlocked the same session with the correct one.
 - Real full package upgrade replaced DMS 1.6.3 with Dux 2.0 and exposed a config-migration failure in the immutable bundled updater (#30). Separately reviewed source fix `e38902b` passed 163 tests, exact-head CI and actual local-source config preservation/backups/manual file recovery. The ISO does not contain that fix; it is not unconditionally accepted.
 - Earlier-image and candidate1 results remain historical; candidate2 and post-upgrade evidence are separated in the checkpoint.

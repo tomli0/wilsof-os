@@ -1,14 +1,17 @@
 # Status — Wilsof Arch prototype
 
-Updated: 2026-10-26 UTC
+Updated: 2026-10-27 UTC
 
 ## Current internal ISO checkpoint
 
-- Draft integration PR #27 contains the selected source changes; no shared branch was merged and no feature is marked Done.
-- Internal image source is `21214fc4c0674775918cb5b36099616ef1bcedb5`. Exact artifact identity, VM evidence and remaining gaps: [internal ISO QA checkpoint](checkpoints/internal-iso-qa-20261026.md).
-- Optical UEFI boot, raw USB mass-storage emulation, installation to a new disposable virtual disk, installed-disk-only boot, normal greeter login and documented update/file-recovery paths were exercised.
-- GTK default software rendering and synthetic Hyprlock unlock remain unpassed; physical hardware/USB/keyboard/audio/Wi-Fi/suspend checks are not claimed.
-- Development scheduler and worker remain paused. No OpenRouter/Terra invocation or Proxmox/VM 113 change was made in this session.
+- Continue draft integration PR #27 on `integration/internal-iso-20261026`; no shared branch was merged and no feature is marked Done.
+- Current artifact remains candidate 2 from `e2561399e5ac5add3711549f9c48e1bcab1486d1`. The [post-reboot stabilization checkpoint](checkpoints/post-reboot-20261027.md) supersedes the earlier in-progress installation note. No rebuild/reinstall occurred.
+- Existing-disk-only UEFI boot, ordinary greeter password login, WS desktop, synthetic help/settings/launcher/terminal and default GTK rendering passed. Installed Hyprlock rejected a wrong password and genuinely unlocked the same session with the correct one.
+- Real full package upgrade replaced DMS 1.6.3 with Dux 2.0 and exposed a config-migration failure in the immutable bundled updater (#30). Separately reviewed source fix `e38902b` passed 163 tests, exact-head CI and actual local-source config preservation/backups/manual file recovery. The ISO does not contain that fix; it is not unconditionally accepted.
+- Earlier-image and candidate1 results remain historical; candidate2 and post-upgrade evidence are separated in the checkpoint.
+- Physical hardware/USB/keyboard/audio/Wi-Fi/suspend checks remain unverified. Five-minute automatic idle lock and genuine post-upgrade unlock passed functionally, with severe cold TCG rendering delay; upstream crash/latency follow-up #31 remains open.
+- Final guest poweroff was blocked by agent tool policy. The owned QEMU guest and exclusive-lock supervisor remain running pending human-operated controlled shutdown and offline disk check. Read the newest private checkpoint before further VM work.
+- Development scheduler and worker remain paused. The live session verified Codex subscription billing; no paid fallback or Proxmox/VM 113 change.
 
 ## Historical VM 113 baseline — 2026-10-16
 

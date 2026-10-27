@@ -5,9 +5,10 @@ Updated: 2026-10-27 UTC
 ## Current entry point
 
 - Use draft PR #27 and branch `integration/internal-iso-20261026`, not the historical branch below. Preserve unrelated work and acquire the existing worker lock before development.
-- Read the latest [candidate 2 continuation checkpoint](checkpoints/resume-20261027.md) first. The newer private checkpoint confirms candidate 2 was already built from `e2561399e5ac5add3711549f9c48e1bcab1486d1`; do not rebuild it.
-- Candidate 2 RAM boot and real PTY invalid-target/cancellation gates passed. Its one fresh installation is in progress on the existing disposable QA disk. Query the saved process before any new work; do not duplicate or interrupt installation.
+- Read the [post-reboot stabilization checkpoint](checkpoints/post-reboot-20261027.md) first; it supersedes the [earlier continuation](checkpoints/resume-20261027.md). Candidate2 installation completed before shutdown. Do not rebuild/reinstall or query the obsolete installer PID as if it were running.
+- Existing disk-only boot, ordinary login, representative GUI/default GTK and genuine wrong/correct-password Hyprlock checks passed. Full package upgrade exposed issue #30; reviewed local-source fix `e38902b` passes actual config preservation/file recovery, but the immutable ISO still contains the original updater. Use the newest private checkpoint for VM ownership/shutdown/remaining gates before acting.
 - Earlier [QA evidence](checkpoints/internal-iso-qa-20261026.md), [source composition](checkpoints/internal-iso-integration.json) and [runbook](internal-test-runbook.md) remain relevant history, not acceptance of the later artifact. Older-image GTK/Hyprlock evidence must not be promoted to final-candidate evidence.
+- Before further VM work, reconcile the newest private checkpoint: final guest poweroff was blocked by agent tool policy, so the owned guest and exclusive lock remain live pending human-operated shutdown. Do not bypass the block, start another VM on the active disk, or mistake successful guest tests for powered-off disk preservation. Issue #31 retains cold TCG lock latency and upstream crash diagnostics.
 - Keep scheduled development paused and retain the original provider budget gate. Use only the verified subscription route; quota/auth failure means checkpoint/stop, not fallback.
 - No merge, release, physical USB write or spare-PC installation is approved by this checkpoint. Obtain separate approval and verify disk ownership/identity before any such action.
 

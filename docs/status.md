@@ -11,7 +11,7 @@ Updated: 2026-10-27 UTC
 - Real full package upgrade replaced DMS 1.6.3 with Dux 2.0 and exposed a config-migration failure in the immutable bundled updater (#30). Separately reviewed source fix `e38902b` passed 163 tests, exact-head CI and actual local-source config preservation/backups/manual file recovery. The ISO does not contain that fix; it is not unconditionally accepted.
 - Earlier-image and candidate1 results remain historical; candidate2 and post-upgrade evidence are separated in the checkpoint.
 - Physical hardware/USB/keyboard/audio/Wi-Fi/suspend checks remain unverified. Five-minute automatic idle lock and genuine post-upgrade unlock passed functionally, with severe cold TCG rendering delay; upstream crash/latency follow-up #31 remains open.
-- Original candidate2 was cleanly powered off and its offline disk/firmware checks verified. Only the later disposable diagnostic overlay remains running with its exclusive-lock supervisor, pending human-operated guest shutdown. Its temporary idle inhibitor is disabled and no diagnostic application units remain running. Read the newest private checkpoint before any VM work.
+- Both original candidate2 and the diagnostic overlay guest are now cleanly powered off. The diagnostic helper completed at 22:44 UTC, QEMU/supervisor exited 0, offline overlay check returned 0 and overlay/firmware hashes were verified. No protected test process remains; the supervisor released the exclusive lock. All artifacts are retained.
 - Development scheduler and worker remain paused. The live session verified Codex subscription billing; no paid fallback or Proxmox/VM 113 change.
 
 ## Historical VM 113 baseline — 2026-10-16

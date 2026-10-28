@@ -1,15 +1,14 @@
-WIP — NOT EXECUTED AFTER COPYING/ADAPTATION
+VERIFIED PORTABLE HARNESS — 2026-10-28
 
-These files preserve the earlier focused extracted-loop regression harness.
-The run script was adapted to require explicit source/output paths, avoid
-output overwrites and use only an already-cached Docker image. That adapted
-entry point has NOT been exercised. It is not a passing result or CI gate.
+This entry point was originally preserved as unexecuted WIP in 2015a534.
+That historical status is superseded by actual execution on 2026-10-28:
+14/14 normal and 14/14 UBSan cases passed against the exact preserved patched
+v0.1.8 source. No production native package rebuild was performed.
 
-Earlier private RED/GREEN/UBSan logs remain preserved separately. They do not
-prove that this portable copy passes, nor that a real compositor teardown of
-the new native package has passed. ThreadSanitizer mapping failures are not
-a pass. Do not close issue31 or include this package in an accepted ISO on
-these files alone.
+See docs/checkpoints/hypridle-regression-20261028.md for exact native package,
+real compositor teardown, second authenticated login and limitations.
+Private full logs/generated source remain in the documented durable QA directory.
 
-No test is started by preserving this WIP. Further execution requires a later,
-explicitly resumed, bounded verification task.
+The extracted loop is not full-daemon or ISO acceptance. ThreadSanitizer was
+not passed (historical mapping failure), and physical hardware remains untested.
+Issue31 remains open for explicitly documented lifecycle/latency/ISO gates.

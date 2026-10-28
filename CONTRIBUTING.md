@@ -33,6 +33,12 @@ Run the checks below before requesting review. Add a focused regression test for
 
 Record commands and results in the PR. State the tested commit and any deployed revision separately.
 
+## Session close-out and GitHub reporting
+
+Every Hermes session, including blocked or documentation-only work, follows the [reporting standard](docs/development-reporting.md): update the checkpoint, write the full 12-part [Markdown report](docs/templates/DEVELOPMENT_REPORT_TEMPLATE.md), commit/push to the authorized branch with remote read-back, update the relevant status issue (#16), and finish with the direct GitHub report link in the terminal. Keep historical evidence separate from new verification. Preserve secrets and private host details locally. If publication is blocked, retain the complete local report and state exactly what was not published.
+
+This is synchronous normal close-out, not authorization to start a scheduler, worker, new QA round, test, VM, ISO build or installer. For documentation-only reporting, use factual/text/link/diff and sensitive-content checks; do not rerun the application checks above merely to fill the report. Existing review and acceptance boundaries remain. Do not start the next recommended task automatically.
+
 ## Review boundary
 
 Review complete execution paths, including installer/configuration deployment, user-setting preservation and session lifecycle. Do not merge, release, deploy, alter repository settings, format disks or perform power/session actions as part of this project workflow.

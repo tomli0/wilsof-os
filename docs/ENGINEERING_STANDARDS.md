@@ -170,6 +170,18 @@ En avgrenset leveranse er ferdig når akseptansekriteriene i oppdraget er oppfyl
 
 En kildeleveranse eller dokumentasjons-PR kan være ferdig innenfor sitt omfang uten at hele funksjonen er fysisk akseptert. Det skal fremgå. «PR opprettet» er ikke «review godkjent», «CI grønn» er ikke «ISO verifisert», og «milepæl fullført» er ikke automatisk «issue kan lukkes». Merge, offentlig release og fysisk test er egne beslutninger. Gjenstående relevante porter hindrer at den bredere funksjonen markeres Done.
 
+### Obligatorisk normal avslutningsprosedyre
+
+Hver fremtidig Hermes-økt SKAL avsluttes etter [rapporteringsstandarden](development-reporting.md), også ved blokkering eller kontrollert stopp:
+
+1. Oppdater kontrollpunktet med faktisk bevis-, prosess-, låse- og ressursstatus.
+2. Skriv fullstendig sanert [Markdown-rapport med alle 12 punkter](templates/DEVELOPMENT_REPORT_TEMPLATE.md).
+3. Commit og push til autorisert gren; les eksakt fjern-head og publisert innhold tilbake.
+4. Oppdater relevant status-issue med kort sammendrag og direkte rapportlenke; les oppdateringen tilbake.
+5. Gi direkte GitHub-lenke i terminalen, kort status, tidsstemplet eksakt ledig plass og neste anbefalte oppgave. Start ikke oppgaven.
+
+Rapportering er del av leveransen, ikke bare terminalhistorikk. Bevar private bevis lokalt; ikke publiser rå samtalelogger, hemmeligheter eller private serveropplysninger. Ingen scheduler, bakgrunnsarbeider, plugin eller ekstra betalt QA skal startes for å utføre avslutningen. Ved faktisk publiseringsblokkering bevares rapporten lokalt og upublisert rest oppgis ærlig.
+
 ## 15. Praktisk PR-sjekkliste
 
 Kopier bare relevante punkter til PR-en, men behold utelatelser med kort begrunnelse. Ikke merk ukjørte sjekker som bestått.

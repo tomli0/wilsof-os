@@ -6,9 +6,10 @@ import json
 from pathlib import Path
 import re
 import shutil
+import runpy
 
 
-def prepare(upstream, output, source, commit):
+def prepare(upstream, output, source, commit, *, hypridle_package=None):
     if not re.fullmatch(r'[0-9a-f]{40}', commit):
         raise ValueError('An exact source commit is required')
     if output.exists():
@@ -62,6 +63,16 @@ def prepare(upstream, output, source, commit):
     (payload / 'SOURCE_COMMIT').write_text(commit + '\n')
     sums = {str(p.relative_to(payload)): hashlib.sha256(p.read_bytes()).hexdigest() for p in payload.rglob('*') if p.is_file()}
     (payload / 'FILES.sha256.json').write_text(json.dumps(sums, indent=2, sort_keys=True) + '\n')
+    if hypridle_package is not None:
+        pin = runpy.run_path(str(source / 'runtime/pinned-package.py'))
+        package = pin['verified_package'](hypridle_package.parent)
+        if package != hypridle_package:
+            raise ValueError('Exact verified Hypridle package filename required')
+        packages_dir = root / 'usr/share/wilsof/packages'
+        packages_dir.mkdir(parents=True)
+        shutil.copyfile(package, packages_dir / package.name)
+        # Supported by pinned Archiso 91; removed from the image after execution.
+        write('root/customize_airootfs.sh', '#!/bin/sh\nset -eu\npython3 -c "import runpy; runpy.run_path(\'/usr/share/wilsof/source/runtime/pinned-package.py\')[\'install_package\'](\'/\', \'/usr/share/wilsof/packages\')"\n', 0o755)
     lib = root / 'usr/local/lib/wilsof'
     lib.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source / 'runtime/provision-target', lib / 'provision-target')
@@ -102,8 +113,9 @@ def main():
     for flag in ('upstream', 'output', 'source'):
         parser.add_argument('--' + flag, type=Path, required=True)
     parser.add_argument('--commit', required=True)
+    parser.add_argument('--hypridle-package', type=Path)
     args = parser.parse_args()
-    prepare(args.upstream, args.output, args.source, args.commit)
+    prepare(args.upstream, args.output, args.source, args.commit, hypridle_package=args.hypridle_package)
 
 
 if __name__ == '__main__':

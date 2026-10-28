@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 import re
+import runpy
 import shutil
 import subprocess
 import sys
@@ -49,6 +50,8 @@ def main():
     if not live and not target.is_mount():
         raise SystemExit('Installed target must be a mounted root filesystem')
     source = Path('/usr/share/wilsof/source')
+    if not live:
+        runpy.run_path(str(source / 'runtime/pinned-package.py'))['install_package'](target, '/usr/share/wilsof/packages')
     destination = target / 'usr/share/wilsof/source'
     if source.resolve() != destination.resolve():
         if destination.exists():

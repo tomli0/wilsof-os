@@ -23,7 +23,16 @@ The source payload is limited by `runtime/image-files.txt`; symlinks are rejecte
     WILSOF_SOURCE_COMMIT=<exact-reviewed-40-character-commit> \
     WILSOF_ISO_WORKDIR=/export/new-work \
     WILSOF_ISO_OUTDIR=/export/new-output \
+    WILSOF_HYPRIDLE_PACKAGE=/verified-artifacts/hypridle-0.1.8-2.1-x86_64.pkg.tar.zst \
     /src/scripts/build-iso.sh --build
+
+The internal Hypridle artifact is supplied separately, never committed as a
+binary. Its package and installed-executable SHA256 are pinned in
+`runtime/pinned-package.py`; mismatches fail closed. The same verified package
+is installed into the live root during the pinned Archiso 91 customization step
+and copied/installed into the target during provisioning. This step does not
+rebuild Hypridle. The Archiso 91 customization hook is deprecated upstream and
+must be reviewed before changing the supported Archiso version.
 
 The prepared profile is a sibling of the work directory. A new successful
 `mkarchiso -r` build removes its work directory. A resumed existing work directory

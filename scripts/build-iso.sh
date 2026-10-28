@@ -11,6 +11,7 @@ command -v mkarchiso >/dev/null 2>&1 || { printf '%s\n' 'build-iso: archiso is u
 : "${WILSOF_SOURCE_COMMIT:?Exact reviewed source commit required}"
 : "${WILSOF_ISO_WORKDIR:?Dedicated absolute work directory required}"
 : "${WILSOF_ISO_OUTDIR:?Dedicated absolute output directory required}"
+: "${WILSOF_HYPRIDLE_PACKAGE:?Exact verified internal Hypridle artifact required}"
 if [ ! -f "$root/SOURCE_COMMIT" ] || [ "$(cat "$root/SOURCE_COMMIT")" != "$WILSOF_SOURCE_COMMIT" ]; then
     printf '%s\n' 'Build from a verified git archive with its exact SOURCE_COMMIT marker.' >&2
     exit 65
@@ -33,7 +34,8 @@ if o.exists() and any(o.iterdir()):
 PY
 mkdir -p "$WILSOF_ISO_OUTDIR"
 python3 "$root/scripts/prepare-iso.py" --upstream /usr/share/archiso/configs/releng \
-    --output "${WILSOF_ISO_WORKDIR}-profile" --source "$root" --commit "$WILSOF_SOURCE_COMMIT"
+    --output "${WILSOF_ISO_WORKDIR}-profile" --source "$root" --commit "$WILSOF_SOURCE_COMMIT" \
+    --hypridle-package "$WILSOF_HYPRIDLE_PACKAGE"
 python3 - "$root" "${WILSOF_ISO_WORKDIR}-profile" <<'PY'
 from pathlib import Path
 from runpy import run_path

@@ -1,6 +1,6 @@
 # Status — Wilsof Arch prototype
 
-Updated: 2026-10-28 UTC (autonomous session checkpoint added)
+Updated: 2026-10-28 UTC (autonomous QA session finalized)
 
 ## Current bounded checkpoint — installer bug #34
 
@@ -15,10 +15,11 @@ Updated: 2026-10-28 UTC (autonomous session checkpoint added)
 
 Earlier dated sections below are historical observations, not current ISO acceptance.
 
-### Session checkpoint — 2026-10-28 autonomous QA/build session
+### Session checkpoint — 2026-10-28 autonomous QA/build session (finalized 13:40Z)
 
-- Independent review of commit b3b8e74 by the configured reviewer route (Claude Sonnet 4.6 via OpenRouter) was dispatched and its findings are recorded in the private QA checkpoint (`~/.local/state/wilsof-qa/autonomous-20261028-1311/claude-qa-findings.json`); this status will be finalized when the review completes.
-- Planned new versioned ISO build (intended `2026.10.28-internal2`) is BLOCKED on host storage: 5.6 GiB free versus the 25 GiB minimum in `docs/iso.md`. Zero build attempts were made; no QEMU guest was started. Earlier ISOs, disks, firmware and evidence are preserved unchanged.
+- Independent review of commit b3b8e74 is complete. Round 1 ran on the automatic fallback model (route deviation documented on PR #27); round 2 ran through the configured review route — Claude Sonnet 4.6 via OpenRouter, pinned, no fallback — with verdict **no blocking findings** (1 medium test-coverage gap, 4 low, 6 info). Both findings files are preserved in the private QA checkpoint (`~/.local/state/wilsof-qa/autonomous-20261028-1311/`).
+- Non-blocking pre-build checklist recorded on #34 for the next authorized ISO acceptance: pin/gate `arch-install-scripts`, resolver post-condition assertion, `install_package('/')` test, environment-gated real `arch-chroot -r` integration test.
+- Planned new versioned ISO build (intended `2026.10.28-internal2`) is BLOCKED on host storage: 5.6 GiB free versus the 25 GiB minimum in `docs/iso.md`. Zero build attempts were made; no QEMU guest was started. Earlier ISOs, disks, firmware and evidence are preserved unchanged. Installation, disk-only boot and normal password login remain not run for any post-correction image.
 - Engineering Standards documentation completed on `docs/engineering-standards-20261028` and opened as draft PR #35 targeting this branch; separate from integration work.
 
 ## Historical internal ISO checkpoint — 2026-10-27

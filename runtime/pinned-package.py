@@ -9,6 +9,20 @@ PACKAGE_SHA256 = '3182ffaa24b0382c39614c460e15f90ff730d7da4f60378123d9b3df09c01d
 BINARY_SHA256 = '3b5b36e21cb88e2939ed42f5d1a87c8b05f3c95876703545dd74dd280ee7fdd9'
 
 
+def verify_arch_chroot_support():
+    """Fail the image customization before provisioning with an unsupported wrapper."""
+    installed = subprocess.run(['pacman', '-Q', 'arch-install-scripts'], check=True, capture_output=True, text=True).stdout.split()
+    if len(installed) != 2 or installed[0] != 'arch-install-scripts':
+        raise ValueError('Cannot identify installed arch-install-scripts version')
+    version = installed[1]
+    comparison = subprocess.run(['vercmp', version, '31'], check=True, capture_output=True, text=True).stdout.strip()
+    if comparison not in ('-1', '0', '1') or comparison == '-1':
+        raise ValueError('arch-install-scripts >= 31 is the supported arch-chroot baseline')
+    # Parse the real option without setting up mounts or entering a target.
+    subprocess.run(['arch-chroot', '-r', '-h'], check=True, capture_output=True, text=True)
+    return version
+
+
 def target_command(target, *command):
     # A mounted target root is not an API-prepared chroot: /etc/mtab points
     # into /proc, and package hooks/user provisioning also need /dev and /run.

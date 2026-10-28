@@ -38,6 +38,13 @@ def validate_target(target, username, live):
     return target
 
 
+def verify_resolver(target):
+    """Check the intended link itself, including when its target is still absent."""
+    resolver = target / 'etc/resolv.conf'
+    if not resolver.is_symlink() or os.readlink(resolver) != '/run/systemd/resolve/stub-resolv.conf':
+        raise ValueError('Target resolver symlink changed during provisioning')
+
+
 def main():
     if os.geteuid() != 0 or len(sys.argv) not in (3, 4):
         raise SystemExit('Usage (root): provision-target MOUNTPOINT USER [--live]')
@@ -81,7 +88,18 @@ def main():
     command = pin['target_command'](target, 'runuser', '-u', username, '--', 'python3', '/usr/share/wilsof/source/runtime/desktop.py')
     if live:
         command.append('--live')
-    subprocess.run(command, check=True)
+    try:
+        subprocess.run(command, check=True)
+    except Exception as error:
+        if not live:
+            try:
+                verify_resolver(target)
+            except (ValueError, OSError) as resolver_error:
+                # Preserve the original failure/exit status, while reporting damage.
+                error.add_note(str(resolver_error))
+        raise
+    if not live:
+        verify_resolver(target)
 
 
 if __name__ == '__main__':

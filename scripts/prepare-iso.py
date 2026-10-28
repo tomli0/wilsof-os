@@ -63,6 +63,8 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     (payload / 'SOURCE_COMMIT').write_text(commit + '\n')
     sums = {str(p.relative_to(payload)): hashlib.sha256(p.read_bytes()).hexdigest() for p in payload.rglob('*') if p.is_file()}
     (payload / 'FILES.sha256.json').write_text(json.dumps(sums, indent=2, sort_keys=True) + '\n')
+    # Gate the installed image dependency even when preparing without a local package.
+    customization = "import runpy; pin=runpy.run_path('/usr/share/wilsof/source/runtime/pinned-package.py'); pin['verify_arch_chroot_support']()"
     if hypridle_package is not None:
         pin = runpy.run_path(str(source / 'runtime/pinned-package.py'))
         package = pin['verified_package'](hypridle_package.parent)
@@ -71,8 +73,9 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
         packages_dir = root / 'usr/share/wilsof/packages'
         packages_dir.mkdir(parents=True)
         shutil.copyfile(package, packages_dir / package.name)
-        # Supported by pinned Archiso 91; removed from the image after execution.
-        write('root/customize_airootfs.sh', '#!/bin/sh\nset -eu\npython3 -c "import runpy; runpy.run_path(\'/usr/share/wilsof/source/runtime/pinned-package.py\')[\'install_package\'](\'/\', \'/usr/share/wilsof/packages\')"\n', 0o755)
+        customization += "; pin['install_package']('/', '/usr/share/wilsof/packages')"
+    # Supported by pinned Archiso 91; removed from the image after execution.
+    write('root/customize_airootfs.sh', '#!/bin/sh\nset -eu\npython3 -c "' + customization + '"\n', 0o755)
     lib = root / 'usr/local/lib/wilsof'
     lib.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source / 'runtime/provision-target', lib / 'provision-target')

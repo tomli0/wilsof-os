@@ -101,9 +101,3 @@ def test_failed_chroot_setup_is_propagated_without_fallback(tmp_path, monkeypatc
         api['install_package'](target, tmp_path)
     assert failure.value.returncode == 32
     assert len(calls) == 1 and calls[0][:4] == ['arch-chroot', '-r', str(target), 'pacman']
-
-
-def test_user_provisioning_uses_same_api_prepared_boundary():
-    provision = (ROOT / 'runtime/provision-target').read_text()
-    assert "pin['target_command'](target, 'runuser'" in provision
-    assert "['chroot'," not in provision

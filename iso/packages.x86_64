@@ -1,4 +1,6 @@
 base
+# Explicit installer API-mount/resolver boundary; build customization gates >= 31 and -r.
+arch-install-scripts
 linux
 linux-firmware
 systemd

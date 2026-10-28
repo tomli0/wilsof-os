@@ -1,6 +1,6 @@
 # Status — Wilsof Arch prototype
 
-Updated: 2026-10-28 UTC
+Updated: 2026-10-28 UTC (autonomous session checkpoint added)
 
 ## Current bounded checkpoint — installer bug #34
 
@@ -14,6 +14,12 @@ Updated: 2026-10-28 UTC
 - Scheduler/automatic worker remain paused. No main/arch-install merge, release, paid fallback, physical disk/USB or Proxmox change. Engineering Standards is a separate documentation workstream and is not changed here.
 
 Earlier dated sections below are historical observations, not current ISO acceptance.
+
+### Session checkpoint — 2026-10-28 autonomous QA/build session
+
+- Independent review of commit b3b8e74 by the configured reviewer route (Claude Sonnet 4.6 via OpenRouter) was dispatched and its findings are recorded in the private QA checkpoint (`~/.local/state/wilsof-qa/autonomous-20261028-1311/claude-qa-findings.json`); this status will be finalized when the review completes.
+- Planned new versioned ISO build (intended `2026.10.28-internal2`) is BLOCKED on host storage: 5.6 GiB free versus the 25 GiB minimum in `docs/iso.md`. Zero build attempts were made; no QEMU guest was started. Earlier ISOs, disks, firmware and evidence are preserved unchanged.
+- Engineering Standards documentation completed on `docs/engineering-standards-20261028` and opened as draft PR #35 targeting this branch; separate from integration work.
 
 ## Historical internal ISO checkpoint — 2026-10-27
 

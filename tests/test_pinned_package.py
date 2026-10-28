@@ -44,7 +44,7 @@ def test_profile_carries_verified_package_and_installs_it_in_build_and_target(tm
     assert 'pinned-package.py' in customize and 'install_package' in customize
     assert 'runtime/pinned-package.py' in (ROOT / 'runtime/image-files.txt').read_text().splitlines()
     provision = (ROOT / 'runtime/provision-target').read_text()
-    assert "['install_package'](target" in provision
+    assert "pin['install_package'](target" in provision
 
 
 def test_package_symlink_rejected(tmp_path):
@@ -70,7 +70,40 @@ def test_install_copies_exact_verified_bytes_and_checks_binary(tmp_path, monkeyp
     monkeypatch.setattr(api['subprocess'], 'run', run)
     with pytest.raises(ValueError, match='executable checksum'):
         api['install_package'](target, tmp_path)
-    assert calls == [(['chroot', str(target), 'pacman', '-U', '--noconfirm', '--needed', '/usr/share/wilsof/packages/' + api['PACKAGE_NAME']], {'check': True})]
+    assert calls == [(['arch-chroot', '-r', str(target), 'pacman', '-U', '--noconfirm', '--needed', '/usr/share/wilsof/packages/' + api['PACKAGE_NAME']], {'check': True})]
     assert (target / 'usr/share/wilsof/packages' / api['PACKAGE_NAME']).read_bytes() == data
     api['install_package'].__globals__['BINARY_SHA256'] = hashlib.sha256(b'fixture binary').hexdigest()
     api['install_package'](target, tmp_path)
+
+
+@pytest.mark.parametrize('target,expected', [
+    (Path('/mnt/wilsof'), ['arch-chroot', '-r', '/mnt/wilsof', 'runuser', '-u', 'demo', '--', 'python3']),
+    (Path('/'), ['runuser', '-u', 'demo', '--', 'python3']),
+])
+def test_target_command_prepares_api_filesystems_without_nesting_live_root(target, expected):
+    api = runpy.run_path(str(ROOT / 'runtime/pinned-package.py'))
+    assert api['target_command'](target, 'runuser', '-u', 'demo', '--', 'python3') == expected
+
+
+def test_failed_chroot_setup_is_propagated_without_fallback(tmp_path, monkeypatch):
+    import subprocess
+    api = runpy.run_path(str(ROOT / 'runtime/pinned-package.py'))
+    data = b'fixture package'
+    api['verified_package'].__globals__['PACKAGE_SHA256'] = hashlib.sha256(data).hexdigest()
+    (tmp_path / api['PACKAGE_NAME']).write_bytes(data)
+    target = tmp_path / 'target'
+    calls = []
+    def fail(argv, **kwargs):
+        calls.append(argv)
+        raise subprocess.CalledProcessError(32, argv)
+    monkeypatch.setattr(api['subprocess'], 'run', fail)
+    with pytest.raises(subprocess.CalledProcessError) as failure:
+        api['install_package'](target, tmp_path)
+    assert failure.value.returncode == 32
+    assert len(calls) == 1 and calls[0][:4] == ['arch-chroot', '-r', str(target), 'pacman']
+
+
+def test_user_provisioning_uses_same_api_prepared_boundary():
+    provision = (ROOT / 'runtime/provision-target').read_text()
+    assert "pin['target_command'](target, 'runuser'" in provision
+    assert "['chroot'," not in provision

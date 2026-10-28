@@ -9,6 +9,16 @@ PACKAGE_SHA256 = '3182ffaa24b0382c39614c460e15f90ff730d7da4f60378123d9b3df09c01d
 BINARY_SHA256 = '3b5b36e21cb88e2939ed42f5d1a87c8b05f3c95876703545dd74dd280ee7fdd9'
 
 
+def target_command(target, *command):
+    # A mounted target root is not an API-prepared chroot: /etc/mtab points
+    # into /proc, and package hooks/user provisioning also need /dev and /run.
+    # Let arch-chroot own setup/teardown; -r preserves the target resolver.
+    # '/' is the already prepared live/build root, never a nested chroot.
+    if Path(target) == Path('/'):
+        return list(command)
+    return ['arch-chroot', '-r', str(target), *command]
+
+
 def verified_package(directory):
     package = Path(directory) / PACKAGE_NAME
     if any(p.is_symlink() for p in (package, *package.parents)):
@@ -29,7 +39,7 @@ def install_package(target, directory):
         shutil.copyfile(package, destination)
     destination.chmod(0o644)
     inside = '/usr/share/wilsof/packages/' + PACKAGE_NAME
-    subprocess.run(['chroot', str(target), 'pacman', '-U', '--noconfirm', '--needed', inside], check=True)
+    subprocess.run(target_command(target, 'pacman', '-U', '--noconfirm', '--needed', inside), check=True)
     binary = target / 'usr/bin/hypridle'
     if binary.is_symlink() or hashlib.sha256(binary.read_bytes()).hexdigest() != BINARY_SHA256:
         raise ValueError('Installed Hypridle executable checksum mismatch')

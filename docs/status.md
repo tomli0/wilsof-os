@@ -1,8 +1,21 @@
 # Status — Wilsof Arch prototype
 
-Updated: 2026-10-27 UTC
+Updated: 2026-10-28 UTC
 
-## Current internal ISO checkpoint
+## Current bounded checkpoint — installer bug #34
+
+- Draft PR #27 / `integration/internal-iso-20261026` contains the bounded target-chroot correction. Read [root cause and verification](checkpoints/pacman-chroot-fix-20261028.md). No merge or new ISO build in this correction task.
+- Actual `2026.10.28-internal1` ISO source is `98bda89c453365b9fc51a0b40ad4174c40b4af8a`, 2545111040 bytes, SHA256 `ab78770ce5c4c5fe8b7b913263ade47e4f2d8830a4ffbb6a38c935c9e9a45e83`. Its installation FAILED with exit1; it does not contain this later correction and is not accepted for installation.
+- Root cause is bare chroot without target API mounts: the intact `/etc/mtab -> ../proc/self/mounts` link cannot resolve. The correction uses `arch-chroot -r` for external target commands and executes directly in the already prepared live/build root. Storage/authentication/signature guards are unchanged.
+- Code regression passed RED/GREEN; 175 tests and static checks pass. Real isolated native Pacman upgrade, API setup/teardown, injected setup failure and unprivileged execution-context checks pass. No full reinstall, new VM or artifact acceptance claimed; independent review remains pending.
+- Previously completed Hypridle harness (14/14 normal and 14/14 UBSan) and actual daemon teardown are recorded in [milestone A](checkpoints/hypridle-regression-20261028.md). The native package was reused, not rebuilt. #31 remains open for its explicit remaining lifecycle/latency/artifact gates.
+- Original failed-install guest and supervisor exited cleanly, target was safely unmounted, offline qcow2 check passed, and disk/firmware/ISO/logs are preserved. This task uses only a separate disposable chroot clone, never repairs the preserved disk.
+- Next gate requires separate authorization: review the correction, build a new versioned internal ISO and validate its actual installation/disk-only boot/authentication. #30 installed updater/preservation and installed lock gates remain pending for that future image.
+- Scheduler/automatic worker remain paused. No main/arch-install merge, release, paid fallback, physical disk/USB or Proxmox change. Engineering Standards is a separate documentation workstream and is not changed here.
+
+Earlier dated sections below are historical observations, not current ISO acceptance.
+
+## Historical internal ISO checkpoint — 2026-10-27
 
 - Continue draft integration PR #27 on `integration/internal-iso-20261026`; no shared branch was merged and no feature is marked Done.
 - Current artifact remains candidate 2 from `e2561399e5ac5add3711549f9c48e1bcab1486d1`. Read the [controlled session close](checkpoints/session-close-20261027.md) first; earlier checkpoints remain history. No new ISO/reinstall occurred.

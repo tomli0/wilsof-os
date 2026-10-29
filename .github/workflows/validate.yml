@@ -2,9 +2,9 @@ name: Validate
 
 on:
   push:
-    branches: [arch-install]
+    branches: [arch-install, fix/wallpaper-recovery-37-20261029]
   pull_request:
-    branches: [main]
+    branches: [main, integration/internal-iso-20261026]
 
 permissions:
   contents: read

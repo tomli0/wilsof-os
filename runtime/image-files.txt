@@ -29,3 +29,11 @@ schemas/installation-plan.schema.json
 assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png
 assets/Wilsof OS-logo med geometrisk WS-monogram.png
 assets/Wilsof lock background.png
+bin/wilsof-profile
+bin/wilsof-profile-ui
+config/dms/plugins/wilsofProfiles/plugin.json
+config/dms/plugins/wilsofProfiles/Profiles.js
+config/dms/plugins/wilsofProfiles/ProfileState.qml
+config/dms/plugins/wilsofProfiles/Launcher.qml
+config/dms/plugins/wilsofProfiles/Bar.qml
+config/dms/plugins/wilsofProfiles/qmldir

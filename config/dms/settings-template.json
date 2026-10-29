@@ -9,7 +9,7 @@
       "position": 0,
       "screenPreferences": ["all"],
       "showOnLastDisplay": true,
-      "leftWidgets": ["workspaceSwitcher"],
+      "leftWidgets": ["wilsofProfiles", "workspaceSwitcher"],
       "centerWidgets": ["clock"],
       "rightWidgets": ["systemTray", "battery", "controlCenterButton"],
       "spacing": 2,

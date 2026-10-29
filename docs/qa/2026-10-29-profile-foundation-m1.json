@@ -1,0 +1,191 @@
+{
+  "milestone": "M1 only",
+  "base_commit": "219894f1d4fc365b5e6546c2af9a146141634a1c",
+  "code_commit": "e4aecd6f8d1259098a843a9b56d8a2a2fef00fce",
+  "local_runtime": "Python 3.14.7, ordinary UID 1000, no graphical session",
+  "tests": {
+    "focused": {
+      "passed": 69,
+      "exit": 0
+    },
+    "regression": {
+      "passed": 270,
+      "skipped": 1,
+      "exit": 0,
+      "skip_reason": "opt-in native Arch chroot fixture not authorized/needed for M1"
+    }
+  },
+  "checks": {
+    "shellcheck_sh": 0,
+    "shellcheck_bash": 0,
+    "json_configs": 3,
+    "python_ast_grammar": "3.12",
+    "git_diff_check": 0,
+    "local_doc_links": "passed",
+    "added_lines_security_scan": "no matches"
+  },
+  "syscall_smoke": [
+    {
+      "args": [
+        "get"
+      ],
+      "exit": 0,
+      "stdout": "clean\n",
+      "network_syscalls": 0,
+      "execve_count": 1
+    },
+    {
+      "args": [
+        "list"
+      ],
+      "exit": 0,
+      "stdout": "clean\nstudy\ndevelopment\neveryday\n",
+      "network_syscalls": 0,
+      "execve_count": 1
+    },
+    {
+      "args": [
+        "set",
+        "clean"
+      ],
+      "exit": 0,
+      "stdout": "clean\n",
+      "network_syscalls": 0,
+      "execve_count": 1
+    },
+    {
+      "args": [
+        "set",
+        "study"
+      ],
+      "exit": 0,
+      "stdout": "study\n",
+      "network_syscalls": 0,
+      "execve_count": 1
+    },
+    {
+      "args": [
+        "set",
+        "development"
+      ],
+      "exit": 0,
+      "stdout": "development\n",
+      "network_syscalls": 0,
+      "execve_count": 1
+    },
+    {
+      "args": [
+        "set",
+        "everyday"
+      ],
+      "exit": 0,
+      "stdout": "everyday\n",
+      "network_syscalls": 0,
+      "execve_count": 1
+    },
+    {
+      "args": [
+        "get"
+      ],
+      "exit": 0,
+      "stdout": "everyday\n",
+      "network_syscalls": 0,
+      "execve_count": 1
+    }
+  ],
+  "source_sha256": {
+    "bin/wilsof-profile": "e7f06b662537e9349c94d44db4cf1e899d623584768f0357f36dbd1c636e9c1e",
+    "tests/test_profile.py": "1a52212c6fbe64ff245f716c2c91071c8f1c716ba7609cf1fe63c9955477a11c",
+    "tests/test_profile_integrity.py": "9c607eee61cae1ddb6ee68b108da5b5cbe8ae8d3e8d1d7fb7665b6b65696174e",
+    "tests/test_profile_boundaries.py": "99694ab260e95effdb41296970888e5d01b0521320c03c492b9ccd93a4278685",
+    ".github/workflows/validate.yml": "c5aa24c9f08a377ab9a4b9b09c2de75d53396c773759318b5409e9b062e72a62"
+  },
+  "no_vm_or_iso": true,
+  "independent_review": "not performed; draft owner review gate remains",
+  "wallpaper_followup": 37,
+  "storage": {
+    "at": "2026-10-29T18:29:26.989346+00:00",
+    "available_bytes": 106672062464,
+    "available_gib": 99.34609985351562
+  },
+  "code_artifact": {
+    "path": "bin/wilsof-profile",
+    "size_bytes": 6368,
+    "sha256": "e7f06b662537e9349c94d44db4cf1e899d623584768f0357f36dbd1c636e9c1e",
+    "mode": "0755"
+  },
+  "code_ci": {
+    "conclusion": "success",
+    "headSha": "e4aecd6f8d1259098a843a9b56d8a2a2fef00fce",
+    "jobs": [
+      {
+        "completedAt": "2026-10-29T18:29:12Z",
+        "conclusion": "success",
+        "databaseId": 123649686787,
+        "name": "test",
+        "startedAt": "2026-10-29T18:28:46Z",
+        "status": "completed",
+        "steps": [
+          {
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run actions/setup-python@v5",
+            "number": 3,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Install ShellCheck",
+            "number": 4,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Install test dependencies",
+            "number": 5,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Run local checks",
+            "number": 6,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/setup-python@v5",
+            "number": 11,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 12,
+            "status": "completed"
+          },
+          {
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 13,
+            "status": "completed"
+          }
+        ],
+        "url": "https://github.com/tomli0/wilsof-os/actions/runs/40931174013/job/123649686787"
+      }
+    ],
+    "status": "completed",
+    "url": "https://github.com/tomli0/wilsof-os/actions/runs/40931174013"
+  },
+  "note": "Public source/test snapshot. Publication-head CI and final lock receipt are recorded on PR38/status16 after push; no pending result is represented as passed."
+}

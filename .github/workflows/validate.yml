@@ -2,9 +2,9 @@ name: Validate
 
 on:
   push:
-    branches: [arch-install]
+    branches: [arch-install, feat/profile-foundation-m1-20261029]
   pull_request:
-    branches: [main]
+    branches: [main, integration/internal-iso-20261026]
 
 permissions:
   contents: read
@@ -24,6 +24,7 @@ jobs:
       - name: Run local checks
         run: |
           python -m pytest -q
+          python -c "import ast, pathlib; ast.parse(pathlib.Path('bin/wilsof-profile').read_text())"
           python -m json.tool config/wilsof-shortcuts.json >/dev/null
           python -m json.tool config/dms/settings-template.json >/dev/null
           python -m json.tool config/dms/wilsof-theme.json >/dev/null

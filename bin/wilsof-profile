@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""Local profile state only: no desktop, network, services or task data."""
+import argparse
+from contextlib import contextmanager
+import fcntl
+import json
+import os
+from pathlib import Path
+import secrets
+import stat
+import sys
+import time
+
+PROFILES = ('clean', 'study', 'development', 'everyday')
+MAX_BYTES = 4096
+DIRECTORY_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+
+
+@contextmanager
+def state_directory(home, *, create=False):
+    """Walk below HOME by directory FD, never through managed symlinks."""
+    home = Path(home)
+    if not home.is_absolute() or '..' in home.parts:
+        raise ValueError('HOME must be an absolute path without parent traversal')
+    fd = os.open(home, DIRECTORY_FLAGS)
+    try:
+        for name in ('.local', 'state', 'wilsof-os'):
+            if create:
+                try:
+                    os.mkdir(name, 0o700, dir_fd=fd)
+                except FileExistsError:
+                    pass
+            try:
+                child = os.open(name, DIRECTORY_FLAGS, dir_fd=fd)
+            except FileNotFoundError:
+                if create:
+                    raise
+                yield None
+                return
+            os.close(fd)
+            fd = child
+            info = os.fstat(fd)
+            if info.st_uid != os.geteuid() or info.st_mode & 0o022:
+                raise ValueError('state directories must be user-owned and not writable by others')
+        if create:
+            os.fchmod(fd, 0o700)
+        yield fd
+    finally:
+        os.close(fd)
+
+
+def check_file(fd):
+    info = os.fstat(fd)
+    if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
+            or stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1):
+        raise ValueError('state/lock must be a user-owned, single-link regular file with mode 0600')
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('duplicate JSON field')
+        result[key] = value
+    return result
+
+
+def read_profile(directory):
+    if directory is None:
+        return 'clean'
+    try:
+        fd = os.open('profile.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+                     | os.O_CLOEXEC, dir_fd=directory)
+    except FileNotFoundError:
+        return 'clean'
+    with os.fdopen(fd, 'rb') as handle:
+        check_file(handle.fileno())
+        raw = handle.read(MAX_BYTES + 1)
+    if len(raw) > MAX_BYTES:
+        raise ValueError('state exceeds 4096 bytes')
+    data = json.loads(raw.decode('utf-8'), object_pairs_hook=unique_object)
+    if not isinstance(data, dict) or set(data) != {'schema_version', 'profile'}:
+        raise ValueError('expected exactly schema_version and profile fields')
+    if type(data['schema_version']) is not int or data['schema_version'] != 1:
+        raise ValueError('unsupported schema_version (expected integer 1)')
+    if not isinstance(data['profile'], str) or data['profile'] not in PROFILES:
+        raise ValueError('invalid profile value')
+    return data['profile']
+
+
+@contextmanager
+def writer_lock(directory):
+    # Never unlink the lock: waiters must keep referring to the same inode.
+    fd = os.open('.profile.lock', os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW
+                 | os.O_NONBLOCK | os.O_CLOEXEC, 0o600, dir_fd=directory)
+    try:
+        check_file(fd)
+        deadline = time.monotonic() + 2
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('profile writer busy; retry after it finishes') from None
+                time.sleep(0.01)
+        yield
+    finally:
+        os.close(fd)
+
+
+def write_profile(directory, profile):
+    """Commit a complete file by same-directory rename; fsync both boundaries."""
+    temporary = '.profile-' + secrets.token_hex(16) + '.tmp'
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+                 | os.O_CLOEXEC, 0o600, dir_fd=directory)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as handle:
+            json.dump({'schema_version': 1, 'profile': profile}, handle, sort_keys=True)
+            handle.write('\n')
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, 'profile.json', src_dir_fd=directory, dst_dir_fd=directory)
+        try:
+            os.fsync(directory)
+        except OSError as error:
+            raise OSError('profile replaced, but directory sync failed; durability unknown; run get') from error
+    finally:
+        try:
+            os.unlink(temporary, dir_fd=directory)
+        except FileNotFoundError:
+            pass
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
+    commands = parser.add_subparsers(dest='command', required=True)
+    commands.add_parser('get')
+    commands.add_parser('list')
+    setter = commands.add_parser('set')
+    setter.add_argument('profile', choices=PROFILES)
+    args = parser.parse_args()
+    if args.command == 'list':
+        print('\n'.join(PROFILES))
+        return 0
+    path = Path.home() / '.local/state/wilsof-os/profile.json'
+    try:
+        with state_directory(Path.home(), create=args.command == 'set') as directory:
+            if args.command == 'set':
+                with writer_lock(directory):
+                    try:
+                        read_profile(directory)
+                    except (OSError, ValueError, RecursionError) as error:
+                        raise ValueError('refusing overwrite; file preserved. Inspect and explicitly '
+                                         'archive profile.json before retrying set') from error
+                    write_profile(directory, args.profile)
+                profile = args.profile
+            else:
+                profile = read_profile(directory)
+        print(profile)
+        return 0
+    except (OSError, ValueError, RecursionError) as error:
+        if args.command == 'get':
+            print('clean')
+        detail = f'{error}; CLEAN fallback; file preserved.' if args.command == 'get' else str(error)
+        print(f'wilsof-profile: {path}: {detail}', file=sys.stderr)
+        return 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

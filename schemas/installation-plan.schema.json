@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wilsof.install-plan/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "target", "layout", "bootloader", "account", "encryption", "optional_packages", "codecs", "review_digest", "executor"],
+  "properties": {
+    "schema": {"const": "wilsof.install-plan/v1"},
+    "plan_id": {"type": "string"},
+    "target": {"type": "object", "additionalProperties": false, "required": ["path", "size_bytes", "identity", "expected_empty"], "properties": {"path": {"type": "string", "pattern": "^/dev/"}, "size_bytes": {"type": "integer", "minimum": 1}, "identity": {"type": "string", "minLength": 1}, "expected_empty": {"const": true}}},
+    "layout": {"type": "object", "additionalProperties": false, "required": ["mode", "table", "firmware", "partitions"], "properties": {"mode": {"const": "whole-disk"}, "table": {"const": "gpt"}, "firmware": {"const": "uefi"}, "partitions": {"type": "array", "minItems": 2, "maxItems": 2, "prefixItems": [{"const": "ESP"}, {"const": "root"}], "items": false}}},
+    "bootloader": {"type": "string"},
+    "account": {"type": "object", "additionalProperties": false, "required": ["username", "password_in_plan"], "properties": {"username": {"type": "string"}, "password_in_plan": {"const": false}}},
+    "encryption": {"type": "object", "additionalProperties": false, "required": ["enabled"], "properties": {"enabled": {"type": "boolean"}}},
+    "optional_packages": {"type": "array", "items": {"type": "string"}},
+    "codecs": {"type": "object"},
+    "review_digest": {"type": "string", "pattern": "^sha256-"},
+    "executor": {"type": "object", "additionalProperties": false, "required": ["adapter", "adapter_version"], "properties": {"adapter": {"const": "archinstall"}, "adapter_version": {"type": "string", "minLength": 1}}}
+  }
+}

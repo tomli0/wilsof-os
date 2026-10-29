@@ -7,8 +7,9 @@ if [ "${WILSOF_TARGET_VM:-}" != "1" ]; then
   exit 64
 fi
 
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 [ -r /etc/os-release ] || { printf '%s\n' "Target OS cannot be identified." >&2; exit 1; }
+# shellcheck source=/etc/os-release
 . /etc/os-release
 case "${ID:-}" in
   fedora) "$root/scripts/preflight-fedora.sh" ;;
@@ -32,8 +33,11 @@ for managed in \
   "$HOME/.local/bin/wilsof-search" "$HOME/.local/bin/wilsof-lock" \
   "$HOME/.local/bin/wilsof-help" "$HOME/.local/bin/wilsof-help-view" \
   "$HOME/.local/bin/wilsof-doctor" \
+  "$HOME/.local/bin/wilsof-apply-wallpaper" \
   "$HOME/.local/bin/wilsof-vm-test-binds" \
   "$HOME/.local/share/wilsof-os/wilsof-shortcuts.json" \
+  "$HOME/.local/share/wilsof-os/assets/Wilsof OS-logo med geometrisk WS-monogram.png" \
+  "$HOME/.local/share/wilsof-os/assets/Wilsof lock background.png" \
   "$HOME/.local/share/wilsof-os/vm-test/wilsof-vm-test.lua" \
   "$HOME/.config/hypr/wilsof.conf" "$HOME/.config/hypr/wilsof.lua" \
   "$HOME/.config/hypr/hypridle.conf" "$HOME/.config/hypr/hyprlock.conf" \
@@ -49,6 +53,7 @@ install -m 0755 "$root/bin/wilsof-lock" "$HOME/.local/bin/wilsof-lock"
 install -m 0755 "$root/bin/wilsof-help" "$HOME/.local/bin/wilsof-help"
 install -m 0755 "$root/bin/wilsof-help-view" "$HOME/.local/bin/wilsof-help-view"
 install -m 0755 "$root/bin/wilsof-doctor" "$HOME/.local/bin/wilsof-doctor"
+install -m 0755 "$root/bin/wilsof-apply-wallpaper" "$HOME/.local/bin/wilsof-apply-wallpaper"
 install -m 0755 "$root/bin/wilsof-vm-test-binds" "$HOME/.local/bin/wilsof-vm-test-binds"
 install -d "$HOME/.local/share/wilsof-os/vm-test"
 install -m 0644 "$root/config/wilsof-shortcuts.json" "$HOME/.local/share/wilsof-os/wilsof-shortcuts.json"
@@ -62,6 +67,8 @@ install -m 0644 "$root/config/systemd/wilsof-wallpaper.service" "$HOME/.config/s
 install -m 0644 "$root/config/systemd/dms-wilsof.conf" "$HOME/.config/systemd/user/dms.service.d/wilsof.conf"
 install -m 0644 "$root/config/dms/wilsof-theme.json" "$HOME/.local/share/wilsof-os/wilsof-theme.json"
 install -m 0644 "$root/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png" "$HOME/.local/share/wilsof-os/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png"
+install -m 0644 "$root/assets/Wilsof OS-logo med geometrisk WS-monogram.png" "$HOME/.local/share/wilsof-os/assets/Wilsof OS-logo med geometrisk WS-monogram.png"
+install -m 0644 "$root/assets/Wilsof lock background.png" "$HOME/.local/share/wilsof-os/assets/Wilsof lock background.png"
 
 # Seed Wilsof's static DMS theme once, before any personal DMS settings exist.
 # Subsequent installs intentionally preserve settings.json and the marker records that fact.

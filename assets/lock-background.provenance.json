@@ -1,0 +1,9 @@
+{
+  "source": "Mørk geometrisk bakgrunn med isblått WS-monogram.png",
+  "source_sha256": "8f1966a6a8671cb54c8bb0ea983049685165a3b8f4082ce8c34fc8141b47edcd",
+  "output": "Wilsof lock background.png",
+  "output_sha256": "a754e5f5dcb1239e7c2e2982f7a9d5cdf1df68b0dfdc61289c624b9f848adf6e",
+  "dimensions": [1672, 941],
+  "transform": "Pillow 12.3.0: convert('RGB'), GaussianBlur(radius=16), save PNG optimize=False",
+  "purpose": "Preserve a softened derivative of the approved wallpaper without runtime GPU blur on the lock-acquisition path. The original desktop wallpaper and logo are unchanged."
+}

@@ -6,6 +6,9 @@ local wilsof_bin = wilsof_home .. "/.local/bin/"
 local vm_test_enabled = wilsof_home .. "/.config/hypr/wilsof-vm-test-enabled.lua"
 
 hl.config({
+    -- Wilsof owns onboarding/help; the optional upstream news window is not
+    -- part of this desktop and crashes on the tested software-buffer path.
+    ecosystem = { no_update_news = true },
     input = {
         kb_layout = "no",
         follow_mouse = 1,

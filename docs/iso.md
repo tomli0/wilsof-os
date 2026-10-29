@@ -22,18 +22,55 @@ The image deliberately does not claim to install Wilsof. A future installer must
 
 The existing `scripts/install-arch-test-vm.sh` and `scripts/install-user-config.sh` remain the only prototype installation path. They configure a dedicated test VM after explicit guards and retain user-owned DMS settings. The ISO profile must not use a VM system disk as an installation target.
 
-## Build requirements and limits
+## Separate build environment and isolation boundary
 
-Build on a disposable Arch build host with:
+The build host is not the Hermes host, Proxmox host, VM 113, a workstation with user data, or a prospective installation target. Use a newly provisioned, disposable x86_64 Arch Linux VM (or equivalent isolated build machine) that is authorized solely for this build. Do not mount any target-system disks into it and do not reuse its work or output directories for another project.
 
-- `archiso` installed (provides `mkarchiso` and the `releng` profile);
-- root access for `mkarchiso` only;
-- network access to the configured Arch package repositories;
-- enough writable disk space for package cache, work tree and output ISO;
-- no changes to Proxmox, VM 113, partitions, network services or the Hermes host configuration.
+The build machine needs:
 
-Run:
+- `archiso` installed, which provides `mkarchiso` and `/usr/share/archiso/configs/releng`;
+- root access only for the one `mkarchiso` invocation; do not run the repository checkout or routine inspection as root;
+- outbound package-repository access; no inbound SSH service, production credentials, private keys, authorized keys, tokens, known-hosts files, or machine-specific configuration copied into the profile;
+- at least 25 GiB free in the filesystem that will hold both the work and output directories, plus enough RAM and CPU for the host's normal Arch package build; record the actual free space before starting;
+- dedicated absolute directories, for example `/srv/wilsof-iso-work` and `/srv/wilsof-iso-out`, owned and used only by this test.
 
-    sudo WILSOF_ISO_WORKDIR=/safe/work WILSOF_ISO_OUTDIR=/safe/out scripts/build-iso.sh --build
+The repository contains an overlay only. `scripts/build-iso.sh` copies the distribution-maintained `releng` profile into `WILSOF_ISO_WORKDIR/profile`, overlays the tracked Wilsof files, and writes the resulting ISO only to `WILSOF_ISO_OUTDIR`. It does not select, mount, format, partition, attach, boot, publish, upload, or install an ISO. Those boundaries remain mandatory: do not change Proxmox, VM 113, disks, firmware, network services, or the Hermes host configuration for this test.
 
-The script creates output locally and does not publish, install or attach it to a VM. A successful profile validation or script test is not an ISO build. Before accepting an ISO, boot it in an isolated disposable VM and manually inspect the login and live-session behaviour.
+## Safe, reversible build-only test
+
+This is the next authorized test. It produces a local artifact on the separate build host; it is not permission to boot it.
+
+1. In a non-root shell, confirm the host and paths before doing anything:
+
+       uname -m
+       command -v mkarchiso
+       test -d /usr/share/archiso/configs/releng
+       df -h /srv/wilsof-iso-work /srv/wilsof-iso-out
+       git status --short
+       : "${WILSOF_APPROVED_COMMIT:?Set the independently approved full source commit}"
+       git rev-parse HEAD
+       test "$(git rev-parse HEAD)" = "$WILSOF_APPROVED_COMMIT"
+
+   Continue only when the architecture is `x86_64`, the `releng` directory and `mkarchiso` exist, both directories are dedicated, and the filesystem has at least 25 GiB available. The checkout must be the reviewed commit with no unexpected changes.
+
+2. From that checkout, run only the bounded builder:
+
+       sudo WILSOF_ISO_WORKDIR=/srv/wilsof-iso-work WILSOF_ISO_OUTDIR=/srv/wilsof-iso-out scripts/build-iso.sh --build
+
+3. After a successful command, validate the local artifact without booting or attaching it:
+
+       find /srv/wilsof-iso-out -maxdepth 1 -type f -name '*.iso' -printf '%f %s bytes\n'
+       sha256sum /srv/wilsof-iso-out/*.iso
+       ls -ld /srv/wilsof-iso-out
+
+   `mkarchiso -r` removes the work directory after success; only the surviving output directory is required for artifact validation.
+
+   Record the command exit status, ISO filename, byte size, SHA-256, build-host OS version, and repository commit in the issue or pull request. Treat a successful profile test or CI run as different evidence; neither proves that an ISO was built.
+
+4. To revert this test, delete only the two dedicated directories after recording the artifact metadata. Do not use a broad path or a target-system mount. The disposable build VM may then be destroyed.
+
+Stop immediately, retain logs, and do not retry on a target host if any prerequisite fails, the free-space threshold is not met, the builder requests an unexpected path, the output appears outside the two dedicated directories, a credential or machine-specific file is found, or `mkarchiso` exits nonzero. The next action is to document the failure; it is not to alter the ISO profile, host, VM, disks, or network ad hoc.
+
+## Explicit authorization gates
+
+A build artifact remains internal and local. Publishing or uploading an ISO, attaching it to any VM, changing boot order, booting it, creating an installation target, partitioning or formatting storage, and installing Wilsof each require separate, explicit authorization and a new safety review. Before an authorized future boot test, use a newly created disposable VM with no important disks and manually inspect the login and live-session behavior. No physical-client, firmware, boot, or installation validation has been performed by this documentation change.

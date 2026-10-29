@@ -29,5 +29,7 @@ fi
 
 umask 077
 mkdir -p "$state_dir" "$(dirname -- "$help_document")"
-"$viewer" "$manifest" > "$help_document"
+# Keybinding children may inherit the compositor's console. Rendering a file
+# must never wait for input on that TTY before opening the graphical viewer.
+"$viewer" "$manifest" < /dev/null > "$help_document"
 exec dms ipc call notepad openFile "$help_document"

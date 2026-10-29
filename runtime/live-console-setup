@@ -1,0 +1,33 @@
+#!/usr/bin/env python3
+"""Prepare local-only, per-boot recovery credentials; never provision a target."""
+from pathlib import Path
+import os
+import secrets
+import subprocess
+
+
+def prepare_console(root=Path('/')):
+    subprocess.run(['id', 'live'], check=False, stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL)
+    if subprocess.run(['id', '-u', 'live'], check=False, capture_output=True).returncode:
+        subprocess.run(['useradd', '-m', '-s', '/bin/bash', 'live'], check=True)
+    password = secrets.token_hex(6)
+    subprocess.run(['chpasswd'], input=f'live:{password}\n', text=True, check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    issue = root / 'etc/issue'
+    issue.parent.mkdir(parents=True, exist_ok=True)
+    issue.write_text(
+        '\nWilsof OS — temporary local recovery console\n'
+        'Ctrl+Alt+F2 opens this console; Ctrl+Alt+F1 returns to graphics.\n'
+        f'Username: live    This boot only password: {password}\n'
+        'Password input is hidden. No root or remote login is enabled.\n'
+        'After login: sudo wilsof-live-recover (logs)\n'
+        'Retry desktop: sudo wilsof-live-recover --restart\n'
+        'This live session is public evaluation space, not a private account.\n\n')
+    issue.chmod(0o644)
+
+
+if __name__ == '__main__':
+    if os.geteuid() != 0 or not Path('/run/archiso/airootfs').is_mount():
+        raise SystemExit('Recovery setup requires the running Archiso live environment')
+    prepare_console()

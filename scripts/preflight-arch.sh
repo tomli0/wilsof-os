@@ -6,6 +6,7 @@ if [ ! -r /etc/os-release ]; then
   printf '%s\n' "Arch preflight: /etc/os-release is unavailable." >&2
   exit 1
 fi
+# shellcheck source=/etc/os-release
 . /etc/os-release
 if [ "${ID:-}" != "arch" ]; then
   printf '%s\n' "Arch preflight: target must be Arch Linux; found ${ID:-unknown}." >&2
@@ -22,7 +23,7 @@ for command in systemctl pacman hyprctl dms loginctl; do
   fi
 done
 
-for package in dms-shell hyprland hyprlock hypridle xdg-desktop-portal-hyprland ghostty firefox nautilus gnome-text-editor papers loupe vlc; do
+for package in dux-shell hyprland hyprlock hypridle xdg-desktop-portal-hyprland ghostty firefox nautilus gnome-text-editor papers loupe vlc; do
   if pacman -Q "$package" >/dev/null 2>&1; then
     printf 'PASS package: %s\n' "$package"
   else

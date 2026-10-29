@@ -74,6 +74,12 @@ def test_dms_lua_integration_overrides_the_generated_defaults():
     assert 'require("wilsof")' not in config
 
 
+def test_managed_desktop_disables_only_optional_upstream_update_popup():
+    assert 'no_update_news = true' in read_lua_config()
+    assert 'no_update_news = true' in read_config()
+
+
+
 def test_lua_owns_the_agreed_live_keybindings_with_supported_dispatchers():
     config = read_lua_config()
     for binding in (
@@ -102,12 +108,52 @@ def test_idle_config_locks_with_the_wilsof_wrapper_before_sleep():
     assert "dpms" not in config
 
 
+def test_wrapped_sleep_lock_waits_for_actual_lock_notification():
+    # Auto detection looks for the literal hyprlock command and misses our wrapper.
+    assert 'inhibit_sleep = 3' in read_idle_config()
+
+
+
 def test_lock_surface_uses_approved_wilsof_tokens_and_password_feedback():
     config = LOCK_CONFIG.read_text(encoding="utf-8")
-    assert "Wilsof OS" in config
+    assert "text = Wilsof OS" not in config
+    assert "image {" in config
+    assert "Wilsof OS-logo med geometrisk WS-monogram.png" in config
+    assert "size = 93" in config
+    assert "position = 0, 120" in config
     assert "rgb(20, 24, 30)" in config
     assert "rgb(134, 185, 206)" in config
     assert "rgb(230, 160, 160)" in config
     assert "Skriv passord for å låse opp" in config
     assert "Feil passord" in config
-    assert "Mørk geometrisk bakgrunn med isblått WS-monogram.png" in config
+    assert "Wilsof lock background.png" in config
+
+
+def test_lock_logo_is_an_approved_transparent_asset():
+    logo = ROOT / "assets" / "Wilsof OS-logo med geometrisk WS-monogram.png"
+    data = logo.read_bytes()
+    assert data.startswith(b"\x89PNG\r\n\x1a\n")
+    # PNG IHDR's ninth byte is the colour type; 6 is truecolour with alpha.
+    assert data[25] == 6
+
+
+def test_static_lock_does_not_capture_desktop_or_wait_for_assets_before_locking():
+    config = LOCK_CONFIG.read_text(encoding='utf-8')
+    assert 'immediate_render = true' in config
+    assert 'animation = fadeIn, 0' in config
+    assert 'animation = fadeOut, 0' in config
+    assert 'path = screenshot' not in config
+    assert 'grace' not in config
+    assert 'blur_passes = 0' in config
+    assert 'Wilsof lock background.png' in config
+    assert (ROOT / 'assets/Wilsof lock background.png').is_file()
+    assert 'assets/Wilsof lock background.png' in (ROOT / 'runtime/image-files.txt').read_text()
+
+
+def test_preblurred_asset_preserves_approved_source_and_recorded_output():
+    import hashlib
+    import json
+    assets = ROOT / 'assets'
+    record = json.loads((assets / 'lock-background.provenance.json').read_text())
+    assert hashlib.sha256((assets / record['source']).read_bytes()).hexdigest() == record['source_sha256']
+    assert hashlib.sha256((assets / record['output']).read_bytes()).hexdigest() == record['output_sha256']

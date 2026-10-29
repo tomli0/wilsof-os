@@ -1,25 +1,46 @@
 #!/bin/sh
-# Build an internal live-test ISO only when explicitly requested.
+# Build only inside a dedicated Arch environment; never attach or install the ISO.
 set -eu
-
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-overlay="$root/iso"
-work=${WILSOF_ISO_WORKDIR:-"$root/.iso-work"}
-out=${WILSOF_ISO_OUTDIR:-"$root/.iso-out"}
-profile="$work/profile"
-
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 if [ "${1:-}" != "--build" ] || [ "$#" -ne 1 ]; then
     printf '%s\n' "Usage: $0 --build" >&2
-    printf '%s\n' "Requires Arch Linux, archiso, root, network package access and free build space. No ISO is published or installed." >&2
     exit 64
 fi
-[ "$(id -u)" -eq 0 ] || { printf '%s\n' "build-iso: run as root on a disposable Arch build host." >&2; exit 77; }
-command -v mkarchiso >/dev/null 2>&1 || { printf '%s\n' "build-iso: mkarchiso is unavailable; install archiso on a dedicated build host." >&2; exit 69; }
-[ -d /usr/share/archiso/configs/releng ] || { printf '%s\n' "build-iso: the upstream archiso releng profile is unavailable." >&2; exit 69; }
-[ -f "$overlay/profiledef.sh" ] || { printf '%s\n' "build-iso: tracked Wilsof overlay is incomplete." >&2; exit 65; }
-
-rm -rf "$profile"
-mkdir -p "$work" "$out"
-cp -a /usr/share/archiso/configs/releng "$profile"
-cp -a "$overlay/." "$profile/"
-exec mkarchiso -v -r -w "$work" -o "$out" "$profile"
+[ "$(id -u)" -eq 0 ] || { printf '%s\n' 'build-iso: root inside an isolated Arch build environment is required.' >&2; exit 77; }
+command -v mkarchiso >/dev/null 2>&1 || { printf '%s\n' 'build-iso: archiso is unavailable.' >&2; exit 69; }
+: "${WILSOF_SOURCE_COMMIT:?Exact reviewed source commit required}"
+: "${WILSOF_ISO_WORKDIR:?Dedicated absolute work directory required}"
+: "${WILSOF_ISO_OUTDIR:?Dedicated absolute output directory required}"
+: "${WILSOF_HYPRIDLE_PACKAGE:?Exact verified internal Hypridle artifact required}"
+if [ ! -f "$root/SOURCE_COMMIT" ] || [ "$(cat "$root/SOURCE_COMMIT")" != "$WILSOF_SOURCE_COMMIT" ]; then
+    printf '%s\n' 'Build from a verified git archive with its exact SOURCE_COMMIT marker.' >&2
+    exit 65
+fi
+python3 - "$WILSOF_SOURCE_COMMIT" "$WILSOF_ISO_WORKDIR" "$WILSOF_ISO_OUTDIR" <<'PY'
+from pathlib import Path
+import re, sys
+commit, work, out = sys.argv[1:]
+if not re.fullmatch(r'[0-9a-f]{40}', commit):
+    raise SystemExit('Exact 40-character source commit required')
+w, o = Path(work), Path(out)
+if not w.is_absolute() or not o.is_absolute() or len(w.parts) < 3 or len(o.parts) < 3:
+    raise SystemExit('Dedicated absolute build paths required')
+w, o = w.resolve(), o.resolve()
+profile = Path(str(w) + '-profile')
+if w == o or w in o.parents or o in w.parents or w.exists() or profile.exists():
+    raise SystemExit('Work must be new; work/output paths must be disjoint')
+if o.exists() and any(o.iterdir()):
+    raise SystemExit('Output must be empty')
+PY
+mkdir -p "$WILSOF_ISO_OUTDIR"
+python3 "$root/scripts/prepare-iso.py" --upstream /usr/share/archiso/configs/releng \
+    --output "${WILSOF_ISO_WORKDIR}-profile" --source "$root" --commit "$WILSOF_SOURCE_COMMIT" \
+    --hypridle-package "$WILSOF_HYPRIDLE_PACKAGE"
+python3 - "$root" "${WILSOF_ISO_WORKDIR}-profile" <<'PY'
+from pathlib import Path
+from runpy import run_path
+import sys
+source, profile = map(Path, sys.argv[1:])
+run_path(str(source / 'scripts/boot-profile.py'))['configure_boot'](profile, source)
+PY
+exec mkarchiso -v -r -w "$WILSOF_ISO_WORKDIR" -o "$WILSOF_ISO_OUTDIR" "${WILSOF_ISO_WORKDIR}-profile"

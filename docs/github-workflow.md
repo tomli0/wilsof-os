@@ -60,4 +60,6 @@ hermes cron resume <job-id>
 
 Any future model-enabled task must write a concise repository checkpoint with issue number, branch, base SHA, tested SHA, deployment SHA (if any), commands/results, blocker/review state, and explicit human checks. Update the Issue and PR with the same evidence. Never describe deployed, tested, or merged revisions as interchangeable.
 
+Before requesting review, the worker must read [the engineering guide](../CONTRIBUTING.md), run its applicable automated checks, inspect the whole changed execution path and record the exact commands/results. The [quality audit](quality-audit.md) is the current prioritized baseline; new high-priority defects need a focused regression test or an explicit, evidence-backed reason they cannot be safely tested here.
+
 Physical keyboard routing, local-password unlock, visual acceptance, actual five-minute idle lock, suspend behavior, and graphical persistence are human/VM-console checks unless separately recorded with evidence. The worker must leave those checks unclaimed.

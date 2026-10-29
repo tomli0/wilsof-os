@@ -84,11 +84,14 @@ def test_installer_selects_arch_or_fedora_preflight_explicitly():
     assert 'arch) "$root/scripts/preflight-arch.sh"' in content
 
 
-def test_wallpaper_unit_requires_dms_and_quotes_asset_path_with_spaces():
+def test_wallpaper_unit_requires_dms_and_uses_argument_safe_readiness_helper():
     content = WALLPAPER_UNIT.read_text(encoding="utf-8")
     assert "Requires=dms.service" in content
     assert "After=dms.service" in content
-    assert '"%h/.local/share/wilsof-os/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png"' in content
+    assert 'ExecStart=%h/.local/bin/wilsof-apply-wallpaper' in content
+    helper = (ROOT / 'bin/wilsof-apply-wallpaper').read_text()
+    assert "['dms', 'ipc', 'call', 'wallpaper', 'set', str(image)]" in helper
+    assert 'Mørk geometrisk bakgrunn med isblått WS-monogram.png' in helper
 
 
 def test_installer_integrates_with_the_dms_lua_entrypoint_and_locking():
@@ -100,6 +103,7 @@ def test_installer_integrates_with_the_dms_lua_entrypoint_and_locking():
     assert 'bin/wilsof-help' in content
     assert 'require("wilsof")' in content
     assert 'systemctl --user enable dms.service hypridle.service' in content
+    assert 'assets/Wilsof OS-logo med geometrisk WS-monogram.png' in content
 
 
 def test_installer_seeds_static_dms_theme_only_once():
@@ -255,6 +259,7 @@ def test_doctor_reports_missing_dependencies_with_a_nonzero_exit(tmp_path):
     assert result.returncode == 1
     assert "MISSING dms" in result.stdout
     assert "MISSING ghostty" in result.stdout
+    assert "MISSING busctl (cannot inspect the power-profile D-Bus backend)" in result.stdout
 
 
 def test_doctor_is_read_only_and_reports_a_present_empty_ghostty_config(tmp_path):
@@ -281,6 +286,12 @@ def test_doctor_is_read_only_and_reports_a_present_empty_ghostty_config(tmp_path
     assert (config / "config.ghostty").exists()
 
 
+def test_doctor_checks_the_power_profile_package_and_dbus_backend():
+    doctor = (ROOT / "bin" / "wilsof-doctor").read_text(encoding="utf-8")
+    assert 'pacman -Q power-profiles-daemon' in doctor
+    assert 'busctl --system status net.hadess.PowerProfiles' in doctor
+
+
 def test_search_uses_dms_spotlight_all_mode_and_rejects_other_actions(tmp_path):
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
@@ -305,5 +316,24 @@ def test_iso_profile_and_builder_are_present_and_keep_secrets_out_of_the_profile
     assert "archiso" not in package_text
     assert "openssh" not in package_text
     assert "ghostty" in package_text
-    assert "dms-shell" in package_text
+    assert "dux-shell" in package_text
+    assert "power-profiles-daemon" in package_text
     assert "mkarchiso" in builder.read_text(encoding="utf-8")
+
+
+def test_engineering_guide_and_audit_are_linked_from_the_readme():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    guide = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    audit = (ROOT / "docs" / "quality-audit.md").read_text(encoding="utf-8")
+    assert "[engineering guide](CONTRIBUTING.md)" in readme
+    assert "[quality audit](docs/quality-audit.md)" in readme
+    assert "physical client" in guide
+    assert "High: validation did not cover every executable shell path" in audit
+
+
+def test_validation_workflow_uses_shellcheck_for_each_shell_dialect():
+    workflow = (ROOT / ".github" / "workflows" / "validate.yml").read_text(encoding="utf-8")
+    assert "apt-get install --yes shellcheck" in workflow
+    assert "bin/wilsof-doctor" in workflow
+    assert "--shell=sh" in workflow
+    assert "--shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh" in workflow

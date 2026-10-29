@@ -25,8 +25,8 @@ A PASS only covers the stated method. “IPC” is not physical keyboard evidenc
 | Applications | real graphical starts | PARTIAL | Firefox was shown in launcher; representative starts still need active-session tests |
 | Portals/audio | portal backend and PipeWire/WirePlumber units | PASS (service) | live package/service inspection |
 | Audio/screen sharing | playback and sharing user flows | NOT TESTED | no user-flow test |
-| Lock setup | Hyprlock package, PAM file and Wilsof config present | PASS (static/SSH) | `/etc/pam.d/hyprlock`; deployed `hyprlock.conf` |
-| Lock surface | live configured Hyprlock display | PASS (process/log/visual) | Hyprlock PID, `Locking session`, configured prompt and `evidence/vm113-2026-10-16-lock.png` |
+| Lock setup | Hyprlock package, PAM file, approved transparent WS logo and Wilsof config present | PASS (static) | source tests verify the supported `image` block, asset alpha channel and installer deployment path |
+| Lock surface | live configured Hyprlock display with the approved WS logo | RETEST REQUIRED | prior screenshot predates the logo change; requires a permitted local lock observation at 1280×800 |
 | Unlock | PAM password authentication | NOT TESTED | must be entered locally by authorized human |
 | Idle | one Hypridle service and 300-second listener | PASS (service/config) | live unit status and `hypridle.conf` |
 | Idle | actual lock after five minutes | FAIL (before fix) / RETEST REQUIRED | prior logs: Hyprlock lacked config and exited |
@@ -36,6 +36,12 @@ A PASS only covers the stated method. “IPC” is not physical keyboard evidenc
 | Persistence | logout/login and reboot observation | NOT TESTED | not yet performed |
 | Local quality gate | unit tests, shell syntax, theme JSON and diff whitespace | PASS | `33 passed`; shell/JSON/diff checks |
 | CI | GitHub Actions on current pushed commit | PENDING | must be rechecked after the final push |
+| Power profiles | DMS reported backend status before remediation | PASS (SSH/IPC) | Exact result: `ERROR: power-profiles-daemon not available`; package, unit and `net.hadess.PowerProfiles` D-Bus name were absent |
+| Power profiles | New-image manifest includes DMS backend | PASS (static) | `power-profiles-daemon` is in the VM installer and internal ISO package list |
+| Power profiles | Live backend package/service/D-Bus and DMS status after installation | PASS (SSH/IPC) | Installed `power-profiles-daemon 0.30-1`; no TLP/TuneD/auto-cpufreq; system unit active, `net.hadess.PowerProfiles` present, and after bounded DMS reload `dms ipc call powerprofile status` returned `balanced` |
+| Power profiles | Visible DMS control and unavailable-state presentation | NOT TESTED | requires visual/physical-client observation; no synthetic or destructive input was used |
+| Power profiles | Profile enumeration/selection and restoration | NOT TESTED | KVM exposes no battery, ACPI platform profile, or CPU frequency interface; do this only on supported hardware and restore the prior profile |
+| Power profiles | Laptop battery/thermal effects | NOT TESTED | requires physical laptop measurements; profile labels alone are not evidence |
 
 ## Physical-console checklist
 
@@ -43,5 +49,5 @@ A PASS only covers the stated method. “IPC” is not physical keyboard evidenc
 2. Test `Super+I` and `Super+F1`; close help with the UI and try Escape.
 3. Enable the optional layer only if needed, then test all four Ctrl+Alt fallbacks and disable it again.
 4. Open the system menu and cancel every destructive confirmation.
-5. When ready to enter the local password, test `Super+L` and then wait five minutes for idle lock.
+5. When ready to enter the local password, test `Super+L`, confirm the centered WS logo above the clock has no rectangular sheet background and is unclipped at 1280×800, then wait five minutes for idle lock.
 6. Only after all other GUI work is saved, perform a controlled logout/login or reboot and re-check the session.

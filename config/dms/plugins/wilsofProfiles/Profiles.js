@@ -22,7 +22,13 @@ function label(state) {
 }
 
 function items(query, state) {
-    const q = (query || "").trim().toLowerCase();
+    var q = (query || "").trim().toLowerCase();
+    // General app search stays uncluttered. The bar already opens "profil";
+    // explicit profile names remain fast keyboard entry points.
+    if (/^profil(?:e)?(?:\s|$)/.test(q))
+        q = q.replace(/^profil(?:e)?\s*/, "");
+    else if (!profiles.some(p => p.id === q || p.name.toLowerCase() === q))
+        return [];
     return profiles.map(p => ({
         name: "Profil · " + p.name,
         icon: p.icon,

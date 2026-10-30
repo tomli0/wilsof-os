@@ -19,6 +19,7 @@ def validate_target(target, username, live):
         raise ValueError('Invalid username')
     paths = ['etc/passwd', 'usr/lib/os-release', f'home/{username}', 'usr/share/wilsof/source',
              'usr/local/lib/wilsof/provision-target', 'usr/local/bin/wilsof-config-update',
+             'usr/local/bin/wilsof-session',
              'etc/greetd/config.toml', 'etc/systemd/system', 'etc']
     for relative in paths:
         current = target
@@ -72,13 +73,13 @@ def main():
     (lib / 'provision-target').chmod(0o755)
     bindir = target / 'usr/local/bin'
     bindir.mkdir(parents=True, exist_ok=True)
-    for name in ('wilsof-config-update',):
+    for name in ('wilsof-config-update', 'wilsof-session'):
         shutil.copy2(destination / 'bin' / name, bindir / name)
         (bindir / name).chmod(0o755)
     if not live:
         greetd = target / 'etc/greetd'
         greetd.mkdir(parents=True, exist_ok=True)
-        (greetd / 'config.toml').write_text('[terminal]\nvt = 1\n[default_session]\ncommand = "tuigreet --time --cmd Hyprland"\nuser = "greeter"\n')
+        (greetd / 'config.toml').write_text('[terminal]\nvt = 1\n[default_session]\ncommand = "tuigreet --time --cmd /usr/local/bin/wilsof-session"\nuser = "greeter"\n')
         subprocess.run(['systemctl', '--root', str(target), 'enable', 'greetd.service', 'NetworkManager.service', 'systemd-resolved.service'], check=True)
         subprocess.run(['systemctl', '--root', str(target), 'set-default', 'graphical.target'], check=True)
         resolver = target / 'etc/resolv.conf'

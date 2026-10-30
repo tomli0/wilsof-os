@@ -1,0 +1,17 @@
+#!/bin/sh
+# Keep greetd's PAM/session ownership; use Hyprland 0.57's packaged watchdog.
+# Routine compositor output remains available in journalctl -t wilsof-session.
+set -eu
+if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != --diagnostics ]; }; then
+    printf '%s\n' 'Usage: wilsof-session [--diagnostics]' >&2
+    exit 2
+fi
+cmdline=
+IFS= read -r cmdline < /proc/cmdline || :
+case " $cmdline " in
+    *' wilsof.diagnostics=1 '*) exec start-hyprland ;;
+esac
+if [ "${1:-}" = --diagnostics ]; then
+    exec start-hyprland
+fi
+exec systemd-cat --identifier=wilsof-session start-hyprland

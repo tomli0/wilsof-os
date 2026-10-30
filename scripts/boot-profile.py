@@ -42,7 +42,7 @@ def configure_boot(output, source):
     modes = [
         ('01-wilsof-linux.conf', normal, 'Try Wilsof OS (%ARCH%, UEFI)', '01', 'copytoram=n quiet splash'),
         ('02-wilsof-speech.conf', speech, 'Try Wilsof OS with speech (%ARCH%, UEFI)', '02', 'copytoram=n plymouth.enable=0 rd.plymouth=0 systemd.show_status=1'),
-        ('03-wilsof-diagnostics.conf', normal, 'Wilsof OS diagnostics - boot logs, no splash', '03', 'copytoram=n plymouth.enable=0 rd.plymouth=0 systemd.show_status=1 loglevel=7'),
+        ('03-wilsof-diagnostics.conf', normal, 'Wilsof OS diagnostics - boot logs, no splash', '03', 'copytoram=n plymouth.enable=0 rd.plymouth=0 systemd.show_status=1 loglevel=7 wilsof.diagnostics=1'),
         ('04-wilsof-ram.conf', normal, 'Try Wilsof OS - copy rootfs to RAM (extra RAM = rootfs size)', '04', 'copytoram=y plymouth.enable=0 rd.plymouth=0 systemd.show_status=1'),
     ]
     for name, template, title, order, flags in modes:

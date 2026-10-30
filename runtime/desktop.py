@@ -57,7 +57,7 @@ def install_user(source, home, *, live=False):
     for relative in ('.local', '.local/state', '.local/state/wilsof-os'):
         confined(relative).mkdir(mode=0o700, exist_ok=True)
 
-    for name in ('wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui'):
+    for name in ('wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui'):
         write(f'.local/bin/{name}', (source / 'bin' / name).read_bytes(), 0o755)
     for name in ('wilsof.lua', 'wilsof.conf', 'hypridle.conf', 'hyprlock.conf'):
         write(f'.config/hypr/{name}', (source / 'config/hypr' / name).read_bytes())
@@ -95,7 +95,8 @@ def install_user(source, home, *, live=False):
     if legacy_settings_dir.is_symlink() and os.readlink(legacy_settings_dir) == 'dms':
         settings_relative = '.config/dms/settings.json'
     settings = confined(settings_relative)
-    if live or not settings.exists():
+    new_settings = not settings.exists()
+    if live or new_settings:
         data = json.loads(settings.read_text() if settings.exists() else (source / 'config/dms/settings-template.json').read_text())
         if data.get('customThemeFile') in (None, '', '__WILSOF_THEME_PATH__'):
             data['customThemeFile'] = str(home / '.local/share/wilsof-os/wilsof-theme.json')
@@ -104,6 +105,17 @@ def install_user(source, home, *, live=False):
             data.update(loginctlLockIntegration=False, lockBeforeSuspend=False, lockAtStartup=False,
                         acLockTimeout=0, batteryLockTimeout=0)
         write(settings_relative, (json.dumps(data) + '\n').encode())
+    if new_settings:
+        # DMS 2.0's supported per-release-line acknowledgement, not a global
+        # news-disable flag. Future release notes and existing users are untouched.
+        marker = '.config/dms/.changelog-2.0'
+        if not confined(marker).exists():
+            write(marker, b'2.0\n')
+    # Known video-driver test clients, not normal desktop apps. Keep their
+    # binaries callable and use the standard per-user desktop-entry override.
+    for name in ('qv4l2', 'qvidcap'):
+        write(f'.local/share/applications/{name}.desktop',
+              f'[Desktop Entry]\nType=Application\nName={name}\nExec={name}\nIcon={name}\nNoDisplay=true\nTerminal=false\nCategories=AudioVideo;\n'.encode())
     entry = confined('.config/hypr/hyprland.lua')
     if not entry.exists():
         subprocess.run(['dms', 'setup', 'headless', '--compositor', 'hyprland', '--skip-existing'],

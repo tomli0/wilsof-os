@@ -109,6 +109,7 @@ def provision_transaction(tmp_path, monkeypatch, effect='intact', exit_code=0):
     source = tmp_path / 'source'
     (source / 'bin').mkdir(parents=True)
     (source / 'bin/wilsof-config-update').write_text('# fixture\n')
+    (source / 'bin/wilsof-session').write_text('# session fixture\n')
     target = tmp_path / 'target'
     (target / 'etc').mkdir(parents=True)
     (target / 'usr/lib').mkdir(parents=True)

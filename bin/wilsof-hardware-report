@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""Read-only, offline hardware state; JSON on stdout, no automatic file/upload.
+
+Run as the desktop user. No passwords, SSIDs, addresses, connections, application
+streams, personal files or raw journals are emitted. Inaccessible probes remain
+explicitly unavailable; this is evidence collection, not hardware acceptance.
+"""
+import argparse
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+
+
+PACKAGES = ('linux', 'linux-firmware', 'sof-firmware', 'alsa-ucm-conf',
+            'alsa-utils', 'networkmanager', 'wpa_supplicant', 'pipewire',
+            'pipewire-audio', 'pipewire-pulse', 'wireplumber', 'bluez',
+            'hyprland', 'hyprtoolkit', 'hyprland-guiutils', 'dux-shell', 'quickshell')
+
+
+def probe(argv, *, run=subprocess.run):
+    try:
+        r = run(argv, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                timeout=8, check=False, env=os.environ | {'LC_ALL': 'C', 'PAGER': 'cat'})
+        return {'status': 'ok' if r.returncode == 0 else 'unavailable',
+                'exit_code': r.returncode, 'data': r.stdout if r.returncode == 0 else ''}
+    except (OSError, subprocess.TimeoutExpired):
+        return {'status': 'unavailable', 'data': ''}
+
+
+def kernel_summary(text):
+    missing = []
+    for file, code in re.findall(r'Direct firmware load for ([a-zA-Z0-9_/.-]{1,160}) failed with error (-?\d+)', text):
+        if not file.startswith('/') and '..' not in Path(file).parts:
+            item = {'file': file, 'error': int(code)}
+            if item not in missing:
+                missing.append(item)
+    lines = text.lower().splitlines()
+    def count(pattern):
+        return sum(bool(re.search(pattern, line)) and bool(re.search(r'fail|error|timeout|timed out', line)) for line in lines)
+    return {'missing_firmware': missing,
+            'wifi_error_lines': count(r'iwl|ath\d|rtw|rtl|brcm|mt7|cfg80211|wlan'),
+            'audio_error_lines': count(r'snd|sof[-_ ]|soundwire|alsa'),
+            'bluetooth_error_lines': count(r'bluetooth|btusb|hci\d')}
+
+
+def audio_summary(devices, default):
+    out = []
+    for d in devices:
+        if not isinstance(d, dict) or not isinstance(d.get('index'), int):
+            continue
+        volumes = []
+        for channel in d.get('volume', {}).values():
+            value = channel.get('value_percent', '')
+            if isinstance(value, str) and re.fullmatch(r'\d{1,3}%', value):
+                volumes.append(int(value[:-1]))
+        out.append({'index': d['index'], 'default': d.get('name') == default,
+                    'state': d.get('state') if d.get('state') in ('RUNNING', 'IDLE', 'SUSPENDED') else 'UNKNOWN',
+                    'mute': d.get('mute') if isinstance(d.get('mute'), bool) else None,
+                    'volume_percent': volumes})
+    return out
+
+
+def hardware_ids():
+    pci, usb, radios = [], [], []
+    def read(path):
+        try:
+            return path.read_text().strip()
+        except OSError:
+            return ''
+    for p in sorted(Path('/sys/bus/pci/devices').glob('*')):
+        cls = read(p / 'class')
+        if not re.fullmatch(r'0x(?:02|04)[0-9a-fA-F]{4}', cls):
+            continue
+        row = {'class': cls}
+        for field in ('vendor', 'device', 'subsystem_vendor', 'subsystem_device'):
+            value = read(p / field)
+            if re.fullmatch(r'0x[0-9a-fA-F]{4}', value):
+                row[field] = value
+        driver = (p / 'driver').resolve().name if (p / 'driver').is_symlink() else ''
+        row['driver'] = driver if re.fullmatch(r'[a-zA-Z0-9_-]{1,64}', driver) else None
+        pci.append(row)
+    # Numeric USB IDs only; never serials, product/manufacturer strings or names.
+    for p in sorted(Path('/sys/bus/usb/devices').glob('*')):
+        vendor, product = read(p / 'idVendor'), read(p / 'idProduct')
+        if re.fullmatch(r'[0-9a-fA-F]{4}', vendor) and re.fullmatch(r'[0-9a-fA-F]{4}', product):
+            usb.append({'vendor': vendor, 'product': product})
+    for p in sorted(Path('/sys/class/rfkill').glob('rfkill*')):
+        kind = read(p / 'type')
+        radios.append({'type': kind if kind in ('wlan', 'bluetooth', 'wwan') else 'other',
+                       'soft': read(p / 'soft') == '1', 'hard': read(p / 'hard') == '1'})
+    return {'pci': pci, 'usb': usb, 'rfkill': radios}
+
+
+def collect():
+    result = {'schema_version': 1, 'at_utc': datetime.now(timezone.utc).isoformat(),
+              'kernel': os.uname().release, 'physical_approval': 'PENDING',
+              'hardware': hardware_ids(), 'probes': {}}
+    def save(name, argv, transform):
+        p = probe(argv)
+        value = {'status': p['status']}
+        if p['status'] == 'ok':
+            try:
+                value['result'] = transform(p['data'])
+            except (ValueError, TypeError, KeyError, AttributeError):
+                value['status'] = 'unavailable'
+        result['probes'][name] = value
+    # Query separately: a missing optional package must not hide installed ones.
+    result['packages'] = {}
+    for package in PACKAGES:
+        p = probe(['pacman', '-Q', package])
+        parts = p['data'].split()
+        result['packages'][package] = parts[1] if len(parts) == 2 and parts[0] == package and re.fullmatch(r'[a-zA-Z0-9:+_.-]+', parts[1]) else None
+    units = ('NetworkManager.service', 'bluetooth.service')
+    user_units = ('pipewire.service', 'pipewire-pulse.service', 'wireplumber.service', 'dms.service')
+    for unit in (*units, *user_units):
+        argv = ['systemctl', *(['--user'] if unit in user_units else []), 'show', unit,
+                '--property=LoadState,ActiveState,SubState,Result,NRestarts,ExecMainCode,ExecMainStatus', '--no-pager']
+        save(unit, argv, lambda text: dict(line.split('=', 1) for line in text.splitlines()
+             if re.fullmatch(r'[A-Za-z]+=[A-Za-z0-9_-]*', line)))
+    save('network_devices', ['nmcli', '-t', '-f', 'TYPE,STATE', 'device', 'status'],
+         lambda text: [line for line in text.splitlines() if re.fullmatch(r'[a-z-]+:(?:connected|disconnected|unavailable|unmanaged|connecting|connecting \(getting IP configuration\)|connecting \(need authentication\)|connected \(externally\))', line)])
+    save('wifi_radio', ['nmcli', 'radio', 'wifi'], lambda text: text.strip() if text.strip() in ('enabled', 'disabled') else 'unknown')
+    save('kernel_errors', ['journalctl', '-k', '-b', '-o', 'cat', '--no-pager', '-n', '3000'], kernel_summary)
+    for kind in ('sink', 'source'):
+        default = probe(['pactl', 'get-default-' + kind])['data'].strip()
+        save('audio_' + kind + 's', ['pactl', '--format=json', 'list', kind + 's'],
+             lambda text, default=default: audio_summary(json.loads(text), default))
+    return result
+
+
+def main():
+    argparse.ArgumentParser(description=__doc__).parse_args()
+    if os.geteuid() == 0:
+        raise SystemExit('Run as the desktop user, not root: audio and DMS belong to its user session.')
+    print(json.dumps(collect(), indent=2, sort_keys=True))
+
+
+if __name__ == '__main__':
+    main()

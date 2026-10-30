@@ -39,6 +39,11 @@ def test_provision_target_rejects_root_and_symlink_writes_before_mutation(tmp_pa
     with pytest.raises(ValueError, match='symlink'):
         validate(target, 'demo', False)
     assert victim.read_text() == 'must remain unchanged'
+    (target / 'usr/local/bin/wilsof-config-update').unlink()
+    (target / 'usr/local/bin/wilsof-session').symlink_to(victim)
+    with pytest.raises(ValueError, match='symlink'):
+        validate(target, 'demo', False)
+    assert victim.read_text() == 'must remain unchanged'
 
 
 def test_live_configuration_updates_keep_all_lock_paths_harmless(tmp_path):

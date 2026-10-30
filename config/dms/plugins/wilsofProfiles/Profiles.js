@@ -22,6 +22,7 @@ function label(state) {
 }
 
 function items(query, state) {
+    // DMS isolates the "profil" trigger and passes only its remaining query.
     const q = (query || "").trim().toLowerCase();
     return profiles.map(p => ({
         name: "Profil · " + p.name,

@@ -45,6 +45,6 @@ def test_composite_manifest_has_both_real_surfaces_and_no_daemon():
     manifest = json.loads(path.read_text())
     assert manifest['id'] == 'wilsofProfiles'
     assert set(manifest['components']) == {'launcher', 'widget'}
-    assert manifest['trigger'] == ''
+    assert manifest['trigger'] == 'profil'
     for name in manifest['components'].values():
         assert (PLUGIN / name).is_file()

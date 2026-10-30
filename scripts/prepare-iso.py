@@ -80,13 +80,13 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     lib.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source / 'runtime/provision-target', lib / 'provision-target')
     (lib / 'provision-target').chmod(0o755)
-    for name in ('wilsof-install', 'wilsof-config-update'):
+    for name in ('wilsof-install', 'wilsof-config-update', 'wilsof-session'):
         if (source / 'bin' / name).is_file():
             write('usr/local/bin/' + name, (source / 'bin' / name).read_text(), 0o755)
     shutil.copy2(source / 'runtime/desktop-packages.txt', root / 'usr/share/wilsof/desktop-packages.txt')
     write('etc/shadow', 'root:!:14871::::::\n', 0o400)
     write('etc/hostname', 'wilsof-live\n')
-    write('etc/greetd/config.toml', '[terminal]\nvt = 1\n[default_session]\ncommand = "tuigreet --cmd Hyprland"\nuser = "greeter"\n[initial_session]\ncommand = "Hyprland"\nuser = "live"\n')
+    write('etc/greetd/config.toml', '[terminal]\nvt = 1\n[default_session]\ncommand = "tuigreet --cmd /usr/local/bin/wilsof-session"\nuser = "greeter"\n[initial_session]\ncommand = "/usr/local/bin/wilsof-session"\nuser = "live"\n')
     write('usr/local/lib/wilsof/live-setup', '#!/bin/sh\nset -eu\nid live >/dev/null 2>&1 || useradd -m -s /bin/bash live\nrunuser -u live -- dbus-run-session -- gsettings set org.gnome.desktop.media-handling automount false\nrunuser -u live -- dbus-run-session -- gsettings set org.gnome.desktop.media-handling automount-open false\n/usr/local/lib/wilsof/provision-target / live --live\n', 0o755)
     write('etc/sudoers.d/wilsof-live-installer', 'live ALL=(root) NOPASSWD: /usr/local/bin/wilsof-install, /usr/local/bin/wilsof-live-recover "", /usr/local/bin/wilsof-live-recover --restart\n', 0o440)
     write('usr/local/lib/wilsof/live-console-setup', (source / 'runtime/live-console-setup').read_text(), 0o755)

@@ -5,7 +5,7 @@ import "."
 
 Item {
     property var pluginService: null
-    property string trigger: ""
+    property string trigger: "profil"
     signal itemsChanged()
 
     function getItems(query) {

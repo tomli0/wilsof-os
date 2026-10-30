@@ -21,4 +21,5 @@ file_permissions=(
   ["/usr/local/lib/wilsof/provision-target"]="0:0:755"
   ["/usr/local/bin/wilsof-install"]="0:0:755"
   ["/usr/local/bin/wilsof-config-update"]="0:0:755"
+  ["/usr/local/bin/wilsof-session"]="0:0:755"
 )

@@ -2,11 +2,11 @@
   "id": "wilsofProfiles",
   "name": "Wilsof Profiles",
   "description": "Four profiles in the existing launcher and bar; no dashboard or daemon.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Wilsof OS",
   "type": "composite",
   "requires_dms": ">=2.0.0",
   "components": {"launcher": "Launcher.qml", "widget": "Bar.qml"},
-  "trigger": "",
+  "trigger": "profil",
   "permissions": ["process"]
 }

@@ -3,8 +3,10 @@ bin/wilsof-lock
 bin/wilsof-help
 bin/wilsof-help-view
 bin/wilsof-doctor
+bin/wilsof-hardware-report
 bin/wilsof-vm-test-binds
 bin/wilsof-config-update
+bin/wilsof-session
 bin/wilsof-apply-wallpaper
 bin/wilsof-install
 installer/__init__.py

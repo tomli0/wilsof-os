@@ -52,6 +52,11 @@ def install_user(source, home, *, live=False):
             if os.path.exists(temporary):
                 os.unlink(temporary)
 
+    # New profile-state ancestors must satisfy M1 even under a group-write umask.
+    # Never chmod existing personal directories or follow their symlinks.
+    for relative in ('.local', '.local/state', '.local/state/wilsof-os'):
+        confined(relative).mkdir(mode=0o700, exist_ok=True)
+
     for name in ('wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui'):
         write(f'.local/bin/{name}', (source / 'bin' / name).read_bytes(), 0o755)
     for name in ('wilsof.lua', 'wilsof.conf', 'hypridle.conf', 'hyprlock.conf'):

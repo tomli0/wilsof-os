@@ -5,7 +5,7 @@ M2 er en tynn utvidelse av eksisterende DMS 2.0-launcher og top bar. Den starter
 ## Bruk
 
 - Super+Space åpner eksisterende DMS-launcher. Skriv `profil`, velg CLEAN, STUDY, DEV eller EVERYDAY med piler og Enter. Esc avbryter uten å endre profil.
-- Klikk profilnavnet i baren for samme launcher med `profil` som søk.
+- Klikk profilnavnet i baren for samme launcher med `profil` som søk. DMS kan også finne egne app-/innstillingsrader; velg den navngitte `Profil · …`-raden, ikke automatisk første treff. Et eksakt søk som `Profil · DEV` begrenser treffene.
 - Markøren viser bekreftet profil. `· ?` betyr ukjent/ikke bekreftet GUI; rødt betyr feil. En feil ved valg gir DMS-feilmelding, aldri suksessmelding.
 - `wilsof-profile get/list/set` beholder M1s rene tilstandskontrakt. `set` lagrer bare ønsket profil. `wilsof-profile-ui status` returnerer JSON med `saved`, `applied` og `error`; `apply <profil>` serialiserer lagring og avgrenset GUI-verifikasjon.
 

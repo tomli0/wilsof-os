@@ -102,6 +102,8 @@ if ! grep -Fq 'require("wilsof")' "$entry"; then
   printf '\n-- WILSOF_MANAGED: local visual and keyboard overrides\nrequire("wilsof")\n' >> "$entry"
 fi
 
+# Reuse the canonical offline installer for the manifest-owned profile components.
+python3 "$root/runtime/desktop.py" --source "$root"
 systemctl --user daemon-reload
 systemctl --user enable dms.service hypridle.service wilsof-wallpaper.service
 printf '%s\n' "Installed Wilsof user configuration. Start a Hyprland session through the configured display manager; DMS, Hypridle, the Wilsof wallpaper service, Super+Space and Super+L are enabled for that graphical session."

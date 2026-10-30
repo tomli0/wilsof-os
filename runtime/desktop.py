@@ -52,7 +52,12 @@ def install_user(source, home, *, live=False):
             if os.path.exists(temporary):
                 os.unlink(temporary)
 
-    for name in ('wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper'):
+    # New profile-state ancestors must satisfy M1 even under a group-write umask.
+    # Never chmod existing personal directories or follow their symlinks.
+    for relative in ('.local', '.local/state', '.local/state/wilsof-os'):
+        confined(relative).mkdir(mode=0o700, exist_ok=True)
+
+    for name in ('wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui'):
         write(f'.local/bin/{name}', (source / 'bin' / name).read_bytes(), 0o755)
     for name in ('wilsof.lua', 'wilsof.conf', 'hypridle.conf', 'hyprlock.conf'):
         write(f'.config/hypr/{name}', (source / 'config/hypr' / name).read_bytes())
@@ -67,6 +72,21 @@ def install_user(source, home, *, live=False):
         write(f'.local/share/wilsof-os/{name}', (source / origin).read_bytes())
     for name in ('Mørk geometrisk bakgrunn med isblått WS-monogram.png', 'Wilsof OS-logo med geometrisk WS-monogram.png', 'Wilsof lock background.png'):
         write(f'.local/share/wilsof-os/assets/{name}', (source / 'assets' / name).read_bytes())
+
+    # Plugin distribution uses the existing explicit image manifest, never a glob.
+    for relative in (source / 'runtime/image-files.txt').read_text().splitlines():
+        prefix = 'config/dms/plugins/wilsofProfiles/'
+        if relative.startswith(prefix):
+            write('.config/dms/plugins/wilsofProfiles/' + relative[len(prefix):],
+                  (source / relative).read_bytes())
+    plugin_relative = '.config/dms/plugin_settings.json'
+    plugin_path = confined(plugin_relative)
+    plugin_data = json.loads(plugin_path.read_text()) if plugin_path.exists() else {}
+    if not isinstance(plugin_data, dict):
+        raise ValueError('DMS plugin settings must be an object; file preserved')
+    if 'wilsofProfiles' not in plugin_data:
+        plugin_data['wilsofProfiles'] = {'enabled': True}
+        write(plugin_relative, (json.dumps(plugin_data) + '\n').encode())
 
     settings_relative = '.config/DankMaterialShell/settings.json'
     legacy_settings_dir = confined('.config/DankMaterialShell', allow_leaf_link=True)

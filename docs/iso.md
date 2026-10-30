@@ -63,7 +63,7 @@ This is the next authorized test. It produces a local artifact on the separate b
        sha256sum /srv/wilsof-iso-out/*.iso
        ls -ld /srv/wilsof-iso-out
 
-   `mkarchiso -r` removes the work directory after success; only the surviving output directory is required for artifact validation.
+   The builder retains work/profile and omits `mkarchiso -r`: Archiso 91 otherwise recursively removes airootfs before ISO creation, which fails while a namespace-owned self-bind is active. Preserve the work/profile and logs until the namespace and its child processes have exited; check that no mounts remain before any separately authorized exact-path cleanup. Do not recursively delete mounted work or force/lazy-unmount it. See [the mount-lifetime contract](internal-test-runbook.md#scope-and-prerequisites).
 
    Record the command exit status, ISO filename, byte size, SHA-256, build-host OS version, and repository commit in the issue or pull request. Treat a successful profile test or CI run as different evidence; neither proves that an ISO was built.
 

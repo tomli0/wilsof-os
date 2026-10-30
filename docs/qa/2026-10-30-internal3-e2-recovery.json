@@ -1,0 +1,72 @@
+{
+  "session": "internal3 E2 recovery",
+  "date": "2026-10-30",
+  "resumed_from_checkpoint": "CONTROLLED_STOP_BLOCKED_BEFORE_INTERNAL3_ISO",
+  "frozen_source": "448e0190e786475f083abdce223b3b24dc2a85ef",
+  "e2_root_cause": {
+    "primary": "mkarchiso -r runs _unshare rm -rf work/x86_64/airootfs at the start of _build_iso_image, before xorriso; private self-bind for nested pacman CheckSpace stays mounted until its owning namespace exits, so rm fails with EBUSY before ISO creation",
+    "secondary": "run-once marker base._make_work_dir skips the existing-work check that would otherwise clear the -r flag on resume",
+    "evidence": "preserved resume log EBUSY line; arch-runner.sh self-bind; installed Archiso 91 mkarchiso source; disposable native lab rmdir EBUSY + real xorriso exit 0 with work retained and no host mount leak"
+  },
+  "fix": {
+    "commit": "a952e8092114ecf05c508074d844d93836a1246c",
+    "change": "build-iso.sh omits -r and retains namespace-owned work/profile; documented cleanup contract",
+    "regression": "tests/test_iso_cleanup_contract.py RED before, GREEN after; full suite 312 passed / 2 opt-in skips; shellcheck + git diff --check clean",
+    "ci": {
+      "push": "https://github.com/tomli0/wilsof-os/actions/runs/41039790179",
+      "pull_request": "https://github.com/tomli0/wilsof-os/actions/runs/41039797887",
+      "result": "both completed/success on exact head; logs confirm 312 passed / 2 skipped; 5 changed remote files byte-read-back"
+    }
+  },
+  "iso": {
+    "name": "wilsof-internal-2026.10.30-internal3-x86_64.iso",
+    "bytes": 2548035584,
+    "sha256": "b3cf9726f2d55a7a0398aadeb6327a839a5607a7dd7f5a10b9a862a5c1936dd1",
+    "location": "private artifact root internal-test-20261030-internal3 with manifest.json and SHA256SUMS",
+    "build_exit": 0,
+    "method": "finalization of preserved verified work/profile/SquashFS; mkarchiso -v without -r; no new package transaction; zero rebuilds of a completed ISO",
+    "immutable_audit_checks_passed": 55,
+    "immutable_audit_checks_total": 55,
+    "embedded_squashfs_identical_to_preserved": true
+  },
+  "installation": {
+    "disk": "new 24GiB qcow2, no backing file, serial WILSOF-INTERNAL3-NEW, fresh OVMF vars",
+    "installer_exit": 0,
+    "prompts_answered": 5,
+    "plaintext_password_in_output": false,
+    "target_checks_passed": 25,
+    "target_checks_total": 25,
+    "clean_unmount": true,
+    "live_guest_exit": 0,
+    "offline_qcow2_check": 0,
+    "disk_sha256_after_install": "db7c34a29ecd3a3433464777d2aa1fe48faba74d614b83a61a1f29d15c893051"
+  },
+  "disk_only_gates": {
+    "no_iso_attached_verified": true,
+    "uefi_root": "/dev/vda2 ext4",
+    "normal_password_login": "PAM session wilsofqa uid 1000, Wayland user session; root locked; no autologin",
+    "desktop_rendered": "top bar + approved wallpaper; four rendered apps (Nautilus, Ghostty, Firefox local fixture, Text Editor)",
+    "profiles": "development/everyday/study/clean applied and verified via real session helper; launcher visual row highlight verified; Esc contract passed; arrow-key Enter selection unreliable under TCG (documented limitation)",
+    "lock_unlock": "hyprlock engaged via hypridle; wrong password PAM-rejected; pam_faillock 10-min lockout documented; correct unlock after window: auth: authenticated for hyprlock, Unlocking session, locker exit; restored desktop verified"
+  },
+  "preservation": {
+    "previous_isos_unchanged": 5,
+    "internal2_iso_sha256_unchanged": "dc4bfb3944767e743f858880d32b0d1179b5a6c629e5cfed68410e3a73a4f8d1",
+    "original_remote_refs_unchanged": 14,
+    "failed_build_logs_and_partial_squashfs_retained": true
+  },
+  "model_usage": {
+    "primary": "gpt-6.1-sol/openai-codex subscription_included; quota exhausted mid-session",
+    "session_continued_on_configured_fallback": "z-ai/glm-5.3 via OpenRouter (unchanged routing)",
+    "openrouter_key_delta_usd_observed": "1.123141712 (shared counter; not exact attribution or invoice)",
+    "paid_reviews": 0,
+    "config_yaml_sha256_unchanged": "ab41ee8f475850668938805f93dadf1cdc8788be9cedf2d3c4cfd205c11f25ce"
+  },
+  "physical_usb_test_readiness": "CONDITIONAL GO",
+  "residual_risks": [
+    "R1 DMS cold-start SIGKILL cause unknown; NRestarts=1 observed this session",
+    "R2 hyprland-dialog/libhyprtoolkit coredumps recurred under TCG app start (three new cores)",
+    "TCG-only evidence: no performance, physical Super-routing, multi-monitor, GPU/audio/suspend, USB transport or Secure Boot claims",
+    "pam_faillock temporary lockout triggered by repeated synthetic attempts; audit 'Operation not permitted' in emulated guest noted"
+  ]
+}

@@ -34,11 +34,24 @@ and copied/installed into the target during provisioning. This step does not
 rebuild Hypridle. The Archiso 91 customization hook is deprecated upstream and
 must be reviewed before changing the supported Archiso version.
 
-The prepared profile is a sibling of the work directory. A new successful
-`mkarchiso -r` build removes its work directory. A resumed existing work directory
-is retained by upstream Archiso; preserve logs and clean up only that dedicated
-session directory after evidence has been recorded. The builder does not publish
-or attach images. The evidence records the actual environment and command.
+The prepared profile is a sibling of the work directory. The builder deliberately
+omits `mkarchiso -r` and retains work/profile as evidence. Archiso 91's `-r`
+recursively removes airootfs **before** xorriso, not just after success. A private
+self-bind needed by nested pacman's CheckSpace remains mounted until its owner
+namespace exits; combining that mount lifetime with `-r` causes EBUSY before ISO
+creation. Do not weaken CheckSpace, signatures or namespace isolation to avoid
+this. Do not recursively delete mounted work or use lazy/forced unmounts. Any
+separately authorized cleanup must first verify owner processes have exited and
+no mount remains under the exact dedicated paths. No automatic deletion is done.
+The builder does not publish or attach images. Record the actual command/environment.
+
+The rootless CI regression exercises the actual build wrapper and verifies that
+it does not request namespace-owned cleanup. For the separately authorized native
+check, run `tests/integration/archiso_cleanup_lab.py --help`: it uses a new private
+mount/PID namespace, demonstrates EBUSY with empty-directory `rmdir` (no recursive
+cleanup), then exercises the installed mkarchiso ISO function with real xorriso
+and verifies work preservation and absence of host mount leakage. Its tiny ISO
+is a fixture, never boot/install acceptance.
 
 ## Live environment
 

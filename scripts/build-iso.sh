@@ -43,4 +43,7 @@ import sys
 source, profile = map(Path, sys.argv[1:])
 run_path(str(source / 'scripts/boot-profile.py'))['configure_boot'](profile, source)
 PY
-exec mkarchiso -v -r -w "$WILSOF_ISO_WORKDIR" -o "$WILSOF_ISO_OUTDIR" "${WILSOF_ISO_WORKDIR}-profile"
+# Work may contain namespace-owned bind mounts for nested pacman CheckSpace.
+# Do not let mkarchiso recursively delete it before the namespace exits.
+# Retain work/profile as evidence; later cleanup needs a separate mount check.
+exec mkarchiso -v -w "$WILSOF_ISO_WORKDIR" -o "$WILSOF_ISO_OUTDIR" "${WILSOF_ISO_WORKDIR}-profile"

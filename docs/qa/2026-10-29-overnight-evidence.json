@@ -1,0 +1,90 @@
+{
+  "session_started_utc": "2026-10-29T22:44:38+00:00",
+  "runtime_finished_utc": "2026-10-30T00:05:13.668478+00:00",
+  "m2": {
+    "pr": 39,
+    "base": "f8709a38d4cf939c4088bbadf6eb8abf2d487a70",
+    "code_sha": "7ba3bb89322258eefbcc1f6a7b82a82444070355",
+    "publication_sha": "28e0a8f856eacc4ecac8e8d5ceb79d0580e36929",
+    "pytest": {
+      "passed": 299,
+      "skipped": 1,
+      "failed": 0
+    },
+    "code_ci_runs": [
+      40976408936,
+      40976413698
+    ],
+    "native_profile_labels_observed": [
+      "CLEAN",
+      "STUDY",
+      "DEV",
+      "EVERYDAY"
+    ],
+    "native_corruption_error_visible": true,
+    "three_client_preservation_scope": "CLEAN/STUDY only, one virtual monitor",
+    "timing_and_physical_acceptance": false
+  },
+  "wallpaper": {
+    "pr": 40,
+    "base": "219894f1d4fc365b5e6546c2af9a146141634a1c",
+    "code_sha": "d05ec2f8c11730c00145bf1bc9239bfdf4d4aaac",
+    "pytest": {
+      "passed": 207,
+      "skipped": 2,
+      "failed": 0
+    },
+    "code_ci_runs": [
+      40974405394,
+      40974410572
+    ],
+    "native_lifecycle_passed": 7,
+    "red_regression_observed": true,
+    "actual_dms_restart": true,
+    "cold_start": true,
+    "rendered_asset_verified_both": true,
+    "helper_unchanged": true
+  },
+  "artifacts": {
+    "original_internal2_unchanged": true,
+    "iso_sha256": "dc4bfb3944767e743f858880d32b0d1179b5a6c629e5cfed68410e3a73a4f8d1",
+    "installed_disk_sha256": "f28d75d3cfc9845424519922e1eba6ff73eff1a1f5aab8492d4326245b229b6e",
+    "original_firmware_sha256": "6c31b3818d5f111ba9eaf12321d24cf23892ddf9edbe5a925f318113f0cee9ca",
+    "new_iso_built": false,
+    "max_concurrent_guests": 1,
+    "sequential_qemu_lifetimes": 2,
+    "qemu_exits": [
+      0,
+      0
+    ],
+    "offline_overlay_checks": [
+      0,
+      0
+    ]
+  },
+  "models": {
+    "snapshot_utc": "2026-10-30T00:06:54.114908+00:00",
+    "session_usage": {
+      "id": "20261029_224438_917c96",
+      "model": "gpt-6.1-sol",
+      "billing_provider": "openai-codex",
+      "billing_mode": "subscription_included",
+      "cost_status": "included",
+      "cost_source": "none",
+      "api_call_count": 128,
+      "input_tokens": 308976,
+      "output_tokens": 91150,
+      "cache_read_tokens": 28243712,
+      "cache_write_tokens": 0,
+      "estimated_cost_usd": 0.0,
+      "actual_cost_usd": null
+    },
+    "openrouter_key_baseline_usd": 48.328455501,
+    "openrouter_key_latest_usd": 48.328455501,
+    "observed_delta_usd": "0E-9",
+    "paid_review_requested": false,
+    "parallel_development_agents": 0
+  },
+  "independent_review_performed": false,
+  "merge_or_release_performed": false
+}

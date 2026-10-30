@@ -54,13 +54,18 @@ def test_only_identified_video_test_utilities_hidden_not_removed(tmp_path):
 
 
 def test_profile_items_do_not_compete_with_empty_or_general_app_search():
+    plugin = ROOT / 'config/dms/plugins/wilsofProfiles'
+    manifest = json.loads((plugin / 'plugin.json').read_text())
+    assert manifest['trigger'] == 'profil', 'Use DMS trigger isolation, not global mixed app results'
+    assert 'property string trigger: "profil"' in (plugin / 'Launcher.qml').read_text()
     js = ROOT / 'config/dms/plugins/wilsofProfiles/Profiles.js'
     script = r'''
 const vm=require('vm'),fs=require('fs'),assert=require('assert');const c={};vm.createContext(c);
 vm.runInContext(fs.readFileSync(process.argv[1],'utf8').replace(/^\.pragma library\s*/,''),c);
-for (const q of ['', 'p', 'file', 'firefox']) assert.equal(c.items(q,{}).length,0,q);
-assert.equal(c.items('profil',{}).length,4);
-assert.equal(c.items('profil study',{})[0].action,'study');
+// DMS strips the supported trigger and calls the plugin only in its own scope.
+assert.equal(c.items('',{}).length,4);
+assert.equal(c.items('firefox',{}).length,0);
+assert.equal(c.items('study',{})[0].action,'study');
 assert.equal(c.items('dev',{})[0].action,'development');
 '''
     r = subprocess.run(['node', '-e', script, str(js)], capture_output=True, text=True)

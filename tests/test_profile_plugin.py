@@ -22,14 +22,14 @@ const c = {}; vm.createContext(c);
 vm.runInContext(fs.readFileSync(process.argv[1], 'utf8').replace(/^\.pragma library\s*/, ''), c);
 const confirmed = {saved:'study',applied:'study',error:null};
 const pending = {saved:'study',applied:null,error:'IPC unavailable'};
-let items = c.items('profil', confirmed);
+let items = c.items('', confirmed);
 assert.deepStrictEqual(Array.from(items, x=>x.action), ['clean','study','development','everyday']);
 assert.equal(items.filter(x=>x.comment.includes('Aktiv')).length, 1);
 assert.equal(c.items('profil',confirmed).length,4);
 assert.equal(c.items('dev',confirmed)[0].action,'development');
 assert.equal(c.items('nonsense',confirmed).length,0);
-assert.equal(c.items('profil',pending).filter(x=>x.comment.includes('Aktiv')).length,0);
-assert(c.items('profil',pending).every(x=>x.comment.includes('IPC unavailable')));
+assert.equal(c.items('',pending).filter(x=>x.comment.includes('Aktiv')).length,0);
+assert(c.items('',pending).every(x=>x.comment.includes('IPC unavailable')));
 assert(c.label(pending).includes('?'));
 assert.equal(c.label(confirmed),'STUDY');
 assert(!c.valid('study;touch nope')); assert(c.valid('clean'));
@@ -45,6 +45,6 @@ def test_composite_manifest_has_both_real_surfaces_and_no_daemon():
     manifest = json.loads(path.read_text())
     assert manifest['id'] == 'wilsofProfiles'
     assert set(manifest['components']) == {'launcher', 'widget'}
-    assert manifest['trigger'] == ''
+    assert manifest['trigger'] == 'profil'
     for name in manifest['components'].values():
         assert (PLUGIN / name).is_file()

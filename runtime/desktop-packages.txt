@@ -18,6 +18,8 @@ vlc
 pipewire
 pipewire-pulse
 wireplumber
+# Generic Sound Open Firmware: releng live includes this; installed targets must too.
+sof-firmware
 polkit-gnome
 noto-fonts
 inter-font

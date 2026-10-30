@@ -55,3 +55,16 @@ def test_invalid_arguments_do_not_run_collection():
     r = subprocess.run([sys.executable, str(SCRIPT), '--password'], capture_output=True, text=True)
     assert r.returncode == 2
     assert not r.stdout
+
+
+def test_kernel_probe_does_not_misreport_denied_journal_as_clean():
+    m = load()
+    def denied(argv, **kwargs):
+        return subprocess.CompletedProcess(argv, 0, '-- No entries --\n',
+            'Hint: You are currently not seeing messages from other users and the system.\n')
+    assert m['probe'](['journalctl', '-k', '-b'], run=denied)['status'] == 'unavailable'
+
+
+def test_installed_desktop_explicitly_carries_standard_sof_firmware():
+    packages = (ROOT / 'runtime/desktop-packages.txt').read_text().splitlines()
+    assert 'sof-firmware' in packages, 'Live ISO includes SOF, installed target must not silently omit it'

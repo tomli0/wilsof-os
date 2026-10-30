@@ -24,6 +24,9 @@ def probe(argv, *, run=subprocess.run):
     try:
         r = run(argv, stdin=subprocess.DEVNULL, capture_output=True, text=True,
                 timeout=8, check=False, env=os.environ | {'LC_ALL': 'C', 'PAGER': 'cat'})
+        if argv[0] == 'journalctl' and (not r.stdout.strip() or r.stdout.strip() == '-- No entries --'
+                or re.search(r'not seeing|permission|no journal files|access denied', r.stderr, re.I)):
+            return {'status': 'unavailable', 'data': ''}
         return {'status': 'ok' if r.returncode == 0 else 'unavailable',
                 'exit_code': r.returncode, 'data': r.stdout if r.returncode == 0 else ''}
     except (OSError, subprocess.TimeoutExpired):

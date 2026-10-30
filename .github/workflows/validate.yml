@@ -2,9 +2,9 @@ name: Validate
 
 on:
   push:
-    branches: [arch-install, feat/profile-foundation-m1-20261029]
+    branches: [arch-install, feat/profile-foundation-m1-20261029, feat/profile-launcher-m2-20261029]
   pull_request:
-    branches: [main, integration/internal-iso-20261026]
+    branches: [main, integration/internal-iso-20261026, feat/profile-foundation-m1-20261029]
 
 permissions:
   contents: read

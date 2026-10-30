@@ -29,6 +29,7 @@ assert.equal(c.items('profil',confirmed).length,4);
 assert.equal(c.items('dev',confirmed)[0].action,'development');
 assert.equal(c.items('nonsense',confirmed).length,0);
 assert.equal(c.items('',pending).filter(x=>x.comment.includes('Aktiv')).length,0);
+assert(c.items('',pending).every(x=>x.comment.includes('IPC unavailable')));
 assert(c.label(pending).includes('?'));
 assert.equal(c.label(confirmed),'STUDY');
 assert(!c.valid('study;touch nope')); assert(c.valid('clean'));

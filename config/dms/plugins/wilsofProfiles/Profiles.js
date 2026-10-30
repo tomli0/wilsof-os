@@ -26,9 +26,11 @@ function items(query, state) {
     return profiles.map(p => ({
         name: "Profil · " + p.name,
         icon: p.icon,
-        comment: state && state.applied === p.id && !state.error
-            ? "Aktiv · ingen apper flyttes eller lukkes"
-            : "Velg profil · ingen apper startes automatisk",
+        comment: state && state.error
+            ? "Feil · " + state.error
+            : state && state.applied === p.id
+                ? "Aktiv · ingen apper flyttes eller lukkes"
+                : "Velg profil · ingen apper startes automatisk",
         action: p.id,
         categories: ["Wilsof-profiler"]
     })).filter(i => !q || (i.name + " " + i.action + " profile").toLowerCase().includes(q));

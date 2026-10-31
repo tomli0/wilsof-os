@@ -2,7 +2,7 @@
 
 Status: **LEVERT SOM DRAFT — IKKE FULL AKSEPT**. Command Center, Modern Terminal-grunnlag (Ghostty/tema/snarveier) og About er implementert og QEMU-verifisert i avgrensede akseptpunkter; grafisk login, Terminal Idle, Appearance-editor, snarvei-editor og fysiske porter er ikke levert. Ingen ISO bygget; ingen merge/release.
 
-Utviklingsperiode UTC: 2026-10-30 23:41 – 2026-10-31 07:12 (hovedøkt), avslutnings-/nykontrolløkt 08:07–08:2x. Status-issue: #16. Draft-PR-er: #45 (Command Center), #46 (Modern Terminal + About, stablet på #45).
+Utviklingsperiode UTC: 2026-10-30 23:41 – 2026-10-31 07:12 (hovedøkt), avslutnings-/nykontrolløkt 08:07–08:2x. Status-issue: #16. Draft-PR-er: #44 (Command Center, base fix/internal4-completion), #45 (Modern Terminal + About, stablet på #44).
 
 Kildegren: `feat/command-center-20261031` slutt-head `dbe20edb89a0730d3e05f933f72806af11f5a4a3`; `feat/modern-terminal-20261031` slutt-head `0b2f99742ec59779df38dd4a2392ad359376d911` (rebased på Command Center-head). Baseline: PR #43-head `19a68247b0f406965db25e6ea950ce12ed0707f2` (uien). PR #42/#43 uendrede.
 

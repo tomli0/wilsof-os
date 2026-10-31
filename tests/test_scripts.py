@@ -31,6 +31,18 @@ def test_search_delegates_to_the_single_dms_launcher_api(tmp_path):
     assert log.read_text(encoding="utf-8").strip() == "ipc call spotlight toggle"
 
 
+def test_search_uses_command_center_marker_without_double_toggling(tmp_path):
+    fake_bin = tmp_path / 'bin'
+    fake_bin.mkdir()
+    log = tmp_path / 'calls'
+    dms = fake_bin / 'dms'
+    dms.write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nprintf "%s\\n" WILSOF_COMMAND_CENTER_OK\n')
+    dms.chmod(0o755)
+    result = run(SEARCH, 'toggle', env={'PATH': f"{fake_bin}:{os.environ['PATH']}"})
+    assert result.returncode == 0
+    assert log.read_text().splitlines() == ['ipc call commandCenter toggle']
+
+
 def test_search_rejects_unsupported_actions():
     result = run(SEARCH, "anything-else")
     assert result.returncode == 64

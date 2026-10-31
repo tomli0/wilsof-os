@@ -2,9 +2,9 @@ name: Validate
 
 on:
   push:
-    branches: [arch-install, integration/internal3-20261030, stabilization/internal4-20261030, fix/internal4-completion]
+    branches: [arch-install, integration/internal3-20261030, stabilization/internal4-20261030, fix/internal4-completion, feat/command-center-20261031]
   pull_request:
-    branches: [main, integration/internal-iso-20261026, integration/internal3-20261030, stabilization/internal4-20261030]
+    branches: [main, integration/internal-iso-20261026, integration/internal3-20261030, stabilization/internal4-20261030, fix/internal4-completion, feat/command-center-20261031]
 
 permissions:
   contents: read

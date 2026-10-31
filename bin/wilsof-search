@@ -12,4 +12,10 @@ if ! command -v dms >/dev/null 2>&1; then
   exit 69
 fi
 
+# DMS can return exit 0 even when an IPC target is absent. Require our marker;
+# keep the working upstream launcher available when the plugin is disabled/broken.
+reply=$(dms ipc call commandCenter toggle 2>/dev/null) || reply=''
+case "$reply" in
+  *WILSOF_COMMAND_CENTER_OK*) exit 0 ;;
+esac
 exec dms ipc call spotlight toggle

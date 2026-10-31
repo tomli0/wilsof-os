@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Bounded, local, filename-only home search. No index, sockets or content reads."""
+import argparse
+from collections import deque
+import json
+import os
+from pathlib import Path
+import time
+
+EXCLUDED = frozenset({'node_modules', 'build', 'dist', 'target', '__pycache__',
+                      'vendor', 'venv', 'env', 'Trash', 'Cache', 'Caches'})
+
+
+def search(home, query, *, budget_ms=80, max_entries=20000, limit=40):
+    start = time.monotonic()
+    home = Path(home).resolve()
+    queue = deque([home])
+    query = query.strip().casefold()
+    items, visited, truncated, unreadable = [], 0, False, 0
+    device = home.stat().st_dev
+    while queue:
+        directory = queue.popleft()
+        try:
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    if visited >= max_entries or (time.monotonic() - start) * 1000 >= budget_ms:
+                        truncated = True
+                        break
+                    visited += 1
+                    if entry.name.startswith('.') or entry.name in EXCLUDED or entry.is_symlink():
+                        continue
+                    is_dir = entry.is_dir(follow_symlinks=False)
+                    if is_dir:
+                        # Stay on the home filesystem; never walk mounted media.
+                        if entry.stat(follow_symlinks=False).st_dev != device:
+                            continue
+                        queue.append(Path(entry.path))
+                    if not query or query in entry.name.casefold():
+                        items.append({'path': entry.path, 'name': entry.name,
+                                      'directory': is_dir})
+                        if len(items) >= limit:
+                            truncated = True
+                            break
+        except OSError:
+            unreadable += 1
+        if truncated:
+            break
+    items.sort(key=lambda r: (r['name'].casefold() != query,
+                              not r['directory'], r['name'].casefold(), r['path']))
+    return {'items': items, 'truncated': truncated, 'unreadable': unreadable,
+            'visited': visited, 'elapsed_ms': (time.monotonic() - start) * 1000}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--query', default='')
+    args = parser.parse_args()
+    print(json.dumps(search(Path.home(), args.query)))
+
+
+if __name__ == '__main__':
+    main()

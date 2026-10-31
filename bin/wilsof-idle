@@ -1,0 +1,41 @@
+#!/bin/sh
+# Engage the Wilsof Terminal Idle surface exactly once for this user.
+# The idle tier reuses Hyprlock's PAM authentication with the approved idle
+# presentation; it adds no new daemon, surface framework or auth path.
+set -eu
+
+if [ "$#" -ne 0 ]; then
+  printf '%s\n' "Usage: wilsof-idle" >&2
+  exit 64
+fi
+
+if ! command -v hyprlock >/dev/null 2>&1; then
+  printf '%s\n' "wilsof-idle: hyprlock is not available." >&2
+  exit 69
+fi
+
+if pgrep -x -u "$(id -u)" hyprlock >/dev/null 2>&1; then
+  printf '%s\n' "wilsof-idle: a lock surface is already active for this user." >&2
+  exit 0
+fi
+
+conf="$HOME/.config/hypr/hyprlock-idle.conf"
+if [ -r "$conf" ]; then
+  set -- hyprlock -c "$conf"
+else
+  set -- hyprlock
+fi
+
+# Reflect the lock in logind session state so shell components observe it.
+session="${XDG_SESSION_ID:-}"
+if [ -n "$session" ] && command -v loginctl >/dev/null 2>&1; then
+  loginctl lock-session "$session" >/dev/null 2>&1 || true
+fi
+
+status=0
+"$@" || status=$?
+
+if [ -n "$session" ] && command -v loginctl >/dev/null 2>&1; then
+  loginctl unlock-session "$session" >/dev/null 2>&1 || true
+fi
+exit "$status"

@@ -106,6 +106,48 @@ def test_lock_marks_logind_session_locked_around_hyprlock(tmp_path):
     assert calls.index('hyprlock') < calls.index('loginctl unlock-session 42')
 
 
+def test_idle_wrapper_locks_once_with_the_idle_presentation_and_logind_state(tmp_path):
+    # The 3-minute Terminal Idle tier must reuse Hyprlock (PAM) with the idle
+    # presentation, deduplicate like wilsof-lock, and reflect logind state.
+    idle = ROOT / "bin" / "wilsof-idle"
+    source = idle.read_text(encoding="utf-8")
+    assert "hyprlock" in source
+    assert "-c" in source
+    assert "hyprlock-idle.conf" in source
+    assert "loginctl lock-session" in source
+    assert "loginctl unlock-session" in source
+    assert "pgrep -x -u" in source
+
+
+def test_idle_policy_defines_three_tiers_with_dpms_and_secure_relock():
+    hypridle = (ROOT / "config" / "hypr" / "hypridle.conf").read_text(encoding="utf-8")
+    assert "timeout = 180" in hypridle
+    assert "wilsof-idle" in hypridle
+    assert "timeout = 300" in hypridle
+    assert "wilsof-lock" in hypridle
+    assert "timeout = 600" in hypridle
+    assert "dpms off" in hypridle
+    assert "dpms on" in hypridle
+    assert "before_sleep_cmd" in hypridle
+
+
+def test_idle_presentation_matches_the_approved_terminal_idle_design():
+    conf = (ROOT / "config" / "hypr" / "hyprlock-idle.conf").read_text(encoding="utf-8")
+    assert "rgb(9, 15, 20)" in conf
+    assert "[ W S ]" in conf
+    assert "SYSTEM IDLE_" in conf
+    assert "enabled = false" in conf
+    # It must remain a real Hyprlock PAM surface with an input field.
+    assert "input-field" in conf
+
+
+def test_installer_deploys_the_idle_tier_files():
+    content = INSTALL.read_text(encoding="utf-8")
+    assert 'bin/wilsof-idle' in content
+    assert 'config/hypr/hyprlock-idle.conf' in content
+    assert '"$HOME/.config/hypr/hyprlock-idle.conf"' in content
+
+
 def test_preflight_is_read_only_and_reports_missing_fedora_tools():
     result = run(PREFLIGHT)
     assert result.returncode != 0

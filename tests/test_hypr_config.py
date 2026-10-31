@@ -105,7 +105,13 @@ def test_idle_config_locks_with_the_wilsof_wrapper_before_sleep():
     assert "lock_cmd = $HOME/.local/bin/wilsof-lock" in config
     assert "before_sleep_cmd = $HOME/.local/bin/wilsof-lock" in config
     assert "on-timeout = $HOME/.local/bin/wilsof-lock" in config
-    assert "dpms" not in config
+    # Approved Terminal Idle policy: 3 min idle surface, 5 min secure relock,
+    # 10 min display off with restore on resume.
+    assert "on-timeout = $HOME/.local/bin/wilsof-idle" in config
+    assert "timeout = 180" in config
+    assert "timeout = 600" in config
+    assert "hyprctl dispatch dpms off" in config
+    assert "hyprctl dispatch dpms on" in config
 
 
 def test_wrapped_sleep_lock_waits_for_actual_lock_notification():

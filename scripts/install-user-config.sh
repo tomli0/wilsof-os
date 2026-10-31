@@ -31,6 +31,7 @@ backup_managed() {
 
 for managed in \
   "$HOME/.local/bin/wilsof-search" "$HOME/.local/bin/wilsof-lock" \
+  "$HOME/.local/bin/wilsof-idle" \
   "$HOME/.local/bin/wilsof-help" "$HOME/.local/bin/wilsof-help-view" \
   "$HOME/.local/bin/wilsof-doctor" \
   "$HOME/.local/bin/wilsof-apply-wallpaper" \
@@ -41,6 +42,7 @@ for managed in \
   "$HOME/.local/share/wilsof-os/vm-test/wilsof-vm-test.lua" \
   "$HOME/.config/hypr/wilsof.conf" "$HOME/.config/hypr/wilsof.lua" \
   "$HOME/.config/hypr/hypridle.conf" "$HOME/.config/hypr/hyprlock.conf" \
+  "$HOME/.config/hypr/hyprlock-idle.conf" \
   "$HOME/.config/systemd/user/wilsof-session.target" \
   "$HOME/.config/systemd/user/wilsof-wallpaper.service" \
   "$HOME/.config/systemd/user/dms.service.d/wilsof.conf" \
@@ -50,6 +52,7 @@ done
 
 install -m 0755 "$root/bin/wilsof-search" "$HOME/.local/bin/wilsof-search"
 install -m 0755 "$root/bin/wilsof-lock" "$HOME/.local/bin/wilsof-lock"
+install -m 0755 "$root/bin/wilsof-idle" "$HOME/.local/bin/wilsof-idle"
 install -m 0755 "$root/bin/wilsof-help" "$HOME/.local/bin/wilsof-help"
 install -m 0755 "$root/bin/wilsof-help-view" "$HOME/.local/bin/wilsof-help-view"
 install -m 0755 "$root/bin/wilsof-doctor" "$HOME/.local/bin/wilsof-doctor"
@@ -62,6 +65,7 @@ install -m 0644 "$root/config/hypr/wilsof.conf" "$HOME/.config/hypr/wilsof.conf"
 install -m 0644 "$root/config/hypr/wilsof.lua" "$HOME/.config/hypr/wilsof.lua"
 install -m 0644 "$root/config/hypr/hypridle.conf" "$HOME/.config/hypr/hypridle.conf"
 install -m 0644 "$root/config/hypr/hyprlock.conf" "$HOME/.config/hypr/hyprlock.conf"
+install -m 0644 "$root/config/hypr/hyprlock-idle.conf" "$HOME/.config/hypr/hyprlock-idle.conf"
 install -m 0644 "$root/config/systemd/wilsof-session.target" "$HOME/.config/systemd/user/wilsof-session.target"
 install -m 0644 "$root/config/systemd/wilsof-wallpaper.service" "$HOME/.config/systemd/user/wilsof-wallpaper.service"
 install -m 0644 "$root/config/systemd/dms-wilsof.conf" "$HOME/.config/systemd/user/dms.service.d/wilsof.conf"

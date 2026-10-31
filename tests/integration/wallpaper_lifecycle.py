@@ -65,7 +65,8 @@ class Lifecycle(unittest.TestCase):
         stub = self.case / 'daemon.py'
         stub.write_text('import pathlib,subprocess,time\n'
                         f'p=pathlib.Path({str(self.case / "dms.count")!r})\n'
-                        'n=int(p.read_text())+1 if p.exists() else 1\np.write_text(str(n))\n'
+                        'n=int(p.read_text())+1 if p.exists() else 1\n'
+                        'pending=p.with_suffix(".next")\npending.write_text(str(n))\npending.replace(p)\n'
                         f'if {permanent!r} or ({fail_first!r} and n==1): raise SystemExit(1)\n'
                         f'time.sleep({delay})\n'
                         'subprocess.run(["systemd-notify","--ready"],check=True)\n'
@@ -73,7 +74,8 @@ class Lifecycle(unittest.TestCase):
         helper = self.case / 'wallpaper.py'
         helper.write_text('from pathlib import Path\n'
                           f'p=Path({str(self.case / "wallpaper.count")!r})\n'
-                          'n=int(p.read_text())+1 if p.exists() else 1\np.write_text(str(n))\n'
+                          'n=int(p.read_text())+1 if p.exists() else 1\n'
+                          'pending=p.with_suffix(".next")\npending.write_text(str(n))\npending.replace(p)\n'
                           f'raise SystemExit({1 if helper_failure else 0})\n')
         dropin = (SOURCE / 'config/systemd/dms-wilsof.conf').read_text() if use_current else '[Service]\n'
         hook = '\n'.join(l for l in dropin.splitlines() if l.startswith('ExecStartPost='))

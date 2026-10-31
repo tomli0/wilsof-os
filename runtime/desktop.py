@@ -57,7 +57,7 @@ def install_user(source, home, *, live=False):
     for relative in ('.local', '.local/state', '.local/state/wilsof-os'):
         confined(relative).mkdir(mode=0o700, exist_ok=True)
 
-    for name in ('wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui'):
+    for name in ('wilsof-about-info', 'wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui'):
         write(f'.local/bin/{name}', (source / 'bin' / name).read_bytes(), 0o755)
     for name in ('wilsof.lua', 'wilsof.conf', 'hypridle.conf', 'hyprlock.conf'):
         write(f'.config/hypr/{name}', (source / 'config/hypr' / name).read_bytes())
@@ -72,6 +72,16 @@ def install_user(source, home, *, live=False):
         write(f'.local/share/wilsof-os/{name}', (source / origin).read_bytes())
     for name in ('Mørk geometrisk bakgrunn med isblått WS-monogram.png', 'Wilsof OS-logo med geometrisk WS-monogram.png', 'Wilsof lock background.png'):
         write(f'.local/share/wilsof-os/assets/{name}', (source / 'assets' / name).read_bytes())
+
+    # Ghostty is personal configuration, not an always-managed Wilsof override.
+    # Refuse symlink destinations and seed only when the user has no config.
+    ghostty = confined('.config/ghostty/config')
+    if not ghostty.exists():
+        write('.config/ghostty/config', (source / 'config/ghostty/config').read_bytes())
+
+    app_shortcuts = confined('.config/hypr/wilsof-app-shortcuts.lua')
+    if not app_shortcuts.exists():
+        write('.config/hypr/wilsof-app-shortcuts.lua', (source / 'config/hypr/wilsof-app-shortcuts.lua').read_bytes())
 
     # Plugin distribution uses the existing explicit image manifest, never a glob.
     for relative in (source / 'runtime/image-files.txt').read_text().splitlines():

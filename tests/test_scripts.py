@@ -130,8 +130,8 @@ def test_installer_seeds_static_dms_theme_only_once():
 def test_static_theme_defines_the_approved_base_and_accent():
     theme = (ROOT / "config" / "dms" / "wilsof-theme.json").read_text(encoding="utf-8")
     assert '"primary": "#86B9CE"' in theme
-    assert '"surface": "#14181E"' in theme
-    assert '"background": "#14181E"' in theme
+    assert '"surface": "#121820"' in theme
+    assert '"background": "#121820"' in theme
 
 
 def test_vm_test_binding_wrapper_is_opt_in_and_reversible(tmp_path):

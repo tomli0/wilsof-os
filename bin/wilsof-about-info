@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Read installed Wilsof identity and package acknowledgements; no host identifiers."""
+import json
+from pathlib import Path
+import platform
+import re
+import subprocess
+
+
+def collect(root=Path('/')):
+    root = Path(root)
+    try:
+        commit = (root / 'usr/share/wilsof/source/SOURCE_COMMIT').read_text().strip()
+    except OSError:
+        commit = ''
+    if not re.fullmatch(r'[0-9a-f]{40}', commit):
+        commit = 'Unavailable'
+    info = {
+        'version': 'Development snapshot',
+        'sourceCommit': commit,
+        'platform': 'Linux',
+        'kernel': platform.release(),
+        'architecture': platform.machine(),
+        'github': 'https://github.com/tomli0/wilsof-os',
+        'website': '',
+        'license': 'No project-wide license has been declared for Wilsof original source. Third-party components retain their own licenses; see /usr/share/licenses.',
+        'dedication': 'Dedicated to William and Sofie.',
+        'packages': [],
+    }
+    if root == Path('/'):
+        try:
+            info['platform'] = platform.freedesktop_os_release().get('PRETTY_NAME', 'Linux')
+        except OSError:
+            pass
+        try:
+            result = subprocess.run(['pacman', '-Qi', 'dux-shell', 'hyprland', 'ghostty', 'firefox', 'nautilus'],
+                                    text=True, capture_output=True, timeout=5,
+                                    env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'})
+            package = {}
+            for line in result.stdout.splitlines():
+                key, sep, value = line.partition(':')
+                key = key.strip()
+                if sep and key in ('Name', 'Version', 'Licenses'):
+                    package[key] = value.strip()
+                    if key == 'Licenses':
+                        info['packages'].append(package)
+                        package = {}
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    return info
+
+
+if __name__ == '__main__':
+    print(json.dumps(collect()))

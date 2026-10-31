@@ -33,6 +33,13 @@ def test_home_names_search_excludes_generated_trees_and_symlink_escape(tmp_path)
     assert result['truncated'] is False
 
 
+def test_common_folders_remain_useful_when_the_traversal_budget_is_exhausted(tmp_path):
+    (tmp_path / 'Downloads').mkdir()
+    result = helper().search(tmp_path, 'downloads', budget_ms=0)
+    assert [r['path'] for r in result['items']] == [str(tmp_path / 'Downloads')]
+    assert result['truncated'] is True
+
+
 def test_bounded_search_and_literal_names(tmp_path):
     (tmp_path / '$(touch pwned); note.txt').touch()
     m = helper()

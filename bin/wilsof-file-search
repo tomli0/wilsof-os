@@ -18,7 +18,23 @@ def search(home, query, *, budget_ms=80, max_entries=20000, limit=40):
     query = query.strip().casefold()
     items, visited, truncated, unreadable = [], 0, False, 0
     device = home.stat().st_dev
+    seen = set()
+    # Probe only these fixed, shallow paths before the bounded walk. Even a slow
+    # renderer/filesystem cannot spend the walk budget hiding Downloads itself.
+    for name in ('Downloads', 'Documents', 'Desktop', 'Pictures', 'Music', 'Videos'):
+        path = home / name
+        try:
+            if (len(items) < limit and (not query or query in name.casefold())
+                    and not path.is_symlink() and path.is_dir()
+                    and path.stat().st_dev == device):
+                items.append({'path': str(path), 'name': name, 'directory': True})
+                seen.add(str(path))
+        except OSError:
+            unreadable += 1
     while queue:
+        if len(items) >= limit:
+            truncated = True
+            break
         directory = queue.popleft()
         try:
             with os.scandir(directory) as entries:
@@ -35,7 +51,7 @@ def search(home, query, *, budget_ms=80, max_entries=20000, limit=40):
                         if entry.stat(follow_symlinks=False).st_dev != device:
                             continue
                         queue.append(Path(entry.path))
-                    if not query or query in entry.name.casefold():
+                    if entry.path not in seen and (not query or query in entry.name.casefold()):
                         items.append({'path': entry.path, 'name': entry.name,
                                       'directory': is_dir})
                         if len(items) >= limit:

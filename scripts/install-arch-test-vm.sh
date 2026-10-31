@@ -33,7 +33,7 @@ mount "${DISK}1" /mnt/boot
 
 pacstrap -K /mnt base linux linux-firmware btrfs-progs networkmanager sudo qemu-guest-agent \
   hyprland hyprlock hypridle xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
-  dux-shell greetd greetd-tuigreet firefox ghostty nautilus gnome-text-editor papers loupe vlc \
+  dux-shell greetd greetd-tuigreet greetd-regreet cage firefox ghostty nautilus gnome-text-editor papers loupe vlc \
   pipewire pipewire-pulse wireplumber polkit-gnome power-profiles-daemon
 
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -57,9 +57,15 @@ printf '%%wheel ALL=(ALL:ALL) ALL\n' > /etc/sudoers.d/10-wheel
 chmod 0440 /etc/sudoers.d/10-wheel
 visudo -cf /etc/sudoers.d/10-wheel
 
-# Do not rely on Arch's agreety default: this VM must present tuigreet and
-# start Hyprland only after normal PAM authentication.
+# Graphical Wilsof login candidate: ReGreet under cage is provisioned using
+# only established distro packages, with the approved branding background.
+# Greetd always performs PAM authentication with no autologin. QEMU/TCG
+# evaluation could not safely verify input delivery to the GTK entry, so the
+# tested tuigreet greeter remains the default; ReGreet is one config line
+# away (replace the default_session command with: "cage -s -- regreet").
 install -d -m 0755 /etc/greetd
+install -m 0644 "assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png" /etc/greetd/wilsof-greeter-bg.png
+install -m 0644 config/greetd/regreet.toml /etc/greetd/regreet.toml
 cat > /etc/greetd/config.toml <<'EOF'
 [terminal]
 vt = 1

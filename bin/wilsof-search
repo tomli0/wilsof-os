@@ -16,6 +16,7 @@ fi
 # keep the working upstream launcher available when the plugin is disabled/broken.
 reply=$(dms ipc call commandCenter toggle 2>/dev/null) || reply=''
 case "$reply" in
-  *WILSOF_COMMAND_CENTER_OK*) exit 0 ;;
+  *WILSOF_COMMAND_CENTER_OK*|*WILSOF_COMMAND_CENTER_LOCKED*) exit 0 ;;
 esac
+# The plugin is disabled or broken: keep the upstream launcher available.
 exec dms ipc call spotlight toggle

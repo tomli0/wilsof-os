@@ -17,4 +17,16 @@ if pgrep -x -u "$(id -u)" hyprlock >/dev/null 2>&1; then
   exit 0
 fi
 
-exec hyprlock
+# Reflect the lock in logind session state so shell components observe it.
+session="${XDG_SESSION_ID:-}"
+if [ -n "$session" ] && command -v loginctl >/dev/null 2>&1; then
+  loginctl lock-session "$session" >/dev/null 2>&1 || true
+fi
+
+status=0
+hyprlock || status=$?
+
+if [ -n "$session" ] && command -v loginctl >/dev/null 2>&1; then
+  loginctl unlock-session "$session" >/dev/null 2>&1 || true
+fi
+exit "$status"

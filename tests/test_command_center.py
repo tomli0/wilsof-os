@@ -55,6 +55,24 @@ def test_native_dms_modal_distribution_and_safe_launcher_fallback():
     assert 'commandCenter toggle' in (ROOT / 'bin/wilsof-search').read_text()
 
 
+def test_command_center_never_keeps_keyboard_focus_over_an_active_lock_screen():
+    # F1 regression: a modal that keeps its keyboard grab while the session is
+    # locked lets lock-screen keystrokes land in the search field. The modal
+    # must close on session lock and refuse to reopen while locked.
+    qml = (MODEL.parent / 'CommandCenter.qml').read_text()
+    for contract in [
+        'SessionService.locked',
+        'onSessionLocked',
+        'WILSOF_COMMAND_CENTER_LOCKED',
+        'function lockdown()',
+    ]:
+        assert contract in qml, contract
+    # The lock handler must clear the wanted-open state and close the modal.
+    assert 'root.wantedOpen = false' in qml
+    # Both IPC entry points must consult the lock state before opening.
+    assert qml.count('SessionService.locked') >= 3
+
+
 def test_file_results_are_accepted_while_modal_is_still_mapping():
     assert evaluate('m.accept(7,7,"downloads","downloads",true)') is True
     assert evaluate('m.accept(6,7,"downloads","downloads",true)') is False

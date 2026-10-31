@@ -43,6 +43,21 @@ def test_search_uses_command_center_marker_without_double_toggling(tmp_path):
     assert log.read_text().splitlines() == ['ipc call commandCenter toggle']
 
 
+def test_search_treats_locked_session_marker_as_handled(tmp_path):
+    # While the session is locked the Command Center answers with a distinct
+    # marker; the wrapper must treat it as handled and never fall back to the
+    # upstream launcher, which would reopen a keyboard-grabbing modal.
+    fake_bin = tmp_path / 'bin'
+    fake_bin.mkdir()
+    log = tmp_path / 'calls'
+    dms = fake_bin / 'dms'
+    dms.write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nprintf "%s\\n" WILSOF_COMMAND_CENTER_LOCKED\n')
+    dms.chmod(0o755)
+    result = run(SEARCH, 'toggle', env={'PATH': f"{fake_bin}:{os.environ['PATH']}"})
+    assert result.returncode == 0
+    assert log.read_text().splitlines() == ['ipc call commandCenter toggle']
+
+
 def test_search_rejects_unsupported_actions():
     result = run(SEARCH, "anything-else")
     assert result.returncode == 64
@@ -64,6 +79,73 @@ def test_lock_delegates_to_hyprlock_and_rejects_arguments(tmp_path):
     assert log.read_text(encoding="utf-8").strip() == ""
     rejected = run(LOCK, "unexpected")
     assert rejected.returncode == 64
+
+
+def test_lock_marks_logind_session_locked_around_hyprlock(tmp_path):
+    # The locker must reflect the lock in logind session state so shell
+    # components (DMS SessionService) observe it, and clear it on unlock.
+    fake_bin = tmp_path / 'bin'
+    fake_bin.mkdir()
+    log = tmp_path / 'calls'
+    hyprlock = fake_bin / 'hyprlock'
+    hyprlock.write_text(f'#!/bin/sh\nprintf "%s\\n" hyprlock >> "{log}"\n', encoding='utf-8')
+    hyprlock.chmod(0o755)
+    loginctl = fake_bin / 'loginctl'
+    loginctl.write_text(f'#!/bin/sh\nprintf "%s\\n" "loginctl $*" >> "{log}"\n', encoding='utf-8')
+    loginctl.chmod(0o755)
+    pgrep = fake_bin / 'pgrep'
+    pgrep.write_text('#!/bin/sh\nexit 1\n', encoding='utf-8')
+    pgrep.chmod(0o755)
+    env = {'PATH': f"{fake_bin}:{os.environ['PATH']}", 'XDG_SESSION_ID': '42'}
+    result = run(LOCK, env=env)
+    assert result.returncode == 0, result.stderr
+    calls = log.read_text(encoding='utf-8').splitlines()
+    assert 'loginctl lock-session 42' in calls
+    assert calls.index('loginctl lock-session 42') < calls.index('hyprlock')
+    assert 'loginctl unlock-session 42' in calls
+    assert calls.index('hyprlock') < calls.index('loginctl unlock-session 42')
+
+
+def test_idle_wrapper_locks_once_with_the_idle_presentation_and_logind_state(tmp_path):
+    # The 3-minute Terminal Idle tier must reuse Hyprlock (PAM) with the idle
+    # presentation, deduplicate like wilsof-lock, and reflect logind state.
+    idle = ROOT / "bin" / "wilsof-idle"
+    source = idle.read_text(encoding="utf-8")
+    assert "hyprlock" in source
+    assert "-c" in source
+    assert "hyprlock-idle.conf" in source
+    assert "loginctl lock-session" in source
+    assert "loginctl unlock-session" in source
+    assert "pgrep -x -u" in source
+
+
+def test_idle_policy_defines_three_tiers_with_dpms_and_secure_relock():
+    hypridle = (ROOT / "config" / "hypr" / "hypridle.conf").read_text(encoding="utf-8")
+    assert "timeout = 180" in hypridle
+    assert "wilsof-idle" in hypridle
+    assert "timeout = 300" in hypridle
+    assert "wilsof-lock" in hypridle
+    assert "timeout = 600" in hypridle
+    assert "dpms off" in hypridle
+    assert "dpms on" in hypridle
+    assert "before_sleep_cmd" in hypridle
+
+
+def test_idle_presentation_matches_the_approved_terminal_idle_design():
+    conf = (ROOT / "config" / "hypr" / "hyprlock-idle.conf").read_text(encoding="utf-8")
+    assert "rgb(9, 15, 20)" in conf
+    assert "[ W S ]" in conf
+    assert "SYSTEM IDLE_" in conf
+    assert "enabled = false" in conf
+    # It must remain a real Hyprlock PAM surface with an input field.
+    assert "input-field" in conf
+
+
+def test_installer_deploys_the_idle_tier_files():
+    content = INSTALL.read_text(encoding="utf-8")
+    assert 'bin/wilsof-idle' in content
+    assert 'config/hypr/hyprlock-idle.conf' in content
+    assert '"$HOME/.config/hypr/hyprlock-idle.conf"' in content
 
 
 def test_preflight_is_read_only_and_reports_missing_fedora_tools():
@@ -315,6 +397,28 @@ def test_search_uses_dms_spotlight_all_mode_and_rejects_other_actions(tmp_path):
     assert result.returncode == 0, result.stderr
     assert log.read_text(encoding="utf-8").strip() == "ipc call spotlight toggle"
     assert run(SEARCH, "files", env={"PATH": f"{fake_bin}:{os.environ['PATH']}"}).returncode == 64
+
+
+def test_vm_installer_provisions_regreet_with_tuigreet_fallback():
+    content = (ROOT / "scripts" / "install-arch-test-vm.sh").read_text(encoding="utf-8")
+    # Established distro packages; no custom greeter or auth stack.
+    assert "greetd-regreet" in content
+    assert "cage" in content
+    assert "greetd-tuigreet" in content
+    # The verified tuigreet greeter stays the default; ReGreet is provisioned
+    # and documented as a one-line opt-in because QEMU/TCG evaluation could
+    # not safely verify input delivery to the GTK entry.
+    assert 'command = "tuigreet --time --cmd Hyprland"' in content
+    assert '"cage -s -- regreet"' in content
+    assert "wilsof-greeter-bg.png" in content
+
+
+def test_regreet_uses_the_approved_branding_and_dark_theme():
+    regreet = (ROOT / "config" / "greetd" / "regreet.toml").read_text(encoding="utf-8")
+    assert "wilsof-greeter-bg.png" in regreet
+    assert "application_prefer_dark_theme = true" in regreet
+    # No autologin: regreet always asks for credentials through greetd PAM.
+    assert "autologin" not in regreet
 
 
 def test_iso_profile_and_builder_are_present_and_keep_secrets_out_of_the_profile():

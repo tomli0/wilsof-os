@@ -156,6 +156,8 @@ def test_provisioning_preserves_expected_dangling_resolver_and_uses_prepared_bou
     main()
     assert resolver.is_symlink() and os.readlink(resolver) == '/run/systemd/resolve/stub-resolv.conf'
     assert installed == [(target, '/usr/share/wilsof/packages')]
+    assert any(argv[:3] == ['systemctl', '--root', str(target)]
+               and 'enable' in argv and 'bluetooth.service' in argv for argv, _ in calls)
     assert calls[-1] == (['arch-chroot', '-r', str(target), 'runuser', '-u', 'demo', '--',
                          'python3', '/usr/share/wilsof/source/runtime/desktop.py'], {'check': True})
 

@@ -80,7 +80,7 @@ def main():
         greetd = target / 'etc/greetd'
         greetd.mkdir(parents=True, exist_ok=True)
         (greetd / 'config.toml').write_text('[terminal]\nvt = 1\n[default_session]\ncommand = "tuigreet --time --cmd /usr/local/bin/wilsof-session"\nuser = "greeter"\n')
-        subprocess.run(['systemctl', '--root', str(target), 'enable', 'greetd.service', 'NetworkManager.service', 'systemd-resolved.service'], check=True)
+        subprocess.run(['systemctl', '--root', str(target), 'enable', 'greetd.service', 'NetworkManager.service', 'systemd-resolved.service', 'bluetooth.service'], check=True)
         subprocess.run(['systemctl', '--root', str(target), 'set-default', 'graphical.target'], check=True)
         resolver = target / 'etc/resolv.conf'
         if resolver.exists() or resolver.is_symlink():

@@ -10,6 +10,7 @@ def helper():
     assert path.exists(), 'bounded home-name search is not implemented'
     loader = importlib.machinery.SourceFileLoader('file_search', str(path))
     spec = importlib.util.spec_from_loader(loader.name, loader)
+    assert spec is not None
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)
     return module

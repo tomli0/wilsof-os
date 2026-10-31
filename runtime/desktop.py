@@ -73,6 +73,12 @@ def install_user(source, home, *, live=False):
     for name in ('Mørk geometrisk bakgrunn med isblått WS-monogram.png', 'Wilsof OS-logo med geometrisk WS-monogram.png', 'Wilsof lock background.png'):
         write(f'.local/share/wilsof-os/assets/{name}', (source / 'assets' / name).read_bytes())
 
+    # Ghostty is personal configuration, not an always-managed Wilsof override.
+    # Refuse symlink destinations and seed only when the user has no config.
+    ghostty = confined('.config/ghostty/config')
+    if not ghostty.exists():
+        write('.config/ghostty/config', (source / 'config/ghostty/config').read_bytes())
+
     # Plugin distribution uses the existing explicit image manifest, never a glob.
     for relative in (source / 'runtime/image-files.txt').read_text().splitlines():
         prefix = 'config/dms/plugins/'

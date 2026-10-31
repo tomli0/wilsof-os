@@ -39,3 +39,7 @@ config/dms/plugins/wilsofProfiles/ProfileState.qml
 config/dms/plugins/wilsofProfiles/Launcher.qml
 config/dms/plugins/wilsofProfiles/Bar.qml
 config/dms/plugins/wilsofProfiles/qmldir
+bin/wilsof-file-search
+config/dms/plugins/wilsofCommandCenter/plugin.json
+config/dms/plugins/wilsofCommandCenter/Model.js
+config/dms/plugins/wilsofCommandCenter/CommandCenter.qml

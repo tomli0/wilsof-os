@@ -5,6 +5,8 @@ dux-shell
 greetd
 greetd-tuigreet
 networkmanager
+# DMS uses org.bluez over D-Bus; bluez-libs alone supplies no daemon.
+bluez
 power-profiles-daemon
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk

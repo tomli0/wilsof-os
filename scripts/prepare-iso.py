@@ -107,6 +107,14 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
         path.parent.mkdir(parents=True, exist_ok=True)
         if not path.is_symlink():
             path.symlink_to('/etc/systemd/system/wilsof-live-setup.service' if unit == 'wilsof-live-setup' else '/usr/lib/systemd/system/' + unit + '.service')
+    # Match BlueZ's packaged systemctl enable contract, including its D-Bus alias.
+    # The upstream unit's hardware condition handles absent adapters; no power-on.
+    for relative in ('dbus-org.bluez.service', 'bluetooth.target.wants/bluetooth.service'):
+        link = root / 'etc/systemd/system' / relative
+        link.parent.mkdir(parents=True, exist_ok=True)
+        if link.is_symlink():
+            link.unlink()
+        link.symlink_to('/usr/lib/systemd/system/bluetooth.service')
     write('usr/share/applications/wilsof-install.desktop', '[Desktop Entry]\nType=Application\nName=Install Wilsof\nComment=Erase an explicitly selected empty test disk\nExec=ghostty -e sudo /usr/local/bin/wilsof-install\nIcon=system-software-install\nTerminal=false\nCategories=System;\n')
     write('etc/motd', 'Wilsof internal test image. Live evaluation is unlocked; do not enter private data. Install Wilsof from the launcher.\n')
 

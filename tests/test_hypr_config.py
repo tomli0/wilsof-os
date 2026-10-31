@@ -86,9 +86,9 @@ def test_lua_owns_the_agreed_live_keybindings_with_supported_dispatchers():
         '"SUPER + I", hl.dsp.exec_cmd("dms ipc call settings open")',
         '"SUPER + F1", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-help")',
         '"SUPER + Q", hl.dsp.window.close()',
-        '"SUPER + F", hl.dsp.exec_cmd("hyprctl dispatch fullscreen")',
+        '"SUPER + F", hl.dsp.window.fullscreen()',
         '"SUPER + SHIFT + space", hl.dsp.window.float({ action = "toggle" })',
-        '"SUPER + CTRL + left", hl.dsp.exec_cmd("hyprctl dispatch resizeactive -40 0")',
+        '"SUPER + CTRL + left", hl.dsp.window.resize({ x = -40, y = 0, relative = true })',
         'hl.dsp.focus({ workspace = workspace })',
         'hl.dsp.window.move({ workspace = workspace })',
     ):

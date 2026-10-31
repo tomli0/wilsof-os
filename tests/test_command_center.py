@@ -53,3 +53,11 @@ def test_native_dms_modal_distribution_and_safe_launcher_fallback():
     assert 'wilsofCommandCenter' in runtime
     assert 'wilsof-file-search' in runtime
     assert 'commandCenter toggle' in (ROOT / 'bin/wilsof-search').read_text()
+
+
+def test_shortcuts_and_lock_escape_the_shell_service_lifetime():
+    qml = (MODEL.parent / 'CommandCenter.qml').read_text()
+    assert 'DesktopEntries.heuristicLookup' in qml, 'Shortcuts must use DMS desktop-entry launch policy'
+    assert 'Quickshell.execDetached([row.data])' not in qml
+    assert '["systemd-run", "--user", "--collect", "--quiet", "--", root.bin + "wilsof-lock"]' in qml
+    assert '["systemd-run", "--user", "--collect", "--quiet", "--", "xdg-open"' in qml

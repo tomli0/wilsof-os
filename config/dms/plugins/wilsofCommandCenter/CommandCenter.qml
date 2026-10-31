@@ -85,9 +85,15 @@ Item {
         }
         center.close();
         switch (row.kind) {
-        case "shortcut":
-            Quickshell.execDetached([row.data]);
+        case "shortcut": {
+            const desktopIds = {firefox: "firefox", ghostty: "com.mitchellh.ghostty", nautilus: "org.gnome.Nautilus"};
+            const entry = DesktopEntries.heuristicLookup(desktopIds[row.data]);
+            if (entry)
+                SessionService.launchDesktopEntry(entry);
+            else
+                ToastService.showError("Application unavailable", row.comment);
             break;
+        }
         case "app":
             if (row.data.isAction)
                 SessionService.launchDesktopAction(row.data.parentApp, row.data.actionData);
@@ -95,7 +101,7 @@ Item {
                 SessionService.launchDesktopEntry(row.data);
             break;
         case "file":
-            Quickshell.execDetached(["xdg-open", "file://" + row.data.split("/").map(encodeURIComponent).join("/")]);
+            Quickshell.execDetached(["systemd-run", "--user", "--collect", "--quiet", "--", "xdg-open", "file://" + row.data.split("/").map(encodeURIComponent).join("/")]);
             break;
         case "setting":
             AppSearchService.executeBuiltInLauncherItem(row.data);
@@ -114,7 +120,7 @@ Item {
             PopoutService.openPowerMenu();
             break;
         case "lock":
-            Quickshell.execDetached([root.bin + "wilsof-lock"]);
+            Quickshell.execDetached(["systemd-run", "--user", "--collect", "--quiet", "--", root.bin + "wilsof-lock"]);
             break;
         }
     }

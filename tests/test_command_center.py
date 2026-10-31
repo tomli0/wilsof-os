@@ -44,7 +44,7 @@ def test_native_dms_modal_distribution_and_safe_launcher_fallback():
     metadata = json.loads((plugin / 'plugin.json').read_text())
     assert metadata['components']['daemon'] == 'CommandCenter.qml'
     qml = (plugin / 'CommandCenter.qml').read_text()
-    for contract in ['DModal {', 'AppSearchService.searchApplications', 'AppSearchService.getBuiltInLauncherItems', 'SessionService.launchDesktopEntry', 'SessionService.launchDesktopAction', 'PopoutService.openPowerMenu', 'Model.selection', 'Model.move', 'onStreamFinished', 'wilsof-file-search', 'pendingQuery === root.query', 'function status()', 'Theme.surface', 'forceActiveFocus']:
+    for contract in ['DModal {', 'AppSearchService.searchApplications', 'AppSearchService.getBuiltInLauncherItems', 'SessionService.launchDesktopEntry', 'SessionService.launchDesktopAction', 'PopoutService.openPowerMenu', 'Model.selection', 'Model.move', 'onStreamFinished', 'wilsof-file-search', 'Model.accept', 'function status()', 'Theme.surface', 'forceActiveFocus']:
         assert contract in qml, contract
     manifest = (ROOT / 'runtime/image-files.txt').read_text().splitlines()
     for name in ['plugin.json', 'CommandCenter.qml', 'Model.js']:
@@ -53,6 +53,13 @@ def test_native_dms_modal_distribution_and_safe_launcher_fallback():
     assert 'wilsofCommandCenter' in runtime
     assert 'wilsof-file-search' in runtime
     assert 'commandCenter toggle' in (ROOT / 'bin/wilsof-search').read_text()
+
+
+def test_file_results_are_accepted_while_modal_is_still_mapping():
+    assert evaluate('m.accept(7,7,"downloads","downloads",true)') is True
+    assert evaluate('m.accept(6,7,"downloads","downloads",true)') is False
+    assert evaluate('m.accept(7,7,"old","new",true)') is False
+    assert evaluate('m.accept(7,7,"downloads","downloads",false)') is False
 
 
 def test_shortcuts_and_lock_escape_the_shell_service_lifetime():

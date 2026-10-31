@@ -30,6 +30,10 @@ function selection(rows, id) {
     return index >= 0 ? index : rows.length ? 0 : -1;
 }
 
+function accept(generation, activeGeneration, query, activeQuery, wantedOpen) {
+    return wantedOpen && generation === activeGeneration && query === activeQuery;
+}
+
 function move(index, delta, length) {
     return length ? ((index + delta) % length + length) % length : -1;
 }

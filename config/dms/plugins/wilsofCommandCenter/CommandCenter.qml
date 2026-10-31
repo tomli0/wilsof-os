@@ -12,6 +12,7 @@ Item {
     id: root
     property var pluginService: null
     property string query: ""
+    property bool wantedOpen: false
     property string category: ""
     property var rows: []
     property var localRows: []
@@ -64,6 +65,7 @@ Item {
     }
 
     function open() {
+        wantedOpen = true;
         query = "";
         category = "";
         refresh();
@@ -83,6 +85,7 @@ Item {
             refresh();
             return;
         }
+        root.wantedOpen = false;
         center.close();
         switch (row.kind) {
         case "shortcut": {
@@ -144,7 +147,7 @@ Item {
             command: [root.bin + "wilsof-file-search", "--query", pendingQuery]
             stdout: StdioCollector {
                 onStreamFinished: {
-                    if (worker.generation !== root.fileGeneration || !center.shouldBeVisible || !(worker.pendingQuery === root.query))
+                    if (!Model.accept(worker.generation, root.fileGeneration, worker.pendingQuery, root.query, root.wantedOpen))
                         return;
                     try {
                         const data = JSON.parse(text);
@@ -174,12 +177,12 @@ Item {
     IpcHandler {
         target: "commandCenter"
         function toggle(): string {
-            if (center.shouldBeVisible) center.close(); else root.open();
+            if (root.wantedOpen) { root.wantedOpen = false; center.close(); } else root.open();
             return "WILSOF_COMMAND_CENTER_OK";
         }
-        function close(): string { center.close(); return "closed"; }
+        function close(): string { root.wantedOpen = false; center.close(); return "closed"; }
         function search(text: string): string {
-            if (!center.shouldBeVisible) root.open();
+            if (!root.wantedOpen) root.open();
             root.query = text;
             root.category = "";
             root.refresh();
@@ -202,6 +205,7 @@ Item {
         enableShadow: false
         animationDuration: SettingsData.reduceMotion ? 0 : 100
         onDialogClosed: {
+            root.wantedOpen = false;
             root.fileGeneration++;
             fileTimer.stop();
             if (root.activeFileProcess)

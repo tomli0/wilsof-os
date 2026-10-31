@@ -43,6 +43,21 @@ def test_search_uses_command_center_marker_without_double_toggling(tmp_path):
     assert log.read_text().splitlines() == ['ipc call commandCenter toggle']
 
 
+def test_search_treats_locked_session_marker_as_handled(tmp_path):
+    # While the session is locked the Command Center answers with a distinct
+    # marker; the wrapper must treat it as handled and never fall back to the
+    # upstream launcher, which would reopen a keyboard-grabbing modal.
+    fake_bin = tmp_path / 'bin'
+    fake_bin.mkdir()
+    log = tmp_path / 'calls'
+    dms = fake_bin / 'dms'
+    dms.write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nprintf "%s\\n" WILSOF_COMMAND_CENTER_LOCKED\n')
+    dms.chmod(0o755)
+    result = run(SEARCH, 'toggle', env={'PATH': f"{fake_bin}:{os.environ['PATH']}"})
+    assert result.returncode == 0
+    assert log.read_text().splitlines() == ['ipc call commandCenter toggle']
+
+
 def test_search_rejects_unsupported_actions():
     result = run(SEARCH, "anything-else")
     assert result.returncode == 64
@@ -64,6 +79,31 @@ def test_lock_delegates_to_hyprlock_and_rejects_arguments(tmp_path):
     assert log.read_text(encoding="utf-8").strip() == ""
     rejected = run(LOCK, "unexpected")
     assert rejected.returncode == 64
+
+
+def test_lock_marks_logind_session_locked_around_hyprlock(tmp_path):
+    # The locker must reflect the lock in logind session state so shell
+    # components (DMS SessionService) observe it, and clear it on unlock.
+    fake_bin = tmp_path / 'bin'
+    fake_bin.mkdir()
+    log = tmp_path / 'calls'
+    hyprlock = fake_bin / 'hyprlock'
+    hyprlock.write_text(f'#!/bin/sh\nprintf "%s\\n" hyprlock >> "{log}"\n', encoding='utf-8')
+    hyprlock.chmod(0o755)
+    loginctl = fake_bin / 'loginctl'
+    loginctl.write_text(f'#!/bin/sh\nprintf "%s\\n" "loginctl $*" >> "{log}"\n', encoding='utf-8')
+    loginctl.chmod(0o755)
+    pgrep = fake_bin / 'pgrep'
+    pgrep.write_text('#!/bin/sh\nexit 1\n', encoding='utf-8')
+    pgrep.chmod(0o755)
+    env = {'PATH': f"{fake_bin}:{os.environ['PATH']}", 'XDG_SESSION_ID': '42'}
+    result = run(LOCK, env=env)
+    assert result.returncode == 0, result.stderr
+    calls = log.read_text(encoding='utf-8').splitlines()
+    assert 'loginctl lock-session 42' in calls
+    assert calls.index('loginctl lock-session 42') < calls.index('hyprlock')
+    assert 'loginctl unlock-session 42' in calls
+    assert calls.index('hyprlock') < calls.index('loginctl unlock-session 42')
 
 
 def test_preflight_is_read_only_and_reports_missing_fedora_tools():

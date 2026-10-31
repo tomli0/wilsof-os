@@ -65,7 +65,20 @@ Item {
         usefulResultsMs = rows.length ? Date.now() - queryStarted : -1;
     }
 
+    function lockdown() {
+        // A locked session must never leave a keyboard-grabbing modal under the
+        // locker: lock-screen keystrokes would land in the search field (F1).
+        wantedOpen = false;
+        fileGeneration++;
+        fileTimer.stop();
+        if (activeFileProcess)
+            activeFileProcess.running = false;
+        center.close();
+    }
+
     function open() {
+        if (SessionService.locked)
+            return;
         wantedOpen = true;
         query = "";
         category = "";
@@ -181,11 +194,19 @@ Item {
     IpcHandler {
         target: "commandCenter"
         function toggle(): string {
+            if (SessionService.locked) {
+                root.lockdown();
+                return "WILSOF_COMMAND_CENTER_LOCKED";
+            }
             if (root.wantedOpen) { root.wantedOpen = false; center.close(); } else root.open();
             return "WILSOF_COMMAND_CENTER_OK";
         }
         function close(): string { root.wantedOpen = false; center.close(); return "closed"; }
         function search(text: string): string {
+            if (SessionService.locked) {
+                root.lockdown();
+                return "WILSOF_COMMAND_CENTER_LOCKED";
+            }
             if (!root.wantedOpen) root.open();
             root.query = text;
             root.category = "";
@@ -195,6 +216,13 @@ Item {
         function status(): string {
             return JSON.stringify({visible: center.shouldBeVisible, query: root.query, category: root.category, count: root.rows.length, selected: root.selected, selectedId: root.selected >= 0 ? root.rows[root.selected].id : "", usefulResultsMs: root.usefulResultsMs, filesRunning: root.activeFileProcess !== null, note: root.searchNote});
         }
+    }
+
+    // The lock screen must own the keyboard from the moment the session locks;
+    // an open modal keeps a focus grab that would swallow unlock keystrokes.
+    Connections {
+        target: SessionService
+        function onSessionLocked() { root.lockdown(); }
     }
 
     // Explicit lazy URL also supports adding this file to a running DMS engine

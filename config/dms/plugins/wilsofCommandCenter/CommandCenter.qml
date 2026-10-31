@@ -6,6 +6,7 @@ import qs.Services
 import qs.Modals.Common
 import qs.DCommon.Widgets
 import "Model.js" as Model
+import "."
 
 // A resident DMS plugin Item, not a separate shell, service or search daemon.
 Item {
@@ -116,7 +117,10 @@ Item {
                 PopoutService.openSettings();
             break;
         case "about":
-            PopoutService.openSettingsWithTab("about");
+            if (aboutLoader.item)
+                aboutLoader.item.open();
+            else
+                aboutLoader.active = true;
             break;
         case "power":
             // Never invoke destructive actions directly; retain DMS confirmation.
@@ -191,6 +195,15 @@ Item {
         function status(): string {
             return JSON.stringify({visible: center.shouldBeVisible, query: root.query, category: root.category, count: root.rows.length, selected: root.selected, selectedId: root.selected >= 0 ? root.rows[root.selected].id : "", usefulResultsMs: root.usefulResultsMs, filesRunning: root.activeFileProcess !== null, note: root.searchNote});
         }
+    }
+
+    // Explicit lazy URL also supports adding this file to a running DMS engine
+    // whose implicit directory type inventory predates the plugin update.
+    Loader {
+        id: aboutLoader
+        active: false
+        source: Qt.resolvedUrl("About.qml")
+        onLoaded: item.open()
     }
 
     DModal {

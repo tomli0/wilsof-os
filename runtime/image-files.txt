@@ -44,3 +44,6 @@ config/dms/plugins/wilsofCommandCenter/plugin.json
 config/dms/plugins/wilsofCommandCenter/Model.js
 config/dms/plugins/wilsofCommandCenter/CommandCenter.qml
 config/ghostty/config
+bin/wilsof-about-info
+config/dms/plugins/wilsofCommandCenter/About.qml
+config/hypr/wilsof-app-shortcuts.lua

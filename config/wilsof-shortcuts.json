@@ -1,7 +1,10 @@
 {
   "schema": 1,
   "standard": [
-    {"keys": "Super+Space", "action": "Åpne launcher"},
+    {"keys": "Super+Space", "action": "Open Command Center"},
+    {"keys": "Super+Enter", "action": "Open Ghostty (DMS default)"},
+    {"keys": "Super+B", "action": "Open Firefox"},
+    {"keys": "Super+E", "action": "Open Nautilus"},
     {"keys": "Super+L", "action": "Lås økten"},
     {"keys": "Super+I", "action": "Åpne innstillinger"},
     {"keys": "Super+F1", "action": "Vis denne hjelpen"},

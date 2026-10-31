@@ -76,6 +76,13 @@ for workspace = 1, 9 do
     hl.bind("SUPER + SHIFT + " .. workspace, hl.dsp.window.move({ workspace = workspace }))
 end
 
+-- Optional, seed-once app bindings; keep user edits and DMS-generated files.
+local app_shortcuts = io.open(wilsof_home .. "/.config/hypr/wilsof-app-shortcuts.lua", "r")
+if app_shortcuts then
+    app_shortcuts:close()
+    require("wilsof-app-shortcuts")
+end
+
 -- Deliberately opt-in: useful only when a VM client intercepts Super.
 local vm_test_file = io.open(vm_test_enabled, "r")
 if vm_test_file then

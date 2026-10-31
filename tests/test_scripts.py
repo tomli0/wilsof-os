@@ -399,6 +399,28 @@ def test_search_uses_dms_spotlight_all_mode_and_rejects_other_actions(tmp_path):
     assert run(SEARCH, "files", env={"PATH": f"{fake_bin}:{os.environ['PATH']}"}).returncode == 64
 
 
+def test_vm_installer_provisions_regreet_with_tuigreet_fallback():
+    content = (ROOT / "scripts" / "install-arch-test-vm.sh").read_text(encoding="utf-8")
+    # Established distro packages; no custom greeter or auth stack.
+    assert "greetd-regreet" in content
+    assert "cage" in content
+    assert "greetd-tuigreet" in content
+    # The verified tuigreet greeter stays the default; ReGreet is provisioned
+    # and documented as a one-line opt-in because QEMU/TCG evaluation could
+    # not safely verify input delivery to the GTK entry.
+    assert 'command = "tuigreet --time --cmd Hyprland"' in content
+    assert '"cage -s -- regreet"' in content
+    assert "wilsof-greeter-bg.png" in content
+
+
+def test_regreet_uses_the_approved_branding_and_dark_theme():
+    regreet = (ROOT / "config" / "greetd" / "regreet.toml").read_text(encoding="utf-8")
+    assert "wilsof-greeter-bg.png" in regreet
+    assert "application_prefer_dark_theme = true" in regreet
+    # No autologin: regreet always asks for credentials through greetd PAM.
+    assert "autologin" not in regreet
+
+
 def test_iso_profile_and_builder_are_present_and_keep_secrets_out_of_the_profile():
     profile = ROOT / "iso" / "profiledef.sh"
     packages = ROOT / "iso" / "packages.x86_64"

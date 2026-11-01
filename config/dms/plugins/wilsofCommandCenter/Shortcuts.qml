@@ -26,6 +26,8 @@ DModal {
         loader.running = true;
     }
 
+    onOpened: refresh()
+
     function visibleRows() {
         const needle = filter.trim().toLowerCase();
         if (!needle)
@@ -33,7 +35,6 @@ DModal {
         return actions.filter(a => (a.id + " " + a.label + " " + a.keys).toLowerCase().includes(needle));
     }
 
-    onOpened: refresh()
 
     Process {
         id: loader
@@ -54,6 +55,8 @@ DModal {
             anchors.fill: parent
             anchors.margins: 24
             spacing: 12
+            // The search field owns the keyboard the moment the modal opens.
+            Component.onCompleted: search.forceActiveFocus()
 
             Row {
                 width: parent.width

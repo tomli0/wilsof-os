@@ -57,7 +57,7 @@ def install_user(source, home, *, live=False):
     for relative in ('.local', '.local/state', '.local/state/wilsof-os'):
         confined(relative).mkdir(mode=0o700, exist_ok=True)
 
-    for name in ('wilsof-about-info', 'wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui'):
+    for name in ('wilsof-about-info', 'wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui', 'wilsof-shortcuts', 'wilsof-appearance'):
         write(f'.local/bin/{name}', (source / 'bin' / name).read_bytes(), 0o755)
     for name in ('wilsof.lua', 'wilsof.conf', 'hypridle.conf', 'hyprlock.conf'):
         write(f'.config/hypr/{name}', (source / 'config/hypr' / name).read_bytes())
@@ -67,6 +67,8 @@ def install_user(source, home, *, live=False):
     for name, origin in (
         ('wilsof-theme.json', 'config/dms/wilsof-theme.json'),
         ('wilsof-shortcuts.json', 'config/wilsof-shortcuts.json'),
+        ('wilsof-keybinds.json', 'config/wilsof-keybinds.json'),
+        ('wilsof-settings-template.json', 'config/dms/settings-template.json'),
         ('vm-test/wilsof-vm-test.lua', 'config/hypr/wilsof-vm-test.lua'),
     ):
         write(f'.local/share/wilsof-os/{name}', (source / origin).read_bytes())

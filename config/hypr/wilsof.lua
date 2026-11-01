@@ -83,6 +83,14 @@ if app_shortcuts then
     require("wilsof-app-shortcuts")
 end
 
+-- Wilsof user shortcut overrides from wilsof-shortcuts; personal and never seeded.
+local user_overrides = wilsof_home .. "/.config/hypr/wilsof-user-shortcuts.lua"
+local override_file = io.open(user_overrides, "r")
+if override_file then
+    override_file:close()
+    require("wilsof-user-shortcuts")
+end
+
 -- Deliberately opt-in: useful only when a VM client intercepts Super.
 local vm_test_file = io.open(vm_test_enabled, "r")
 if vm_test_file then

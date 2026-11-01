@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""Show and explicitly restore the approved Wilsof appearance defaults.
+
+DMS owns the live settings surface (Super+I); this tool only reports the
+Wilsof-relevant values and, on an explicit reset, restores the seeded
+defaults after backing up the personal file. Nothing else is touched.
+"""
+
+import argparse
+import json
+import os
+import shutil
+import sys
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+EXIT_OK = 0
+EXIT_UNAVAILABLE = 69
+
+RELEVANT = ("currentThemeName", "customThemeFile", "wallpaperFillMode", "barConfigs",
+            "powerMenuActions", "sortAppsAlphabetically", "spotlightBarShowModeChips")
+
+
+def fail(message):
+    print(f"wilsof-appearance: {message}", file=sys.stderr)
+    return EXIT_UNAVAILABLE
+
+
+def settings_path(home):
+    legacy = home / ".config" / "DankMaterialShell"
+    if legacy.is_symlink() and os.readlink(legacy) == "dms":
+        return home / ".config" / "dms" / "settings.json"
+    return legacy / "settings.json"
+
+
+def load_json(path):
+    with Path(path).open(encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def write_atomic(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle, temporary = tempfile.mkstemp(prefix=".wilsof-", dir=path.parent)
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as stream:
+            stream.write(text)
+        os.chmod(temporary, 0o644)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def summarize(data):
+    return {key: data.get(key) for key in RELEVANT if key in data}
+
+
+def command_show(home, defaults):
+    settings = settings_path(home)
+    if not settings.exists():
+        return fail("DMS settings are unavailable; nothing has been changed")
+    try:
+        current = summarize(load_json(settings))
+    except (OSError, json.JSONDecodeError) as error:
+        return fail(f"DMS settings are unreadable ({error}); nothing has been changed")
+    report = {"current": current, "defaults": summarize(defaults)}
+    if "--json" in sys.argv:
+        print(json.dumps(report, ensure_ascii=False))
+    else:
+        print("Current Wilsof-relevant appearance values:")
+        for key, value in current.items():
+            marker = "" if value == defaults.get(key) else "  (default differs)"
+            print(f"  {key}: {value}{marker}")
+        print("Run 'wilsof-appearance reset' to restore the Wilsof defaults.")
+    return EXIT_OK
+
+
+def command_reset(home, defaults):
+    settings = settings_path(home)
+    if not settings.exists():
+        return fail("DMS settings are unavailable; nothing has been changed")
+    try:
+        json.loads(settings.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return fail(f"DMS settings are unreadable ({error}); nothing has been changed")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup = home / ".local" / "state" / "wilsof-os" / "backups" / stamp / "settings.json"
+    backup.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(settings, backup)
+    restored = dict(defaults)
+    restored["customThemeFile"] = str(home / ".local" / "share" / "wilsof-os" / "wilsof-theme.json")
+    restored["customPowerActionLock"] = str(home / ".local" / "bin" / "wilsof-lock")
+    write_atomic(settings, json.dumps(restored, ensure_ascii=False) + "\n")
+    print(f"Wilsof appearance defaults restored; personal settings backed up to {backup}")
+    return EXIT_OK
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="wilsof-appearance", add_help=True,
+                                     description="Show or restore the Wilsof appearance defaults.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    show = subparsers.add_parser("show", help="print current and default values")
+    show.add_argument("--json", action="store_true", help="emit JSON")
+    subparsers.add_parser("reset", help="back up and restore the Wilsof defaults")
+    args = parser.parse_args()
+
+    home = Path(os.environ.get("HOME") or "~").expanduser()
+    if not home or not str(home).startswith("/"):
+        return fail("HOME must be an absolute path")
+    template = os.environ.get("WILSOF_SETTINGS_TEMPLATE")
+    if not template:
+        candidates = (
+            home / ".local" / "share" / "wilsof-os" / "wilsof-settings-template.json",
+            Path(__file__).resolve().parent.parent / "config" / "dms" / "settings-template.json",
+        )
+        template = next((str(c) for c in candidates if c.is_file()), str(candidates[0]))
+    try:
+        defaults = load_json(template)
+    except (OSError, json.JSONDecodeError) as error:
+        return fail(f"default template unavailable: {error}")
+    if args.command == "show":
+        return command_show(home, defaults)
+    return command_reset(home, defaults)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

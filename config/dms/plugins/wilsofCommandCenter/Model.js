@@ -14,6 +14,7 @@ function defaults() {
         row("settings", "Settings", "Display, sound, network and more", "settings", "settings", ""),
         row("appearance", "Appearance", "Wallpaper, colours, text and motion", "palette", "settings", "personalization"),
         row("help", "Help & Shortcuts", "Keyboard shortcuts and help", "keyboard", "settings", "keybinds"),
+        row("shortcuts", "Edit Shortcuts", "Change common keys, restore defaults", "edit", "shortcuts", ""),
         row("about", "About Wilsof OS", "Everything you need. Nothing you don't.", "info", "about", ""),
         row("power", "Power", "Lock, suspend, log out, restart or shut down", "power_settings_new", "power", "")
     ];

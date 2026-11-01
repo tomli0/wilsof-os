@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""Limited, conflict-checked editing of the common Wilsof shortcuts.
+
+Reads the tracked keybind table, applies the user's overrides from the
+state file and regenerates the Lua override file that wilsof.lua loads.
+Authentication, locking and the compositor itself are never touched.
+"""
+
+import argparse
+import json
+import os
+import re
+import sys
+import tempfile
+from pathlib import Path
+
+EXIT_USAGE = 64
+EXIT_CONFLICT = 65
+EXIT_UNKNOWN = 66
+EXIT_UNAVAILABLE = 69
+
+MODIFIERS = ("SUPER", "CTRL", "ALT", "SHIFT")
+SPECIAL_KEYS = {"space": "space", "return": "RETURN", "left": "left", "right": "right",
+                 "up": "up", "down": "down", "tab": "TAB", "escape": "ESCAPE"}
+KEY_PATTERN = re.compile(r"^F([1-9]|1[0-2])$|^[A-Z0-9]$")
+
+
+def fail(message, code):
+    print(f"wilsof-shortcuts: {message}", file=sys.stderr)
+    return code
+
+
+def state_path(home):
+    base = Path(os.environ.get("XDG_STATE_HOME") or (home / ".local/state"))
+    return base / "wilsof-os" / "user-shortcuts.json"
+
+
+def lua_path(home):
+    return home / ".config" / "hypr" / "wilsof-user-shortcuts.lua"
+
+
+def table_path(home):
+    override = os.environ.get("WILSOF_KEYBINDS_FILE")
+    if override:
+        return Path(override)
+    candidates = (
+        home / ".local" / "share" / "wilsof-os" / "wilsof-keybinds.json",
+        Path(__file__).resolve().parent.parent / "config" / "wilsof-keybinds.json",
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return candidates[0]
+
+
+def load_table(home):
+    with table_path(home).open(encoding="utf-8") as handle:
+        table = json.load(handle)
+    if table.get("schema") != 1 or not isinstance(table.get("actions"), dict):
+        raise ValueError("invalid keybind table")
+    return table
+
+
+def load_overrides(path):
+    if not path.exists():
+        return {}
+    with path.open(encoding="utf-8") as handle:
+        data = json.load(handle)
+    if data.get("schema") != 1 or not isinstance(data.get("overrides"), dict):
+        raise ValueError("invalid user-shortcuts state")
+    return data["overrides"]
+
+
+def normalize_keys(raw):
+    tokens = [token.strip().lower() for token in raw.split("+") if token.strip()]
+    if not tokens:
+        raise ValueError("empty key combination")
+    modifiers, key = [], None
+    for token in tokens:
+        if token in (modifier.lower() for modifier in MODIFIERS):
+            modifiers.append(token.upper())
+        elif key is None:
+            key = token
+        else:
+            raise ValueError(f"more than one non-modifier key: {raw!r}")
+    if key is None:
+        raise ValueError(f"no key in combination: {raw!r}")
+    if key in SPECIAL_KEYS:
+        key = SPECIAL_KEYS[key]
+    elif KEY_PATTERN.match(key.upper()):
+        key = key.upper()
+    else:
+        raise ValueError(f"unsupported key: {key!r}")
+    return " + ".join(sorted(set(modifiers), key=MODIFIERS.index) + [key])
+
+
+def effective_actions(table, overrides):
+    actions = {}
+    for action_id, spec in table["actions"].items():
+        entry = dict(spec)
+        if action_id in overrides:
+            entry["keys"] = overrides[action_id]["keys"]
+            entry["overridden"] = True
+        actions[action_id] = entry
+    return actions
+
+
+def find_conflict(actions, reserved, action_id, keys):
+    for other_id, spec in actions.items():
+        if other_id != action_id and spec["keys"] == keys:
+            return f"conflict: {keys} is already bound to {other_id} ({spec['label']})"
+    if keys in reserved:
+        return f"conflict: {keys} is reserved by the Wilsof map (workspaces, navigation or terminal)"
+    return None
+
+
+def write_atomic(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle, temporary = tempfile.mkstemp(prefix=".wilsof-", dir=path.parent)
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as stream:
+            stream.write(text)
+        os.chmod(temporary, 0o644)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def regenerate_lua(home, table, overrides):
+    path = lua_path(home)
+    if not overrides:
+        if path.exists():
+            path.unlink()
+        return
+    bin_prefix = str(home / ".local/bin") + "/"
+    lines = [
+        "-- Wilsof user shortcut overrides; managed by wilsof-shortcuts.",
+        "-- Personal edits here and in the state file survive wilsof-config-update.",
+    ]
+    for action_id in sorted(overrides):
+        spec = table["actions"][action_id]
+        lines.append(f'hl.unbind("{spec["keys"]}")')
+        if "exec" in spec:
+            command = spec["exec"].replace("$BIN", bin_prefix)
+            lines.append(f'hl.bind("{overrides[action_id]["keys"]}", hl.dsp.exec_cmd("{command}"))')
+        else:
+            lines.append(f'hl.bind("{overrides[action_id]["keys"]}", hl.dsp.{spec["dsp"]})')
+    write_atomic(path, "\n".join(lines) + "\n")
+
+
+def command_list(home, table, overrides, args):
+    actions = effective_actions(table, overrides)
+    rows = [
+        {"id": action_id, "label": spec["label"], "keys": spec["keys"],
+         "default": spec["keys"] == table["actions"][action_id]["keys"],
+         "defaultKeys": table["actions"][action_id]["keys"]}
+        for action_id, spec in sorted(actions.items())
+    ]
+    if args.filter:
+        needle = args.filter.lower()
+        rows = [row for row in rows if needle in f"{row['id']} {row['label']} {row['keys']}".lower()]
+    if args.json:
+        print(json.dumps({"actions": rows}, ensure_ascii=False))
+    else:
+        for row in rows:
+            suffix = "" if row["default"] else f"  (default: {row['defaultKeys']})"
+            print(f"{row['keys']:<24} {row['label']} [{row['id']}]{suffix}")
+    return 0
+
+
+def command_set(home, table, overrides, args):
+    action_id, raw = args.action, args.keys
+    if action_id not in table["actions"]:
+        return fail(f"unknown or non-editable action: {action_id}", EXIT_UNKNOWN)
+    try:
+        keys = normalize_keys(raw)
+    except ValueError as error:
+        return fail(str(error), EXIT_USAGE)
+    if keys == table["actions"][action_id]["keys"] and action_id not in overrides:
+        print(f"{action_id} already uses its default keys {keys}")
+        return 0
+    actions = effective_actions(table, {k: v for k, v in overrides.items() if k != action_id})
+    conflict = find_conflict(actions, table["reserved"], action_id, keys)
+    if conflict:
+        return fail(conflict, EXIT_CONFLICT)
+    overrides[action_id] = {"keys": keys}
+    state = state_path(home)
+    write_atomic(state, json.dumps({"schema": 1, "overrides": overrides}, ensure_ascii=False) + "\n")
+    regenerate_lua(home, table, overrides)
+    print(f"{action_id} bound to {keys}; run: hyprctl reload")
+    return 0
+
+
+def command_reset(home, table, overrides, args):
+    if args.action:
+        if args.action not in table["actions"]:
+            return fail(f"unknown or non-editable action: {args.action}", EXIT_UNKNOWN)
+        if args.action in overrides:
+            del overrides[args.action]
+    else:
+        overrides = {}
+    state = state_path(home)
+    write_atomic(state, json.dumps({"schema": 1, "overrides": overrides}, ensure_ascii=False) + "\n")
+    regenerate_lua(home, table, overrides)
+    print("Wilsof shortcut defaults restored" + (f" for {args.action}" if args.action else "") + "; run: hyprctl reload")
+    return 0
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(prog="wilsof-shortcuts", add_help=True,
+                                     description="Search, edit and reset the common Wilsof shortcuts.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    listing = subparsers.add_parser("list", help="list the effective shortcut map")
+    listing.add_argument("--filter", default="", help="show only matching actions")
+    listing.add_argument("--json", action="store_true", help="emit JSON")
+    setter = subparsers.add_parser("set", help="rebind one editable action")
+    setter.add_argument("action")
+    setter.add_argument("keys")
+    resetter = subparsers.add_parser("reset", help="restore defaults for one action or all")
+    resetter.add_argument("action", nargs="?", default="")
+    args = parser.parse_args(argv)
+
+    home = Path(os.environ.get("HOME") or "~").expanduser()
+    if not home or not str(home).startswith("/"):
+        return fail("HOME must be an absolute path", EXIT_USAGE)
+    try:
+        table = load_table(home)
+        overrides = load_overrides(state_path(home))
+    except (OSError, ValueError) as error:
+        return fail(f"unavailable: {error}", EXIT_UNAVAILABLE)
+    if args.command == "list":
+        return command_list(home, table, overrides, args)
+    if args.command == "set":
+        return command_set(home, table, overrides, args)
+    return command_reset(home, table, overrides, args)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

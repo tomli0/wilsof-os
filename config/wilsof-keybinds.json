@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "actions": {
+    "command-center": {
+      "label": "Command Center",
+      "keys": "SUPER + space",
+      "exec": "$BINwilsof-search toggle",
+      "editable": true
+    },
+    "lock": {
+      "label": "Lås økten",
+      "keys": "SUPER + L",
+      "exec": "$BINwilsof-lock",
+      "editable": true
+    },
+    "help": {
+      "label": "Vis hjelpen",
+      "keys": "SUPER + F1",
+      "exec": "$BINwilsof-help",
+      "editable": true
+    },
+    "settings": {
+      "label": "Åpne innstillinger",
+      "keys": "SUPER + I",
+      "exec": "dms ipc call settings open",
+      "editable": true
+    },
+    "firefox": {
+      "label": "Firefox",
+      "keys": "SUPER + B",
+      "exec": "firefox",
+      "editable": true
+    },
+    "nautilus": {
+      "label": "Nautilus",
+      "keys": "SUPER + E",
+      "exec": "nautilus",
+      "editable": true
+    },
+    "fullscreen": {
+      "label": "Fullskjerm",
+      "keys": "SUPER + F",
+      "dsp": "window.fullscreen()",
+      "editable": true
+    },
+    "close-window": {
+      "label": "Lukk aktivt vindu",
+      "keys": "SUPER + Q",
+      "dsp": "window.close()",
+      "editable": true
+    }
+  },
+  "reserved": [
+    "SUPER + RETURN",
+    "SUPER + SHIFT + space",
+    "SUPER + left",
+    "SUPER + right",
+    "SUPER + up",
+    "SUPER + down",
+    "SUPER + SHIFT + left",
+    "SUPER + SHIFT + right",
+    "SUPER + SHIFT + up",
+    "SUPER + SHIFT + down",
+    "SUPER + CTRL + left",
+    "SUPER + CTRL + right",
+    "SUPER + CTRL + up",
+    "SUPER + CTRL + down",
+    "SUPER + 1",
+    "SUPER + 2",
+    "SUPER + 3",
+    "SUPER + 4",
+    "SUPER + 5",
+    "SUPER + 6",
+    "SUPER + 7",
+    "SUPER + 8",
+    "SUPER + 9",
+    "SUPER + SHIFT + 1",
+    "SUPER + SHIFT + 2",
+    "SUPER + SHIFT + 3",
+    "SUPER + SHIFT + 4",
+    "SUPER + SHIFT + 5",
+    "SUPER + SHIFT + 6",
+    "SUPER + SHIFT + 7",
+    "SUPER + SHIFT + 8",
+    "SUPER + SHIFT + 9"
+  ]
+}

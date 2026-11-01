@@ -36,7 +36,10 @@ for managed in \
   "$HOME/.local/bin/wilsof-doctor" \
   "$HOME/.local/bin/wilsof-apply-wallpaper" \
   "$HOME/.local/bin/wilsof-vm-test-binds" \
+  "$HOME/.local/bin/wilsof-shortcuts" "$HOME/.local/bin/wilsof-appearance" \
   "$HOME/.local/share/wilsof-os/wilsof-shortcuts.json" \
+  "$HOME/.local/share/wilsof-os/wilsof-keybinds.json" \
+  "$HOME/.local/share/wilsof-os/wilsof-settings-template.json" \
   "$HOME/.local/share/wilsof-os/assets/Wilsof OS-logo med geometrisk WS-monogram.png" \
   "$HOME/.local/share/wilsof-os/assets/Wilsof lock background.png" \
   "$HOME/.local/share/wilsof-os/vm-test/wilsof-vm-test.lua" \
@@ -58,8 +61,12 @@ install -m 0755 "$root/bin/wilsof-help-view" "$HOME/.local/bin/wilsof-help-view"
 install -m 0755 "$root/bin/wilsof-doctor" "$HOME/.local/bin/wilsof-doctor"
 install -m 0755 "$root/bin/wilsof-apply-wallpaper" "$HOME/.local/bin/wilsof-apply-wallpaper"
 install -m 0755 "$root/bin/wilsof-vm-test-binds" "$HOME/.local/bin/wilsof-vm-test-binds"
+install -m 0755 "$root/bin/wilsof-shortcuts" "$HOME/.local/bin/wilsof-shortcuts"
+install -m 0755 "$root/bin/wilsof-appearance" "$HOME/.local/bin/wilsof-appearance"
 install -d "$HOME/.local/share/wilsof-os/vm-test"
 install -m 0644 "$root/config/wilsof-shortcuts.json" "$HOME/.local/share/wilsof-os/wilsof-shortcuts.json"
+install -m 0644 "$root/config/wilsof-keybinds.json" "$HOME/.local/share/wilsof-os/wilsof-keybinds.json"
+install -m 0644 "$root/config/dms/settings-template.json" "$HOME/.local/share/wilsof-os/wilsof-settings-template.json"
 install -m 0644 "$root/config/hypr/wilsof-vm-test.lua" "$HOME/.local/share/wilsof-os/vm-test/wilsof-vm-test.lua"
 install -m 0644 "$root/config/hypr/wilsof.conf" "$HOME/.config/hypr/wilsof.conf"
 install -m 0644 "$root/config/hypr/wilsof.lua" "$HOME/.config/hypr/wilsof.lua"

@@ -73,6 +73,10 @@ Item {
         fileTimer.stop();
         if (activeFileProcess)
             activeFileProcess.running = false;
+        // The shortcut editor keeps a text field; the lock screen must own the
+        // keyboard from the moment the session locks (same discipline as F1).
+        if (shortcutsLoader.item)
+            shortcutsLoader.item.close();
         center.close();
     }
 
@@ -134,6 +138,12 @@ Item {
                 aboutLoader.item.open();
             else
                 aboutLoader.active = true;
+            break;
+        case "shortcuts":
+            if (shortcutsLoader.item)
+                shortcutsLoader.item.open();
+            else
+                shortcutsLoader.active = true;
             break;
         case "power":
             // Never invoke destructive actions directly; retain DMS confirmation.
@@ -231,6 +241,13 @@ Item {
         id: aboutLoader
         active: false
         source: Qt.resolvedUrl("About.qml")
+        onLoaded: item.open()
+    }
+
+    Loader {
+        id: shortcutsLoader
+        active: false
+        source: Qt.resolvedUrl("Shortcuts.qml")
         onLoaded: item.open()
     }
 

@@ -18,7 +18,7 @@ def test_default_view_has_three_shortcuts_then_seven_shallow_categories():
     assert MODEL.exists(), 'Command Center model is not implemented'
     rows = evaluate('m.defaults()')
     assert [r['name'] for r in rows[:3]] == ['Browser', 'Terminal', 'Files']
-    assert [r['name'] for r in rows[3:]] == ['Applications', 'Files & Folders', 'Settings', 'Appearance', 'Help & Shortcuts', 'About Wilsof OS', 'Power']
+    assert [r['name'] for r in rows[3:]] == ['Applications', 'Files & Folders', 'Settings', 'Appearance', 'Help & Shortcuts', 'Edit Shortcuts', 'About Wilsof OS', 'Power']
     assert len({r['id'] for r in rows}) == len(rows)
 
 

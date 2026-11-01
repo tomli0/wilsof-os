@@ -17,7 +17,9 @@ def test_build_retains_namespace_owned_work(tmp_path):
     (source / 'SOURCE_COMMIT').write_text('a' * 40 + '\n')
     (scripts / 'prepare-iso.py').write_text(
         'import pathlib, sys\n'
-        'pathlib.Path(sys.argv[sys.argv.index("--output") + 1]).mkdir()\n'
+        'profile = pathlib.Path(sys.argv[sys.argv.index("--output") + 1])\n'
+        'profile.mkdir()\n'
+        '(profile / "packages.x86_64").write_text("base" + chr(10))\n'
     )
     (scripts / 'boot-profile.py').write_text(
         'def configure_boot(profile, source):\n    pass\n'
@@ -30,6 +32,9 @@ def test_build_retains_namespace_owned_work(tmp_path):
         'mkarchiso': '#!' + sys.executable + '\n'
         'import json, os, pathlib, sys\n'
         'pathlib.Path(os.environ["CAPTURE"]).write_text(json.dumps(sys.argv[1:]))\n',
+        # The cache preflight must see a healthy downloader and integrity tool.
+        'pacman': '#!/bin/sh\n[ "$1" = "-Sw" ] && exit 0\nexit 1\n',
+        'zstd': '#!/bin/sh\n[ "$1" = "-t" ] && exit 0\nexit 1\n',
     }.items():
         (tools / name).write_text(text)
         (tools / name).chmod(0o755)

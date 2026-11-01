@@ -43,6 +43,35 @@ import sys
 source, profile = map(Path, sys.argv[1:])
 run_path(str(source / 'scripts/boot-profile.py'))['configure_boot'](profile, source)
 PY
+# Package-cache preflight: a corrupted mirror/download window leaves broken
+# package files that only surface deep inside mkarchiso as mass
+# "invalid or corrupted package (PGP signature)" failures (with noisy
+# GPGME ioctl prompts on non-tty stdin). Download and signature-verify the
+# full manifest up front and integrity-test every cached file, so a bad
+# download fails fast before the expensive build. Signature checking stays
+# fully enabled; nothing is force-installed.
+python3 - "${WILSOF_ISO_WORKDIR}-profile" <<'PY'
+import subprocess, sys
+from pathlib import Path
+
+profile = Path(sys.argv[1])
+packages = [line.strip() for line in (profile / 'packages.x86_64').read_text().splitlines()
+            if line.strip() and not line.strip().startswith('#')]
+print(f'build-iso: cache preflight for {len(packages)} manifest packages', flush=True)
+if subprocess.run(['pacman', '-Sw', '--needed', '--noconfirm', '--noprogressbar', *packages]).returncode != 0:
+    raise SystemExit('build-iso: package download/preflight verification failed; inspect the mirror and retry')
+cache = Path('/var/cache/pacman/pkg')
+import gzip
+bad = []
+# Only test files still present; -Sw already PGP-verified them, zstd catches truncation.
+for f in sorted(cache.glob('*.pkg.tar.zst')):
+    if subprocess.run(['zstd', '-t', str(f)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
+        bad.append(f.name)
+if bad:
+    print('build-iso: corrupt cached packages: ' + ', '.join(bad[:20]), file=sys.stderr)
+    raise SystemExit('build-iso: corrupt package cache; clear the cache and retry')
+print('build-iso: cache preflight passed', flush=True)
+PY
 # Work may contain namespace-owned bind mounts for nested pacman CheckSpace.
 # Do not let mkarchiso recursively delete it before the namespace exits.
 # Retain work/profile as evidence; later cleanup needs a separate mount check.

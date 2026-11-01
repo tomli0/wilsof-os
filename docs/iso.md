@@ -57,6 +57,16 @@ This is the next authorized test. It produces a local artifact on the separate b
 
        sudo WILSOF_ISO_WORKDIR=/srv/wilsof-iso-work WILSOF_ISO_OUTDIR=/srv/wilsof-iso-out scripts/build-iso.sh --build
 
+   Before `mkarchiso` runs, the builder performs a package-cache preflight: it
+   downloads and PGP-verifies every manifest package (`pacman -Sw --needed`) and
+   integrity-tests (`zstd -t`) each cached file. A corrupted mirror/download
+   window otherwise only surfaces deep inside `mkarchiso` as mass "invalid or
+   corrupted package (PGP signature)" errors with noisy `GPGME error: Inappropriate
+   ioctl for device` prompts on non-tty stdin — the ioctl noise is a secondary
+   symptom of per-file prompts, not a keyring or GPGME defect. If the preflight
+   fails, inspect the mirror, clear the package cache and retry; do not weaken
+   `SigLevel`, do not force-install and never disable signature verification.
+
 3. After a successful command, validate the local artifact without booting or attaching it:
 
        find /srv/wilsof-iso-out -maxdepth 1 -type f -name '*.iso' -printf '%f %s bytes\n'

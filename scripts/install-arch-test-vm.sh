@@ -62,10 +62,12 @@ visudo -cf /etc/sudoers.d/10-wheel
 # Greetd always performs PAM authentication with no autologin. QEMU/TCG
 # evaluation could not safely verify input delivery to the GTK entry, so the
 # tested tuigreet greeter remains the default; ReGreet is one config line
-# away (replace the default_session command with: "cage -s -- regreet").
+# away (replace the default_session command with: "wilsof-regreet"; the
+# wrapper forces the Cairo GTK renderer that renders text on TCG).
 install -d -m 0755 /etc/greetd
 install -m 0644 "assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png" /etc/greetd/wilsof-greeter-bg.png
 install -m 0644 config/greetd/regreet.toml /etc/greetd/regreet.toml
+install -m 0755 config/greetd/wilsof-regreet /usr/local/bin/wilsof-regreet
 cat > /etc/greetd/config.toml <<'EOF'
 [terminal]
 vt = 1

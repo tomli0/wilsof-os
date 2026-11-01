@@ -409,7 +409,7 @@ def test_vm_installer_provisions_regreet_with_tuigreet_fallback():
     # and documented as a one-line opt-in because QEMU/TCG evaluation could
     # not safely verify input delivery to the GTK entry.
     assert 'command = "tuigreet --time --cmd Hyprland"' in content
-    assert '"cage -s -- regreet"' in content
+    assert '"wilsof-regreet"' in content
     assert "wilsof-greeter-bg.png" in content
 
 
@@ -419,6 +419,39 @@ def test_regreet_uses_the_approved_branding_and_dark_theme():
     assert "application_prefer_dark_theme = true" in regreet
     # No autologin: regreet always asks for credentials through greetd PAM.
     assert "autologin" not in regreet
+
+
+def test_regreet_wrapper_forces_cairo_gtk_rendering_without_custom_auth():
+    wrapper = ROOT / "config" / "greetd" / "wilsof-regreet"
+    assert wrapper.is_file(), "the greeter wrapper must be tracked in the repository"
+    text = wrapper.read_text(encoding="utf-8")
+    # GTK4 default GL renderer painted blank text (and crashed once) on the
+    # TCG software-rendering path; Cairo is the documented diagnostic that
+    # rendered text. Keep the fix per-process inside the greeter wrapper.
+    assert "GSK_RENDERER=cairo" in text
+    assert "cage -s -- regreet" in text
+    # The wrapper launches the stock greeter only; no auth logic of its own.
+    assert "exec " in text
+    assert text.count("\n") >= 5
+
+
+def test_regreet_wrapper_exports_environment_and_execs_cage(tmp_path):
+    wrapper = ROOT / "config" / "greetd" / "wilsof-regreet"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    cage = fake_bin / "cage"
+    cage.write_text("#!/usr/bin/env bash\nprintf '%s\\n' \"$GSK_RENDERER\" \"$@\"\n", encoding="utf-8")
+    cage.chmod(0o755)
+    result = run(wrapper, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
+    assert result.returncode == 0, result.stderr
+    lines = result.stdout.splitlines()
+    assert lines[0] == "cairo"
+    assert lines[1:] == ["-s", "--", "regreet"]
+
+
+def test_vm_installer_installs_the_regreet_wrapper():
+    content = (ROOT / "scripts" / "install-arch-test-vm.sh").read_text(encoding="utf-8")
+    assert "config/greetd/wilsof-regreet /usr/local/bin/wilsof-regreet" in content
 
 
 def test_iso_profile_and_builder_are_present_and_keep_secrets_out_of_the_profile():

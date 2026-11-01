@@ -1,83 +1,90 @@
 # Wilsof OS
 
-Wilsof OS is an early Arch Linux-based desktop prototype focused on a clean, keyboard-first experience. It combines Hyprland and DankMaterialShell with a consistent visual identity, a unified launcher and a minimal set of everyday applications.
+**An Arch Linux-based desktop project built around Hyprland and the Wilsof visual identity.**
 
-The goal is to make a tiling desktop easy to navigate, with discoverable controls and practical keyboard shortcuts.
+Wilsof OS aims to make a keyboard-first tiling desktop approachable, combining a focused application launcher, discoverable shortcuts, practical desktop tools and a guarded graphical-system installation workflow. This is an **early internal test distribution**, not a production release.
 
-Wilsof is under active development. It is not yet a production-ready distribution or a standalone installation image.
+> **Development status (27 October 2026):** An internal Archiso USB image exists, and the candidate 2 system has successfully booted, installed and run in a disposable UEFI/QEMU test environment. Known bugs and physical hardware validation remain. **Do not install it on a disk containing important data.**
 
-## Current prototype
+## Preview
 
-- Arch Linux, greetd/tuigreet, Hyprland and DankMaterialShell (DMS).
-- An intentionally empty desktop using the approved WS wallpaper, charcoal `#14181E`, ice-blue `#86B9CE`, thin window borders and restrained rounding.
-- A minimal top bar for workspace orientation, time and essential system status.
-- `Super+Space` opens the single DMS Spotlight entry. Empty search starts with installed applications; supported local categories expose applications, DMS tools/settings and files when `dsearch` is installed. It is not yet a complete universal search for open windows or every system action.
-- `Super+I` opens DMS Settings.
-- `Super+F1` opens local shortcut help generated from Wilsof's shared shortcut manifest in DMS Notepad.
-- `Super+L` and Hypridle call the same idempotent Hyprlock wrapper. The lock configuration and PAM wiring are present; real password unlock remains a manual check.
-- Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe and VLC are part of the test-VM package set. Ghostty remains the standard terminal; its actual active-session launch is verified on VM 113.
-- `wilsof-doctor` is a read-only development/support check for dependencies, Wilsof-owned files, session units and relevant log locations.
-- [`docs/iso.md`](docs/iso.md) describes the internal-only Archiso test-image profile and its safety limits; no ISO is bundled or published.
-- [`docs/security.md`](docs/security.md) defines the threat model, audit results, security reporting policy and proposed release gates. Those gates are proposals, not release approval.
+These are **real screenshots from the earlier Arch development VM (VM 113, 16 October 2026)**. They demonstrate the intended look and interaction, **not screenshots of the final candidate 2 ISO**. The desktop shell and locking implementation continue to evolve.
 
-## Screenshots from the Arch test session
+![Wilsof desktop in the Arch test VM](evidence/vm113-2026-10-16-desktop.png)
 
-![Wilsof application launcher](evidence/vm113-2026-10-16-launcher-apps.png)
+| Application launcher | Settings |
+| --- | --- |
+| ![Wilsof application launcher](evidence/vm113-2026-10-16-launcher-apps.png) | ![Wilsof settings](evidence/vm113-2026-10-16-settings.png) |
+| Shortcut help | Lock screen |
+| ![Wilsof keyboard shortcut help](evidence/vm113-2026-10-16-help.png) | ![Wilsof lock screen](evidence/vm113-2026-10-16-lock.png) |
 
-![Wilsof settings](evidence/vm113-2026-10-16-settings.png)
+[More development screenshots](evidence/) · [Current project status](docs/status.md)
 
-![Wilsof shortcut help](evidence/vm113-2026-10-16-help.png)
+## What Wilsof includes
 
-![Wilsof lock surface](evidence/vm113-2026-10-16-lock.png)
+- **Arch Linux and Hyprland**, with a branded dark desktop, charcoal `#14181E`, ice blue `#86B9CE`, restrained borders and rounding.
+- **Desktop shell:** originally based on DankMaterialShell (DMS). Upstream full-package updates have introduced **Dux 2.0**; compatibility and migration are being stabilized in [issue #30](https://github.com/tomli0/wilsof-os/issues/30).
+- **Keyboard-first workflow:** application launcher (`Super+Space`), settings (`Super+I`), shortcut help (`Super+F1`) and lock screen (`Super+L`).
+- **Everyday tools:** Ghostty terminal, Firefox and common file/document/media applications in the test configuration.
+- **Installer:** an internal Archiso-based image with a guarded interactive installation process, explicit disk selection and confirmation, and a separate installed-user login.
+- **Maintenance:** local configuration updates with settings preservation and backups, distinct from Arch's full system package update; diagnostic support via `wilsof-doctor`.
 
-These are screenshots of the running Arch VM, not the browser prototype in `prototype/`.
+## Verified so far
 
-## What is implemented, and what is not
+According to the **candidate 2 test reports from 27 October 2026**, the following were verified in virtual machines:
 
-The application launcher, settings entry, local help renderer, optional VM fallback bindings, theme, wallpaper, active binding layer and installer guards are implemented in the prototype.
+| Test | Result |
+| --- | --- |
+| UEFI live USB image boot / RAM-copy mode | Passed in QEMU |
+| Install onto a dedicated disposable virtual disk | Passed |
+| Boot installed system **without the ISO** | Passed |
+| Normal password login, desktop, launcher, settings and help | Passed |
+| Ghostty, GTK rendering and Firefox local test page | Passed |
+| Manual and five-minute idle lock, wrong-password rejection and successful unlock | Passed in the reported test session |
+| Configuration preservation, backup and manual recovery | Passed in the reported test session |
+| Offline qcow2 image check after controlled guest shutdown | Returned exit code 0 |
+| Automated source tests and CI | 27 focused tests and CI passed for source commit `2739e4a` |
 
-The launcher is deliberately application-focused today. Its DMS UI exposes upstream categories, but Wilsof does not claim tested local-file search, open-window search, aliases in Norwegian and English, or system-power actions through that launcher. The physical MacBook → Omarchy → Proxmox keyboard path, Escape/Enter behavior, PAM unlock, idle-lock observation, logout/login and reboot persistence need direct manual verification.
+**Important limits:** These results do not establish compatibility with physical PCs. Two crashes and slow software-emulated locking are tracked in [issue #31](https://github.com/tomli0/wilsof-os/issues/31). A Hypridle upstream patch still needs the planned validation. The source-side shell migration fix is **not included in the existing candidate 2 ISO**. Passing source tests does not mean a new image has been built or validated.
 
-See [the current status](docs/status.md), [test plan](docs/testplan.md) and [known deviations](docs/avvik.md) for evidence and limits.
+## ISO and installation status
 
-## Trying the isolated test VM
+The most recently reported internal image is:
 
-The repository contains the intended configuration and test-VM scripts; it does not contain credentials, a disk image or an installer release. Use only an authorized disposable Arch VM and follow [the VM runbook](docs/vm-runbook.md). The user-profile installer has an explicit `WILSOF_TARGET_VM=1` guard and only manages Wilsof-owned files in the target user's home directory:
+- **Image:** `wilsof-internal-2026.10.26-stabilize2-x86_64.iso`
+- **Source revision:** `e2561399e5ac5add3711549f9c48e1bcab1486d1`
+- **Size:** 2,539,565,056 bytes
+- **SHA-256:** `6c909c5f9e78c0326e999fc3977f66164157df19d320a86c6f136ae3f72aeebd`
+- **Availability:** private internal development artifact; **not published as a GitHub release or committed to this repository**.
 
-    WILSOF_TARGET_VM=1 /opt/wilsof-os/scripts/install-user-config.sh
+For safe evaluation, see the [internal test runbook](docs/internal-test-runbook.md), [ISO documentation](docs/iso.md) and [physical test checklist](docs/physical-test-checklist.md). Begin with a **live USB session**, without selecting an installation target. Never assume a particular disk device name; identify the USB and internal disks again before writing or installing.
 
-The optional VM fallback layer is for clients that intercept Super before it reaches the guest:
+The first physical boot attempt on an Intel Mac reached the live console but failed to start the desktop. This is historical first-image evidence, **not a completed physical test of candidate 2**. The HP and Acer reserve laptops remain untested.
 
-    wilsof-vm-test-binds enable
-    wilsof-vm-test-binds disable
+## Roadmap to the next internal image
 
-It adds only `Ctrl+Alt+Space`, `Ctrl+Alt+L`, `Ctrl+Alt+I` and `Ctrl+Alt+F1`; it does not replace the standard Wilsof bindings.
+1. Complete bounded Hypridle and lock stability validation ([#31](https://github.com/tomli0/wilsof-os/issues/31)).
+2. Include and validate the DMS-to-Dux migration handling ([#30](https://github.com/tomli0/wilsof-os/issues/30)) in the next **actual** ISO.
+3. Build one versioned candidate, then test that exact image in a clean VM.
+4. Perform controlled, non-destructive physical live-USB testing before considering installation on a spare machine.
+5. Review and integrate via pull requests; no merge or public release is implied by this README.
 
-## Everyday use
+Track implementation in [draft integration PR #27](https://github.com/tomli0/wilsof-os/pull/27), [project dashboard #16](https://github.com/tomli0/wilsof-os/issues/16) and the [GitHub project board](https://github.com/users/tomli0/projects/1). The default `main` branch may lag the isolated integration work.
 
-The English [user guide](docs/brukerveiledning.md) covers opening applications, settings, help, workspaces, locking, power actions and the VM fallback layer. Architecture and design boundaries are documented in [architecture](docs/arkitektur.md) and [decisions](docs/beslutningslogg.md).
+## Development
 
-## Development checks
+Development and test operations are documented in [CONTRIBUTING.md](CONTRIBUTING.md), [the VM runbook](docs/vm-runbook.md), [architecture](docs/arkitektur.md) and [quality audit](docs/quality-audit.md). The repo does **not** include passwords, private tokens, host secrets or ISO binaries.
 
-Read the concise [engineering guide](CONTRIBUTING.md) before contributing. The [quality audit](docs/quality-audit.md) records the current evidence, fixes and bounded follow-ups.
+Typical checks (from a properly provisioned development environment):
 
-    python3 -m pip install -r requirements-dev.txt
-    python3 -m pytest -q
-    shellcheck --exclude=SC1091 --shell=sh bin/wilsof-doctor bin/wilsof-help bin/wilsof-lock bin/wilsof-search bin/wilsof-vm-test-binds scripts/bootstrap-desktop.sh scripts/build-iso.sh scripts/install-user-config.sh scripts/preflight-arch.sh scripts/preflight-fedora.sh
-    shellcheck --shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh iso/profiledef.sh
+```bash
+python3 -m pip install -r requirements-dev.txt
+python3 -m pytest -q
+python3 -m json.tool config/dms/wilsof-theme.json
+```
 
-    python3 -m json.tool config/dms/wilsof-theme.json
+Review the repository's CI workflow and contribution guide for the exact ShellCheck command and applicable test suite.
 
-The bounded [GitHub workflow](docs/github-workflow.md) documents the project queue, approval marker, hourly model-free queue check and the reason automatic model starts are disabled.
+## Upstream projects and licensing
 
-GitHub Actions runs these local validation checks without secrets, homelab access, deployment or destructive disk operations.
-
-## Branch and maturity
-
-The active Arch work is on `arch-install`. The repository default branch is `main`; its GitHub landing page remains unchanged until pull request review and merge. Review the current work directly at [the Arch branch README](https://github.com/tomli0/wilsof-os/blob/arch-install/README.md) and [pull request #1](https://github.com/tomli0/wilsof-os/pull/1).
-
-Historical Fedora material is retained where useful as history. It is not the active prototype path.
-
-## Credits and license
-
-Wilsof integrates Arch Linux, Hyprland, Hyprlock, Hypridle, DankMaterialShell and the listed desktop applications. Wilsof does not claim ownership of those upstream projects. No license file is currently included in this repository; no license grant should be inferred until one is added.
+Wilsof builds on independent upstream projects including [Arch Linux](https://archlinux.org/), [Hyprland](https://hypr.land/), Hyprlock, Hypridle, and the DMS/Dux desktop-shell ecosystem. The Wilsof project does not claim ownership of those components. **No repository-level license file is currently included; do not infer a grant of rights.**

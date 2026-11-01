@@ -48,3 +48,7 @@ bin/wilsof-about-info
 config/dms/plugins/wilsofCommandCenter/About.qml
 config/dms/plugins/wilsofCommandCenter/Shortcuts.qml
 config/hypr/wilsof-app-shortcuts.lua
+bin/wilsof-shortcuts
+bin/wilsof-appearance
+config/wilsof-keybinds.json
+config/hypr/hyprlock-idle.conf

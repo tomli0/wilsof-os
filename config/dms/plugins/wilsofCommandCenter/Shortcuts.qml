@@ -73,13 +73,32 @@ DModal {
                 }
             }
             Text { text: "Wilsof snarveier"; color: Theme.surfaceText; font.pixelSize: 20 }
-            TextField {
-                id: search
+            Rectangle {
                 width: parent.width
-                placeholderText: "Søk i snarveier…"
-                color: Theme.surfaceText
-                font.pixelSize: 14
-                onTextChanged: editor.filter = text
+                height: 44
+                radius: 6
+                color: Theme.surfaceContainer
+                border.color: Theme.primary
+                border.width: search.activeFocus ? 1 : 0
+                TextInput {
+                    id: search
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    color: Theme.surfaceText
+                    font.pixelSize: 14
+                    clip: true
+                    selectByMouse: true
+                    onTextEdited: editor.filter = text
+                    Component.onCompleted: forceActiveFocus()
+                    Connections { target: editor; function onOpened() { search.forceActiveFocus(); } }
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Escape) {
+                            editor.close();
+                            event.accepted = true;
+                        }
+                    }
+                    Text { visible: !search.text; text: "Søk i snarveier…"; color: Theme.surfaceVariantText; font: search.font }
+                }
             }
             ListView {
                 id: list

@@ -1,0 +1,165 @@
+{
+  "scope": "Citation-only closeout; technical prose unchanged after citation/whitespace normalization",
+  "utc": "2026-11-02T18:11:51.910130+00:00",
+  "base_commit": "7dc69f5b38b05c47c7bd8abc2bd38563062c6408",
+  "branch": "docs/as02-phase1b-20261102",
+  "original_fixture_hashes": {
+    "spikes/as02-native-boundary/probe.py": "7abbcb4d99e808c729e684e745235e4caeabd0a40efc90957625d3d340ffd043",
+    "spikes/as02-native-boundary/results.json": "860f408af0453ddbf3f2f8703ea97636322e073ecde5ea115af246e35d244b09",
+    "spikes/as02-native-boundary/sources.json": "b487882547078dd300bacda566ae48d917bda91e3d7208827cec169b23e3981e"
+  },
+  "strict_citation_check": {
+    "exit_code": 0,
+    "output": "info: stats: 113 prose sentence(s), 24 with declared provenance (21%) \u2014 24 cited, 0 marked [unverified] (a sentence may be both); 28 distinct source(s) cited, 28 in ledger (0 with evidence quotes)\ncitations OK\n",
+    "warnings": 0,
+    "cited_sources": 28,
+    "locally_verified_git_source_paths": 27
+  },
+  "focused_test_rerun": {
+    "command": "python spikes/as02-native-boundary/probe.py --sources-root <existing-upstream-clones>",
+    "exit_code": 0,
+    "result": {
+      "callback_sha256": "e2af57e3ed0259423a5713af2c37cd1d9d6d4dda654cab8730b55b2bd7f57e01",
+      "callback_traces": {
+        "duplicates": {
+          "counts": {
+            "changed": 4,
+            "locked": 1,
+            "resumed": 0,
+            "unlocked": 1
+          },
+          "trace": [
+            {
+              "locked": true,
+              "sessionId": ""
+            },
+            {
+              "locked": true,
+              "sessionId": ""
+            },
+            {
+              "locked": false,
+              "sessionId": ""
+            },
+            {
+              "locked": false,
+              "sessionId": ""
+            }
+          ]
+        },
+        "fresh_ui": {
+          "counts": {
+            "changed": 1,
+            "locked": 0,
+            "resumed": 0,
+            "unlocked": 0
+          },
+          "trace": [
+            {
+              "locked": false,
+              "sessionId": ""
+            }
+          ]
+        },
+        "missing_state": {
+          "counts": {
+            "changed": 2,
+            "locked": 1,
+            "resumed": 0,
+            "unlocked": 1
+          },
+          "trace": [
+            {
+              "locked": true,
+              "sessionId": ""
+            },
+            {
+              "locked": false,
+              "sessionId": ""
+            }
+          ]
+        },
+        "new_session": {
+          "counts": {
+            "changed": 2,
+            "locked": 1,
+            "resumed": 0,
+            "unlocked": 1
+          },
+          "trace": [
+            {
+              "locked": true,
+              "sessionId": "old"
+            },
+            {
+              "locked": false,
+              "sessionId": "new"
+            }
+          ]
+        },
+        "old_unlock_after_new_lock": {
+          "counts": {
+            "changed": 4,
+            "locked": 2,
+            "resumed": 0,
+            "unlocked": 2
+          },
+          "trace": [
+            {
+              "locked": true,
+              "sessionId": ""
+            },
+            {
+              "locked": false,
+              "sessionId": ""
+            },
+            {
+              "locked": true,
+              "sessionId": ""
+            },
+            {
+              "locked": false,
+              "sessionId": ""
+            }
+          ]
+        },
+        "release_ui": {
+          "counts": {
+            "changed": 2,
+            "locked": 1,
+            "resumed": 0,
+            "unlocked": 1
+          },
+          "trace": [
+            {
+              "locked": true,
+              "sessionId": ""
+            },
+            {
+              "locked": false,
+              "sessionId": ""
+            }
+          ]
+        }
+      },
+      "errors": 0,
+      "failures": 0,
+      "kind": "SOURCE_CONTRACT_AND_REAL_JS_CALLBACK_ONLY",
+      "native_acceptance": false,
+      "skips": 0,
+      "tests_run": 10
+    },
+    "stderr": "test_01_old_unlock_during_new_lock (__main__.BoundaryContracts.test_01_old_unlock_during_new_lock) ... ok\ntest_02_dms_restart_defaults (__main__.BoundaryContracts.test_02_dms_restart_defaults) ... ok\ntest_03_existing_modal_at_lock (__main__.BoundaryContracts.test_03_existing_modal_at_lock) ... ok\ntest_04_grab_during_transition_is_unresolved (__main__.BoundaryContracts.test_04_grab_during_transition_is_unresolved) ... ok\ntest_05_locker_crash_not_release (__main__.BoundaryContracts.test_05_locker_crash_not_release) ... ok\ntest_06_ipc_disconnect_boolean_is_not_authority (__main__.BoundaryContracts.test_06_ipc_disconnect_boolean_is_not_authority) ... ok\ntest_07_repeated_lock_callbacks (__main__.BoundaryContracts.test_07_repeated_lock_callbacks) ... ok\ntest_08_external_native_lock_path (__main__.BoundaryContracts.test_08_external_native_lock_path) ... ok\ntest_09_real_release_source_only (__main__.BoundaryContracts.test_09_real_release_source_only) ... ok\ntest_10_new_session_callback_rebind (__main__.BoundaryContracts.test_10_new_session_callback_rebind) ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in 0.167s\n\nOK\n"
+  },
+  "checks": {
+    "technical_prose_unchanged": true,
+    "source_block_unchanged": true,
+    "python_syntax": true,
+    "json_parse": true,
+    "relative_links": true,
+    "diff_check": true,
+    "production_unchanged": true
+  },
+  "available_scratch_bytes": 63785947136,
+  "native_acceptance": false
+}

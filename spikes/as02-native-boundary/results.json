@@ -1,0 +1,143 @@
+{
+  "callback_sha256": "e2af57e3ed0259423a5713af2c37cd1d9d6d4dda654cab8730b55b2bd7f57e01",
+  "callback_traces": {
+    "duplicates": {
+      "counts": {
+        "changed": 4,
+        "locked": 1,
+        "resumed": 0,
+        "unlocked": 1
+      },
+      "trace": [
+        {
+          "locked": true,
+          "sessionId": ""
+        },
+        {
+          "locked": true,
+          "sessionId": ""
+        },
+        {
+          "locked": false,
+          "sessionId": ""
+        },
+        {
+          "locked": false,
+          "sessionId": ""
+        }
+      ]
+    },
+    "fresh_ui": {
+      "counts": {
+        "changed": 1,
+        "locked": 0,
+        "resumed": 0,
+        "unlocked": 0
+      },
+      "trace": [
+        {
+          "locked": false,
+          "sessionId": ""
+        }
+      ]
+    },
+    "missing_state": {
+      "counts": {
+        "changed": 2,
+        "locked": 1,
+        "resumed": 0,
+        "unlocked": 1
+      },
+      "trace": [
+        {
+          "locked": true,
+          "sessionId": ""
+        },
+        {
+          "locked": false,
+          "sessionId": ""
+        }
+      ]
+    },
+    "new_session": {
+      "counts": {
+        "changed": 2,
+        "locked": 1,
+        "resumed": 0,
+        "unlocked": 1
+      },
+      "trace": [
+        {
+          "locked": true,
+          "sessionId": "old"
+        },
+        {
+          "locked": false,
+          "sessionId": "new"
+        }
+      ]
+    },
+    "old_unlock_after_new_lock": {
+      "counts": {
+        "changed": 4,
+        "locked": 2,
+        "resumed": 0,
+        "unlocked": 2
+      },
+      "trace": [
+        {
+          "locked": true,
+          "sessionId": ""
+        },
+        {
+          "locked": false,
+          "sessionId": ""
+        },
+        {
+          "locked": true,
+          "sessionId": ""
+        },
+        {
+          "locked": false,
+          "sessionId": ""
+        }
+      ]
+    },
+    "release_ui": {
+      "counts": {
+        "changed": 2,
+        "locked": 1,
+        "resumed": 0,
+        "unlocked": 1
+      },
+      "trace": [
+        {
+          "locked": true,
+          "sessionId": ""
+        },
+        {
+          "locked": false,
+          "sessionId": ""
+        }
+      ]
+    }
+  },
+  "errors": 0,
+  "failures": 0,
+  "kind": "SOURCE_CONTRACT_AND_REAL_JS_CALLBACK_ONLY",
+  "native_acceptance": false,
+  "skips": 0,
+  "tests_run": 10,
+  "stderr": "test_01_old_unlock_during_new_lock (__main__.BoundaryContracts.test_01_old_unlock_during_new_lock) ... ok\ntest_02_dms_restart_defaults (__main__.BoundaryContracts.test_02_dms_restart_defaults) ... ok\ntest_03_existing_modal_at_lock (__main__.BoundaryContracts.test_03_existing_modal_at_lock) ... ok\ntest_04_grab_during_transition_is_unresolved (__main__.BoundaryContracts.test_04_grab_during_transition_is_unresolved) ... ok\ntest_05_locker_crash_not_release (__main__.BoundaryContracts.test_05_locker_crash_not_release) ... ok\ntest_06_ipc_disconnect_boolean_is_not_authority (__main__.BoundaryContracts.test_06_ipc_disconnect_boolean_is_not_authority) ... ok\ntest_07_repeated_lock_callbacks (__main__.BoundaryContracts.test_07_repeated_lock_callbacks) ... ok\ntest_08_external_native_lock_path (__main__.BoundaryContracts.test_08_external_native_lock_path) ... ok\ntest_09_real_release_source_only (__main__.BoundaryContracts.test_09_real_release_source_only) ... ok\ntest_10_new_session_callback_rebind (__main__.BoundaryContracts.test_10_new_session_callback_rebind) ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in 0.159s\n\nOK\n",
+  "command": "python spikes/as02-native-boundary/probe.py --sources-root <scratch-upstream-clones>",
+  "tested_wilsof_base": "7dc69f5b38b05c47c7bd8abc2bd38563062c6408",
+  "node_version": "v26.7.0",
+  "upstream_revisions": {
+    "hyprland": "e0e9c84375f660aee18c26e5cf23688540457481",
+    "hyprlock": "69dc06ac0e04c75a95b1ffdf71992bfb03663c3f",
+    "hypridle": "aa958ed7ad4863860b93ecd7189419e193bfae2c",
+    "dms": "7643dad25a585d380ba9eda3ff3e689fdade1e21",
+    "quickshell": "9b0f339b19057f4731bf3b48293307d7ef241671",
+    "protocols": "b9edf66597586c914b5b1ff3d964d7ed201adab9"
+  }
+}

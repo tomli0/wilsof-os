@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": 1,
+      "url": "https://github.com/tomli0/wilsof-os/blob/7dc69f5b38b05c47c7bd8abc2bd38563062c6408/docs/development-reports/2026-11-02-as02-lock-protocol-phase1.md",
+      "title": "Phase 1 report",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 2,
+      "url": "https://github.com/tomli0/wilsof-os/blob/7dc69f5b38b05c47c7bd8abc2bd38563062c6408/spikes/as02-lock-protocol/ADR.md",
+      "title": "Phase 1 ADR",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 3,
+      "url": "https://github.com/tomli0/wilsof-os/blob/7dc69f5b38b05c47c7bd8abc2bd38563062c6408/spikes/as02-lock-protocol/independent-review.json",
+      "title": "Phase 1 adversarial findings",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 4,
+      "url": "https://github.com/tomli0/wilsof-os/blob/a28d4678bbbaa091337fdab2b331a1b9e56b7e4d/bin/wilsof-lock-session",
+      "title": "Current wrapper",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 5,
+      "url": "https://github.com/tomli0/wilsof-os/blob/a28d4678bbbaa091337fdab2b331a1b9e56b7e4d/config/dms/plugins/wilsofCommandCenter/CommandCenter.qml",
+      "title": "Current UI",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 6,
+      "url": "https://github.com/wayland-mirror/wayland-protocols/blob/b9edf66597586c914b5b1ff3d964d7ed201adab9/staging/ext-session-lock/ext-session-lock-v1.xml",
+      "title": "protocols/staging/ext-session-lock/ext-session-lock-v1.xml",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 7,
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/protocols/SessionLock.cpp",
+      "title": "hyprland/src/protocols/SessionLock.cpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 8,
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/managers/SessionLockManager.cpp",
+      "title": "hyprland/src/managers/SessionLockManager.cpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 9,
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/desktop/state/FocusState.cpp",
+      "title": "hyprland/src/desktop/state/FocusState.cpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 10,
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/managers/input/InputManager.cpp",
+      "title": "hyprland/src/managers/input/InputManager.cpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 11,
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/managers/SeatManager.cpp",
+      "title": "hyprland/src/managers/SeatManager.cpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 12,
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/render/Renderer.cpp",
+      "title": "hyprland/src/render/Renderer.cpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 13,
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/desktop/state/ViewHitTester.cpp",
+      "title": "hyprland/src/desktop/state/ViewHitTester.cpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 15,
+      "url": "https://github.com/hyprwm/hyprlock/blob/69dc06ac0e04c75a95b1ffdf71992bfb03663c3f/src/core/hyprlock.cpp",
+      "title": "hyprlock/src/core/hyprlock.cpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 16,
+      "url": "https://github.com/hyprwm/hypridle/blob/aa958ed7ad4863860b93ecd7189419e193bfae2c/src/core/Hypridle.cpp",
+      "title": "hypridle/src/core/Hypridle.cpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 17,
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/quickshell/Modules/Lock/Lock.qml",
+      "title": "dms/quickshell/Modules/Lock/Lock.qml",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 18,
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/quickshell/Modals/Common/DModal.qml",
+      "title": "dms/quickshell/Modals/Common/DModal.qml",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 19,
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/quickshell/Modals/Common/DModalHost.qml",
+      "title": "dms/quickshell/Modals/Common/DModalHost.qml",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 20,
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/quickshell/Services/SessionService.qml",
+      "title": "dms/quickshell/Services/SessionService.qml",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 21,
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/core/internal/server/loginctl/monitor.go",
+      "title": "dms/core/internal/server/loginctl/monitor.go",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 22,
+      "url": "https://github.com/quickshell-mirror/quickshell/blob/9b0f339b19057f4731bf3b48293307d7ef241671/src/wayland/session_lock.hpp",
+      "title": "quickshell/src/wayland/session_lock.hpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 23,
+      "url": "https://github.com/quickshell-mirror/quickshell/blob/9b0f339b19057f4731bf3b48293307d7ef241671/src/wayland/session_lock/lock.cpp",
+      "title": "quickshell/src/wayland/session_lock/lock.cpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 24,
+      "url": "https://www.freedesktop.org/software/systemd/man/latest/org.freedesktop.login1.html",
+      "title": "logind D-Bus contract",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 25,
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/protocols/FocusGrab.cpp",
+      "title": "hyprland/src/protocols/FocusGrab.cpp",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 28,
+      "url": "https://github.com/tomli0/wilsof-os/blob/7dc69f5b38b05c47c7bd8abc2bd38563062c6408/docs/development-reports/2026-11-02-consolidated-engineering-review-5.md",
+      "title": "Consolidated review",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 29,
+      "url": "https://github.com/tomli0/wilsof-os/blob/7dc69f5b38b05c47c7bd8abc2bd38563062c6408/docs/development-reports/2026-11-02-auth-session-security-review-2.md",
+      "title": "AS02 AS03 original findings",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 30,
+      "url": "https://github.com/tomli0/wilsof-os/blob/7dc69f5b38b05c47c7bd8abc2bd38563062c6408/config/hypr/hypridle.conf",
+      "title": "Current idle policy",
+      "accessed": "2026-11-02"
+    },
+    {
+      "id": 31,
+      "url": "https://github.com/tomli0/wilsof-os/blob/7dc69f5b38b05c47c7bd8abc2bd38563062c6408/docs/development-reports/2026-11-02-auth-session-remediation-2.md",
+      "title": "Current AS03 remediation",
+      "accessed": "2026-11-02"
+    }
+  ]
+}

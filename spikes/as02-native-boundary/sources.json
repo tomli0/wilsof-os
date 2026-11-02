@@ -1,0 +1,188 @@
+{
+  "scope": "Retrieved source, not installed package attestation",
+  "wilsof_base": "7dc69f5b38b05c47c7bd8abc2bd38563062c6408",
+  "sources": [
+    {
+      "title": "Phase 1 report",
+      "repository": "tomli0/wilsof-os",
+      "commit": "7dc69f5b38b05c47c7bd8abc2bd38563062c6408",
+      "path": "docs/development-reports/2026-11-02-as02-lock-protocol-phase1.md",
+      "url": "https://github.com/tomli0/wilsof-os/blob/7dc69f5b38b05c47c7bd8abc2bd38563062c6408/docs/development-reports/2026-11-02-as02-lock-protocol-phase1.md"
+    },
+    {
+      "title": "Phase 1 ADR",
+      "repository": "tomli0/wilsof-os",
+      "commit": "7dc69f5b38b05c47c7bd8abc2bd38563062c6408",
+      "path": "spikes/as02-lock-protocol/ADR.md",
+      "url": "https://github.com/tomli0/wilsof-os/blob/7dc69f5b38b05c47c7bd8abc2bd38563062c6408/spikes/as02-lock-protocol/ADR.md"
+    },
+    {
+      "title": "Phase 1 adversarial findings",
+      "repository": "tomli0/wilsof-os",
+      "commit": "7dc69f5b38b05c47c7bd8abc2bd38563062c6408",
+      "path": "spikes/as02-lock-protocol/independent-review.json",
+      "url": "https://github.com/tomli0/wilsof-os/blob/7dc69f5b38b05c47c7bd8abc2bd38563062c6408/spikes/as02-lock-protocol/independent-review.json"
+    },
+    {
+      "title": "Current wrapper",
+      "repository": "tomli0/wilsof-os",
+      "commit": "a28d4678bbbaa091337fdab2b331a1b9e56b7e4d",
+      "path": "bin/wilsof-lock-session",
+      "url": "https://github.com/tomli0/wilsof-os/blob/a28d4678bbbaa091337fdab2b331a1b9e56b7e4d/bin/wilsof-lock-session"
+    },
+    {
+      "title": "Current UI",
+      "repository": "tomli0/wilsof-os",
+      "commit": "a28d4678bbbaa091337fdab2b331a1b9e56b7e4d",
+      "path": "config/dms/plugins/wilsofCommandCenter/CommandCenter.qml",
+      "url": "https://github.com/tomli0/wilsof-os/blob/a28d4678bbbaa091337fdab2b331a1b9e56b7e4d/config/dms/plugins/wilsofCommandCenter/CommandCenter.qml"
+    },
+    {
+      "title": "protocols/staging/ext-session-lock/ext-session-lock-v1.xml",
+      "repository": "wayland-mirror/wayland-protocols",
+      "commit": "b9edf66597586c914b5b1ff3d964d7ed201adab9",
+      "path": "staging/ext-session-lock/ext-session-lock-v1.xml",
+      "url": "https://github.com/wayland-mirror/wayland-protocols/blob/b9edf66597586c914b5b1ff3d964d7ed201adab9/staging/ext-session-lock/ext-session-lock-v1.xml"
+    },
+    {
+      "title": "hyprland/src/protocols/SessionLock.cpp",
+      "repository": "hyprwm/Hyprland",
+      "commit": "e0e9c84375f660aee18c26e5cf23688540457481",
+      "path": "src/protocols/SessionLock.cpp",
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/protocols/SessionLock.cpp"
+    },
+    {
+      "title": "hyprland/src/managers/SessionLockManager.cpp",
+      "repository": "hyprwm/Hyprland",
+      "commit": "e0e9c84375f660aee18c26e5cf23688540457481",
+      "path": "src/managers/SessionLockManager.cpp",
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/managers/SessionLockManager.cpp"
+    },
+    {
+      "title": "hyprland/src/desktop/state/FocusState.cpp",
+      "repository": "hyprwm/Hyprland",
+      "commit": "e0e9c84375f660aee18c26e5cf23688540457481",
+      "path": "src/desktop/state/FocusState.cpp",
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/desktop/state/FocusState.cpp"
+    },
+    {
+      "title": "hyprland/src/managers/input/InputManager.cpp",
+      "repository": "hyprwm/Hyprland",
+      "commit": "e0e9c84375f660aee18c26e5cf23688540457481",
+      "path": "src/managers/input/InputManager.cpp",
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/managers/input/InputManager.cpp"
+    },
+    {
+      "title": "hyprland/src/managers/SeatManager.cpp",
+      "repository": "hyprwm/Hyprland",
+      "commit": "e0e9c84375f660aee18c26e5cf23688540457481",
+      "path": "src/managers/SeatManager.cpp",
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/managers/SeatManager.cpp"
+    },
+    {
+      "title": "hyprland/src/render/Renderer.cpp",
+      "repository": "hyprwm/Hyprland",
+      "commit": "e0e9c84375f660aee18c26e5cf23688540457481",
+      "path": "src/render/Renderer.cpp",
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/render/Renderer.cpp"
+    },
+    {
+      "title": "hyprland/src/desktop/state/ViewHitTester.cpp",
+      "repository": "hyprwm/Hyprland",
+      "commit": "e0e9c84375f660aee18c26e5cf23688540457481",
+      "path": "src/desktop/state/ViewHitTester.cpp",
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/desktop/state/ViewHitTester.cpp"
+    },
+    {
+      "title": "hyprlock/src/core/hyprlock.cpp",
+      "repository": "hyprwm/hyprlock",
+      "commit": "69dc06ac0e04c75a95b1ffdf71992bfb03663c3f",
+      "path": "src/core/hyprlock.cpp",
+      "url": "https://github.com/hyprwm/hyprlock/blob/69dc06ac0e04c75a95b1ffdf71992bfb03663c3f/src/core/hyprlock.cpp"
+    },
+    {
+      "title": "hypridle/src/core/Hypridle.cpp",
+      "repository": "hyprwm/hypridle",
+      "commit": "aa958ed7ad4863860b93ecd7189419e193bfae2c",
+      "path": "src/core/Hypridle.cpp",
+      "url": "https://github.com/hyprwm/hypridle/blob/aa958ed7ad4863860b93ecd7189419e193bfae2c/src/core/Hypridle.cpp"
+    },
+    {
+      "title": "dms/quickshell/Modules/Lock/Lock.qml",
+      "repository": "AvengeMedia/DankMaterialShell",
+      "commit": "7643dad25a585d380ba9eda3ff3e689fdade1e21",
+      "path": "quickshell/Modules/Lock/Lock.qml",
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/quickshell/Modules/Lock/Lock.qml"
+    },
+    {
+      "title": "dms/quickshell/Modals/Common/DModal.qml",
+      "repository": "AvengeMedia/DankMaterialShell",
+      "commit": "7643dad25a585d380ba9eda3ff3e689fdade1e21",
+      "path": "quickshell/Modals/Common/DModal.qml",
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/quickshell/Modals/Common/DModal.qml"
+    },
+    {
+      "title": "dms/quickshell/Modals/Common/DModalHost.qml",
+      "repository": "AvengeMedia/DankMaterialShell",
+      "commit": "7643dad25a585d380ba9eda3ff3e689fdade1e21",
+      "path": "quickshell/Modals/Common/DModalHost.qml",
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/quickshell/Modals/Common/DModalHost.qml"
+    },
+    {
+      "title": "dms/quickshell/Services/SessionService.qml",
+      "repository": "AvengeMedia/DankMaterialShell",
+      "commit": "7643dad25a585d380ba9eda3ff3e689fdade1e21",
+      "path": "quickshell/Services/SessionService.qml",
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/quickshell/Services/SessionService.qml"
+    },
+    {
+      "title": "dms/core/internal/server/loginctl/monitor.go",
+      "repository": "AvengeMedia/DankMaterialShell",
+      "commit": "7643dad25a585d380ba9eda3ff3e689fdade1e21",
+      "path": "core/internal/server/loginctl/monitor.go",
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/core/internal/server/loginctl/monitor.go"
+    },
+    {
+      "title": "quickshell/src/wayland/session_lock.hpp",
+      "repository": "quickshell-mirror/quickshell",
+      "commit": "9b0f339b19057f4731bf3b48293307d7ef241671",
+      "path": "src/wayland/session_lock.hpp",
+      "url": "https://github.com/quickshell-mirror/quickshell/blob/9b0f339b19057f4731bf3b48293307d7ef241671/src/wayland/session_lock.hpp"
+    },
+    {
+      "title": "quickshell/src/wayland/session_lock/lock.cpp",
+      "repository": "quickshell-mirror/quickshell",
+      "commit": "9b0f339b19057f4731bf3b48293307d7ef241671",
+      "path": "src/wayland/session_lock/lock.cpp",
+      "url": "https://github.com/quickshell-mirror/quickshell/blob/9b0f339b19057f4731bf3b48293307d7ef241671/src/wayland/session_lock/lock.cpp"
+    },
+    {
+      "title": "hyprland/src/protocols/FocusGrab.cpp",
+      "repository": "hyprwm/Hyprland",
+      "commit": "e0e9c84375f660aee18c26e5cf23688540457481",
+      "path": "src/protocols/FocusGrab.cpp",
+      "url": "https://github.com/hyprwm/Hyprland/blob/e0e9c84375f660aee18c26e5cf23688540457481/src/protocols/FocusGrab.cpp"
+    },
+    {
+      "title": "dms/quickshell/Common/PopoutManager.qml",
+      "repository": "AvengeMedia/DankMaterialShell",
+      "commit": "7643dad25a585d380ba9eda3ff3e689fdade1e21",
+      "path": "quickshell/Common/PopoutManager.qml",
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/quickshell/Common/PopoutManager.qml"
+    },
+    {
+      "title": "dms/quickshell/Widgets/DFocusGrab.qml",
+      "repository": "AvengeMedia/DankMaterialShell",
+      "commit": "7643dad25a585d380ba9eda3ff3e689fdade1e21",
+      "path": "quickshell/Widgets/DFocusGrab.qml",
+      "url": "https://github.com/AvengeMedia/DankMaterialShell/blob/7643dad25a585d380ba9eda3ff3e689fdade1e21/quickshell/Widgets/DFocusGrab.qml"
+    },
+    {
+      "title": "quickshell/src/wayland/hyprland/focus_grab/qml.cpp",
+      "repository": "quickshell-mirror/quickshell",
+      "commit": "9b0f339b19057f4731bf3b48293307d7ef241671",
+      "path": "src/wayland/hyprland/focus_grab/qml.cpp",
+      "url": "https://github.com/quickshell-mirror/quickshell/blob/9b0f339b19057f4731bf3b48293307d7ef241671/src/wayland/hyprland/focus_grab/qml.cpp"
+    }
+  ]
+}

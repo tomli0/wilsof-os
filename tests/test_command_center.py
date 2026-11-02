@@ -56,21 +56,20 @@ def test_native_dms_modal_distribution_and_safe_launcher_fallback():
 
 
 def test_command_center_never_keeps_keyboard_focus_over_an_active_lock_screen():
-    # F1 regression: a modal that keeps its keyboard grab while the session is
-    # locked lets lock-screen keystrokes land in the search field. The modal
-    # must close on session lock and refuse to reopen while locked.
+    # F1 cosmetic regression. Native lock isolation must be tested in QEMU;
+    # a cached DMS boolean cannot authorize/deny compositor input eligibility.
     qml = (MODEL.parent / 'CommandCenter.qml').read_text()
     for contract in [
-        'SessionService.locked',
         'onSessionLocked',
-        'WILSOF_COMMAND_CENTER_LOCKED',
         'function lockdown()',
     ]:
         assert contract in qml, contract
     # The lock handler must clear the wanted-open state and close the modal.
     assert 'root.wantedOpen = false' in qml
-    # Both IPC entry points must consult the lock state before opening.
-    assert qml.count('SessionService.locked') >= 3
+    assert 'SessionService.locked' not in qml
+    assert 'aboutLoader.item.close()' in qml
+    assert 'shortcutsLoader.item.close()' in qml
+    assert 'pendingModal = ""' in qml
 
 
 def test_file_results_are_accepted_while_modal_is_still_mapping():

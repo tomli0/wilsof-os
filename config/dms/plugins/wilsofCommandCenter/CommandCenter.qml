@@ -14,6 +14,7 @@ Item {
     property var pluginService: null
     property string query: ""
     property bool wantedOpen: false
+    property string pendingModal: ""
     property string category: ""
     property var rows: []
     property var localRows: []
@@ -66,29 +67,48 @@ Item {
     }
 
     function lockdown() {
-        // A locked session must never leave a keyboard-grabbing modal under the
-        // locker: lock-screen keystrokes would land in the search field (F1).
+        // F1 cosmetic focus hygiene. Native session lock isolates ordinary
+        // surfaces even when this notification is late or missing.
         wantedOpen = false;
+        pendingModal = "";
+        query = "";
+        rows = [];
+        localRows = [];
+        fileRows = [];
         fileGeneration++;
         fileTimer.stop();
         if (activeFileProcess)
             activeFileProcess.running = false;
-        // The shortcut editor keeps a text field; the lock screen must own the
-        // keyboard from the moment the session locks (same discipline as F1).
+        if (aboutLoader.item)
+            aboutLoader.item.close();
         if (shortcutsLoader.item)
             shortcutsLoader.item.close();
         center.close();
     }
 
     function open() {
-        if (SessionService.locked)
-            return;
         wantedOpen = true;
         query = "";
         category = "";
         refresh();
         center.targetScreen = CompositorService.getFocusedScreen();
         center.open();
+    }
+
+    function openModal(name) {
+        pendingModal = name;
+        const loader = name === "about" ? aboutLoader : shortcutsLoader;
+        if (loader.item)
+            finishModal(name);
+        else
+            loader.active = true;
+    }
+
+    function finishModal(name) {
+        if (pendingModal !== name)
+            return;
+        pendingModal = "";
+        (name === "about" ? aboutLoader.item : shortcutsLoader.item).open();
     }
 
     function activate(index) {
@@ -134,16 +154,10 @@ Item {
                 PopoutService.openSettings();
             break;
         case "about":
-            if (aboutLoader.item)
-                aboutLoader.item.open();
-            else
-                aboutLoader.active = true;
+            root.openModal("about");
             break;
         case "shortcuts":
-            if (shortcutsLoader.item)
-                shortcutsLoader.item.open();
-            else
-                shortcutsLoader.active = true;
+            root.openModal("shortcuts");
             break;
         case "power":
             // Never invoke destructive actions directly; retain DMS confirmation.
@@ -204,19 +218,11 @@ Item {
     IpcHandler {
         target: "commandCenter"
         function toggle(): string {
-            if (SessionService.locked) {
-                root.lockdown();
-                return "WILSOF_COMMAND_CENTER_LOCKED";
-            }
             if (root.wantedOpen) { root.wantedOpen = false; center.close(); } else root.open();
             return "WILSOF_COMMAND_CENTER_OK";
         }
         function close(): string { root.wantedOpen = false; center.close(); return "closed"; }
         function search(text: string): string {
-            if (SessionService.locked) {
-                root.lockdown();
-                return "WILSOF_COMMAND_CENTER_LOCKED";
-            }
             if (!root.wantedOpen) root.open();
             root.query = text;
             root.category = "";
@@ -228,8 +234,7 @@ Item {
         }
     }
 
-    // The lock screen must own the keyboard from the moment the session locks;
-    // an open modal keeps a focus grab that would swallow unlock keystrokes.
+    // Cosmetic cleanup only; notifications never authorize native unlock.
     Connections {
         target: SessionService
         function onSessionLocked() { root.lockdown(); }
@@ -241,14 +246,14 @@ Item {
         id: aboutLoader
         active: false
         source: Qt.resolvedUrl("About.qml")
-        onLoaded: item.open()
+        onLoaded: root.finishModal("about")
     }
 
     Loader {
         id: shortcutsLoader
         active: false
         source: Qt.resolvedUrl("Shortcuts.qml")
-        onLoaded: item.open()
+        onLoaded: root.finishModal("shortcuts")
     }
 
     DModal {

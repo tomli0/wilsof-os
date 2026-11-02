@@ -97,10 +97,10 @@ def install_user(source, home, *, live=False):
     plugin_data = json.loads(plugin_path.read_text()) if not new_plugin_settings else {}
     if not isinstance(plugin_data, dict):
         raise ValueError('DMS plugin settings must be an object; file preserved')
-    if 'wilsofProfiles' not in plugin_data:
-        plugin_data['wilsofProfiles'] = {'enabled': True}
-        if new_plugin_settings:
-            plugin_data['wilsofCommandCenter'] = {'enabled': True}
+    original_plugins = dict(plugin_data)
+    for plugin in ('wilsofProfiles', 'wilsofCommandCenter'):
+        plugin_data.setdefault(plugin, {'enabled': True})
+    if plugin_data != original_plugins:
         write(plugin_relative, (json.dumps(plugin_data) + '\n').encode())
 
     settings_relative = '.config/DankMaterialShell/settings.json'

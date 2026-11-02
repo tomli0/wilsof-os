@@ -20,3 +20,16 @@ def test_upgrade_seeds_missing_plugins_preserving_explicit_states(tmp_path, orig
     load_runtime().install_user(ROOT, tmp_path)
     actual = json.loads(plugins.read_text())
     assert actual == {'wilsofProfiles': {'enabled': True}, 'wilsofCommandCenter': {'enabled': True}} | original
+
+
+def test_reset_refuses_collision_without_writing_either_file(tmp_path):
+    from test_user_shortcuts import run_cli
+    assert run_cli(tmp_path, 'set', 'command-center', 'ALT+F12').returncode == 0
+    assert run_cli(tmp_path, 'set', 'lock', 'SUPER+space').returncode == 0
+    files = [tmp_path / '.local/state/wilsof-os/user-shortcuts.json',
+             tmp_path / '.config/hypr/wilsof-user-shortcuts.lua']
+    before = [p.read_bytes() for p in files]
+    result = run_cli(tmp_path, 'reset', 'command-center')
+    assert result.returncode == 65, result.stderr
+    assert [p.read_bytes() for p in files] == before
+    assert run_cli(tmp_path, 'reset').returncode == 0

@@ -2,10 +2,11 @@
 # shellcheck disable=SC2034
 # Archiso 91 profile data: these variables are consumed by mkarchiso.
 iso_name="wilsof-internal"
-iso_label="WILSOF_$(date -u +%Y%m)"
+: "${SOURCE_DATE_EPOCH:?A fixed source/build epoch is required}"
+iso_label="WILSOF_$(date -u --date="@$SOURCE_DATE_EPOCH" +%Y%m)"
 iso_publisher="Wilsof OS internal testing <https://github.com/tomli0/wilsof-os>"
 iso_application="Wilsof OS internal live and installation test"
-iso_version="${WILSOF_ISO_VERSION:-$(date -u +%Y.%m.%d-%H%M%S)}"
+iso_version="${WILSOF_ISO_VERSION:-$(date -u --date="@$SOURCE_DATE_EPOCH" +%Y.%m.%d-%H%M%S)}"
 install_dir="arch"
 buildmodes=("iso")
 bootmodes=("uefi.systemd-boot")

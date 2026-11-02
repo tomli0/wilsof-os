@@ -1,0 +1,9 @@
+{
+  "src_managers_input_InputManager.cpp": "e218e6d49ccf7fd565a1239d61b726c7d11c4ad57a69934f21acf311e0968858",
+  "src_managers_SessionLockManager.cpp": "6cc3fad5b2b67f95958ddf8a47a6b2511dd90e2562622cada2badad43b34794c",
+  "src_desktop_state_FocusState.cpp": "b00d2696bfc4dd96d4d8d80de65493eb39c009fca2cb5e94fd9c7ff9bd22c950",
+  "src_protocols_SessionLock.cpp": "cb363db67d0ed7ee6dc236639912ef4fb03d459fe908614fe35e13a7a03afd37",
+  "src_protocols_FocusGrab.cpp": "4a36ff3837095d63729406651ca59907944eb00d0f8ae12d2adca3310373b4af",
+  "src_managers_SeatManager.cpp": "27f6ea94fafdee1f9e06fe9c63f81e59b6ff355e7ce6f7d26d2096b5152d6e43",
+  "src_desktop_view_LayerSurface.cpp": "f0109ca6e9e28e67830c7e6e18a2e60e61be12068b8a7432fd4c07c99ac17488"
+}

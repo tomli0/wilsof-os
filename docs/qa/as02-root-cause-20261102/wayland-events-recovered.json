@@ -1,0 +1,541 @@
+[
+  {
+    "time": "2026-11-02T22:00:04.453748+00:00",
+    "timestamp_us": 1793656804453748,
+    "pid": "750",
+    "comm": "hypridle",
+    "message": "[LOG]   | got iface: hyprland_focus_grab_manager_v1 v1"
+  },
+  {
+    "time": "2026-11-02T22:03:13.304726+00:00",
+    "timestamp_us": 1793656993304726,
+    "pid": "1215",
+    "comm": "hyprlock",
+    "message": "\u001b[1;32mDEBUG \u001b[0m]:   | got iface: hyprland_focus_grab_manager_v1 v1"
+  },
+  {
+    "time": "2026-11-02T22:03:18.553918+00:00",
+    "timestamp_us": 1793656998553918,
+    "pid": "750",
+    "comm": "hypridle",
+    "message": "[LOG] Wayland session got locked"
+  },
+  {
+    "time": "2026-11-02T22:03:20.215045+00:00",
+    "timestamp_us": 1793657000215045,
+    "pid": "1215",
+    "comm": "hyprlock",
+    "message": "\u001b[1;32mDEBUG \u001b[0m]: onLockLocked called"
+  },
+  {
+    "time": "2026-11-02T22:06:19.571240+00:00",
+    "timestamp_us": 1793657179571240,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:06:19.563315] {Default Queue} wl_registry#2.global(33, \"hyprland_focus_grab_manager_v1\", 1)"
+  },
+  {
+    "time": "2026-11-02T22:06:20.357963+00:00",
+    "timestamp_us": 1793657180357963,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:06:20.356366] {Default Queue} wl_registry#2.global(33, \"hyprland_focus_grab_manager_v1\", 1)"
+  },
+  {
+    "time": "2026-11-02T22:06:52.626983+00:00",
+    "timestamp_us": 1793657212626983,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:06:52.614242] {mesa egl display queue} wl_registry#37.global(33, \"hyprland_focus_grab_manager_v1\", 1)"
+  },
+  {
+    "time": "2026-11-02T22:06:52.768364+00:00",
+    "timestamp_us": 1793657212768364,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:06:52.753915] {mesa egl display queue} wl_registry#41.global(33, \"hyprland_focus_grab_manager_v1\", 1)"
+  },
+  {
+    "time": "2026-11-02T22:06:52.844973+00:00",
+    "timestamp_us": 1793657212844973,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:06:52.840210] {mesa egl swrast display queue} wl_registry#38.global(33, \"hyprland_focus_grab_manager_v1\", 1)"
+  },
+  {
+    "time": "2026-11-02T22:07:22.326305+00:00",
+    "timestamp_us": 1793657242326305,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:07:22.325163] {Default Queue}  -> zwlr_layer_surface_v1#48.set_keyboard_interactivity(0)"
+  },
+  {
+    "time": "2026-11-02T22:07:22.359866+00:00",
+    "timestamp_us": 1793657242359866,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:07:22.358982] {Default Queue}  -> zwlr_layer_surface_v1#57.set_keyboard_interactivity(0)"
+  },
+  {
+    "time": "2026-11-02T22:08:09.293616+00:00",
+    "timestamp_us": 1793657289293616,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:08:09.278712] {Default Queue} wl_registry#2.global(33, \"hyprland_focus_grab_manager_v1\", 1)"
+  },
+  {
+    "time": "2026-11-02T22:08:12.294699+00:00",
+    "timestamp_us": 1793657292294699,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:08:12.284277] {mesa egl display queue} wl_registry#37.global(33, \"hyprland_focus_grab_manager_v1\", 1)"
+  },
+  {
+    "time": "2026-11-02T22:08:13.562058+00:00",
+    "timestamp_us": 1793657293562058,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:08:13.559519] {mesa egl display queue} wl_registry#41.global(33, \"hyprland_focus_grab_manager_v1\", 1)"
+  },
+  {
+    "time": "2026-11-02T22:08:14.374179+00:00",
+    "timestamp_us": 1793657294374179,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:08:14.363088] {mesa egl swrast display queue} wl_registry#38.global(33, \"hyprland_focus_grab_manager_v1\", 1)"
+  },
+  {
+    "time": "2026-11-02T22:08:15.974118+00:00",
+    "timestamp_us": 1793657295974118,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:08:15.973840] {Default Queue}  -> zwlr_layer_surface_v1#49.set_keyboard_interactivity(2)"
+  },
+  {
+    "time": "2026-11-02T22:08:17.283822+00:00",
+    "timestamp_us": 1793657297283822,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:08:17.278636] {Default Queue}  -> zwlr_layer_surface_v1#49.set_keyboard_interactivity(2)"
+  },
+  {
+    "time": "2026-11-02T22:09:15.017629+00:00",
+    "timestamp_us": 1793657355017629,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:15.016761] {Default Queue}  -> wl_registry#2.bind(33, \"hyprland_focus_grab_manager_v1\", 1, new id [unknown]#43)"
+  },
+  {
+    "time": "2026-11-02T22:09:15.028146+00:00",
+    "timestamp_us": 1793657355028146,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:15.018838] {Default Queue}  -> hyprland_focus_grab_manager_v1#43.create_grab(new id hyprland_focus_grab_v1#52)"
+  },
+  {
+    "time": "2026-11-02T22:09:15.028146+00:00",
+    "timestamp_us": 1793657355028146,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:15.021821] {Default Queue}  -> hyprland_focus_grab_v1#52.add_surface(wl_surface#46)"
+  },
+  {
+    "time": "2026-11-02T22:09:15.028146+00:00",
+    "timestamp_us": 1793657355028146,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:15.022177] {Default Queue}  -> hyprland_focus_grab_v1#52.commit()"
+  },
+  {
+    "time": "2026-11-02T22:09:15.119028+00:00",
+    "timestamp_us": 1793657355119028,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:15.118633] {Default Queue} wl_keyboard#28.enter(22, wl_surface#46, array[0])"
+  },
+  {
+    "time": "2026-11-02T22:09:21.108618+00:00",
+    "timestamp_us": 1793657361108618,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.108016] {Default Queue} wl_keyboard#28.key(28, 726994, 46, 1)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.171591+00:00",
+    "timestamp_us": 1793657361171591,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.170964] {Default Queue} wl_keyboard#28.key(29, 727052, 46, 0)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.173845+00:00",
+    "timestamp_us": 1793657361173845,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.173284] {Default Queue} wl_keyboard#28.key(30, 727245, 24, 1)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.174694+00:00",
+    "timestamp_us": 1793657361174694,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.174121] {Default Queue} wl_keyboard#28.key(31, 727305, 24, 0)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.174694+00:00",
+    "timestamp_us": 1793657361174694,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.174533] {Default Queue} wl_keyboard#28.key(32, 727498, 49, 1)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.176680+00:00",
+    "timestamp_us": 1793657361176680,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.174739] {Default Queue} wl_keyboard#28.key(33, 727557, 49, 0)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.176680+00:00",
+    "timestamp_us": 1793657361176680,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.174948] {Default Queue} wl_keyboard#28.key(34, 727749, 20, 1)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.176680+00:00",
+    "timestamp_us": 1793657361176680,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.175227] {Default Queue} wl_keyboard#28.key(35, 727809, 20, 0)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.177850+00:00",
+    "timestamp_us": 1793657361177850,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.175386] {Default Queue} wl_keyboard#28.key(36, 728002, 19, 1)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.177850+00:00",
+    "timestamp_us": 1793657361177850,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.177607] {Default Queue} wl_keyboard#28.key(37, 728061, 19, 0)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.177850+00:00",
+    "timestamp_us": 1793657361177850,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.177796] {Default Queue} wl_keyboard#28.key(38, 728254, 24, 1)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.180550+00:00",
+    "timestamp_us": 1793657361180550,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:21.178023] {Default Queue} wl_keyboard#28.key(39, 728314, 24, 0)"
+  },
+  {
+    "time": "2026-11-02T22:09:21.212055+00:00",
+    "timestamp_us": 1793657361212055,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_KEY 67"
+  },
+  {
+    "time": "2026-11-02T22:09:21.226564+00:00",
+    "timestamp_us": 1793657361226564,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_TEXT c"
+  },
+  {
+    "time": "2026-11-02T22:09:21.419031+00:00",
+    "timestamp_us": 1793657361419031,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_KEY 79"
+  },
+  {
+    "time": "2026-11-02T22:09:21.427612+00:00",
+    "timestamp_us": 1793657361427612,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_TEXT co"
+  },
+  {
+    "time": "2026-11-02T22:09:21.442223+00:00",
+    "timestamp_us": 1793657361442223,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_KEY 78"
+  },
+  {
+    "time": "2026-11-02T22:09:21.476317+00:00",
+    "timestamp_us": 1793657361476317,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_TEXT con"
+  },
+  {
+    "time": "2026-11-02T22:09:21.496999+00:00",
+    "timestamp_us": 1793657361496999,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_KEY 84"
+  },
+  {
+    "time": "2026-11-02T22:09:21.506214+00:00",
+    "timestamp_us": 1793657361506214,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_TEXT cont"
+  },
+  {
+    "time": "2026-11-02T22:09:21.521229+00:00",
+    "timestamp_us": 1793657361521229,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_KEY 82"
+  },
+  {
+    "time": "2026-11-02T22:09:21.522021+00:00",
+    "timestamp_us": 1793657361522021,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_TEXT contr"
+  },
+  {
+    "time": "2026-11-02T22:09:21.529899+00:00",
+    "timestamp_us": 1793657361529899,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_KEY 79"
+  },
+  {
+    "time": "2026-11-02T22:09:21.536337+00:00",
+    "timestamp_us": 1793657361536337,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_TEXT contro"
+  },
+  {
+    "time": "2026-11-02T22:09:22.862205+00:00",
+    "timestamp_us": 1793657362862205,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:22.818291] {Default Queue} wl_keyboard#28.key(40, 728507, 38, 1)"
+  },
+  {
+    "time": "2026-11-02T22:09:22.862205+00:00",
+    "timestamp_us": 1793657362862205,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:22.818864] {Default Queue} wl_keyboard#28.key(41, 728566, 38, 0)"
+  },
+  {
+    "time": "2026-11-02T22:09:22.862205+00:00",
+    "timestamp_us": 1793657362862205,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_KEY 76"
+  },
+  {
+    "time": "2026-11-02T22:09:22.862205+00:00",
+    "timestamp_us": 1793657362862205,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "\u001b[34m DEBUG\u001b[97m qml\u001b[0m: AS02_TEXT control"
+  },
+  {
+    "time": "2026-11-02T22:09:33.133036+00:00",
+    "timestamp_us": 1793657373133036,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:33.132662] {Default Queue}  -> hyprland_focus_grab_v1#52.destroy()"
+  },
+  {
+    "time": "2026-11-02T22:09:34.605408+00:00",
+    "timestamp_us": 1793657374605408,
+    "pid": "1670",
+    "comm": "qs",
+    "message": "[22:09:34.605177] {Default Queue} wl_keyboard#28.leave(43, nil)"
+  },
+  {
+    "time": "2026-11-02T22:16:04.028633+00:00",
+    "timestamp_us": 1793657764028633,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:04.026111] {Default Queue}  -> zwlr_layer_surface_v1#50.set_keyboard_interactivity(0)"
+  },
+  {
+    "time": "2026-11-02T22:16:08.097739+00:00",
+    "timestamp_us": 1793657768097739,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:08.094773] {Default Queue}  -> wl_registry#2.bind(33, \"hyprland_focus_grab_manager_v1\", 1, new id [unknown]#73)"
+  },
+  {
+    "time": "2026-11-02T22:16:08.097739+00:00",
+    "timestamp_us": 1793657768097739,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:08.095176] {Default Queue}  -> hyprland_focus_grab_manager_v1#73.create_grab(new id hyprland_focus_grab_v1#74)"
+  },
+  {
+    "time": "2026-11-02T22:16:08.105100+00:00",
+    "timestamp_us": 1793657768105100,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:08.101837] {Default Queue}  -> hyprland_focus_grab_v1#74.add_surface(wl_surface#65)"
+  },
+  {
+    "time": "2026-11-02T22:16:08.105100+00:00",
+    "timestamp_us": 1793657768105100,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:08.102222] {Default Queue}  -> hyprland_focus_grab_v1#74.commit()"
+  },
+  {
+    "time": "2026-11-02T22:16:08.261095+00:00",
+    "timestamp_us": 1793657768261095,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:08.258645] {Default Queue}  -> zwlr_layer_surface_v1#50.set_keyboard_interactivity(2)"
+  },
+  {
+    "time": "2026-11-02T22:16:09.537396+00:00",
+    "timestamp_us": 1793657769537396,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:09.525087] {Default Queue} wl_keyboard#28.enter(67, wl_surface#65, array[0])"
+  },
+  {
+    "time": "2026-11-02T22:16:13.332131+00:00",
+    "timestamp_us": 1793657773332131,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:13.330084] {Default Queue} wl_keyboard#28.key(73, 1139509, 31, 1)"
+  },
+  {
+    "time": "2026-11-02T22:16:13.366058+00:00",
+    "timestamp_us": 1793657773366058,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:13.365146] {Default Queue} wl_keyboard#28.key(74, 1139569, 31, 0)"
+  },
+  {
+    "time": "2026-11-02T22:16:13.367890+00:00",
+    "timestamp_us": 1793657773367890,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:13.367159] {Default Queue} wl_keyboard#28.key(75, 1139762, 18, 1)"
+  },
+  {
+    "time": "2026-11-02T22:16:13.370831+00:00",
+    "timestamp_us": 1793657773370831,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:13.368855] {Default Queue} wl_keyboard#28.key(76, 1139822, 18, 0)"
+  },
+  {
+    "time": "2026-11-02T22:16:13.370831+00:00",
+    "timestamp_us": 1793657773370831,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:13.369089] {Default Queue} wl_keyboard#28.key(77, 1140015, 49, 1)"
+  },
+  {
+    "time": "2026-11-02T22:16:13.370831+00:00",
+    "timestamp_us": 1793657773370831,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:13.369351] {Default Queue} wl_keyboard#28.key(78, 1140074, 49, 0)"
+  },
+  {
+    "time": "2026-11-02T22:16:13.370831+00:00",
+    "timestamp_us": 1793657773370831,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:13.369633] {Default Queue} wl_keyboard#28.key(79, 1140267, 20, 1)"
+  },
+  {
+    "time": "2026-11-02T22:16:13.370831+00:00",
+    "timestamp_us": 1793657773370831,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:13.369917] {Default Queue} wl_keyboard#28.key(80, 1140326, 20, 0)"
+  },
+  {
+    "time": "2026-11-02T22:16:13.370831+00:00",
+    "timestamp_us": 1793657773370831,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:13.370059] {Default Queue} wl_keyboard#28.key(81, 1140519, 23, 1)"
+  },
+  {
+    "time": "2026-11-02T22:16:13.370831+00:00",
+    "timestamp_us": 1793657773370831,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:13.370199] {Default Queue} wl_keyboard#28.key(82, 1140579, 23, 0)"
+  },
+  {
+    "time": "2026-11-02T22:16:15.208657+00:00",
+    "timestamp_us": 1793657775208657,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:15.206843] {Default Queue} wl_keyboard#28.key(83, 1140772, 49, 1)"
+  },
+  {
+    "time": "2026-11-02T22:16:15.208657+00:00",
+    "timestamp_us": 1793657775208657,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:15.207257] {Default Queue} wl_keyboard#28.key(84, 1140832, 49, 0)"
+  },
+  {
+    "time": "2026-11-02T22:16:15.224524+00:00",
+    "timestamp_us": 1793657775224524,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:15.207823] {Default Queue} wl_keyboard#28.key(85, 1141025, 18, 1)"
+  },
+  {
+    "time": "2026-11-02T22:16:15.224524+00:00",
+    "timestamp_us": 1793657775224524,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:15.208109] {Default Queue} wl_keyboard#28.key(86, 1141084, 18, 0)"
+  },
+  {
+    "time": "2026-11-02T22:16:15.224524+00:00",
+    "timestamp_us": 1793657775224524,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:15.208252] {Default Queue} wl_keyboard#28.key(87, 1141277, 38, 1)"
+  },
+  {
+    "time": "2026-11-02T22:16:15.224524+00:00",
+    "timestamp_us": 1793657775224524,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:15.208403] {Default Queue} wl_keyboard#28.key(88, 1141337, 38, 0)"
+  },
+  {
+    "time": "2026-11-02T22:16:15.224524+00:00",
+    "timestamp_us": 1793657775224524,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:15.210102] {Default Queue} wl_keyboard#28.key(89, 1141530, 48, 1)"
+  },
+  {
+    "time": "2026-11-02T22:16:15.224524+00:00",
+    "timestamp_us": 1793657775224524,
+    "pid": "1475",
+    "comm": "dms",
+    "message": "[22:16:15.210375] {Default Queue} wl_keyboard#28.key(90, 1141589, 48, 0)"
+  }
+]

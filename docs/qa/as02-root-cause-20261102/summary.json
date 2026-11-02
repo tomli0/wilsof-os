@@ -1,0 +1,48 @@
+{
+  "baseline": "16ca0ec82c7552622cdf4ea74b402fafdf434868",
+  "guest_reproduction_payload": "6740e3bec97df5b1e9b7d818dae7705ab01b409a",
+  "guest_command_center_sha256": "25f243218496ac43888c0bfcac8a0eabf00ab09f0208d332d1d3faa31e56133e",
+  "hyprland_commit": "0aa6745f705f2c4b0a5004eb019ef76e5bbdb426",
+  "root_cause": "SeatManager::setGrab checks pointer lock via InputManager::isLocked(), not session lock; refocusGrab directly calls setKeyboardFocus, bypassing FocusState::rawSurfaceFocus session-lock guard.",
+  "bindings": {
+    "total": 131,
+    "locked": 12,
+    "duplicates": 0,
+    "locked_launcher_bindings": 0
+  },
+  "test_order": [
+    "C",
+    "A",
+    "B"
+  ],
+  "sentinels": {
+    "C": "control",
+    "A": "sentinela",
+    "B": "sentinelb"
+  },
+  "results": {
+    "C": "FAIL: independent minimal received control (7 presses/7 releases)",
+    "A": "PASS within scope: inactive CC unchanged; hidden minimal unchanged (control, 7)",
+    "B": "FAIL: lockedactivation -> lockedactivationsentinelb"
+  },
+  "wayland_events": {
+    "minimal_keys": 14,
+    "dms_keys": 18
+  },
+  "source_regressions": {
+    "passed": 73,
+    "command": "python -m pytest -q tests/test_auth_session.py tests/test_command_center.py tests/test_scripts.py"
+  },
+  "product_fix": null,
+  "outcome": "FAIL / BLOCKED; native compositor defect, stop without app workaround",
+  "authentication_acceptance": "Not rerun after leakage; no password sent after lock",
+  "guest_exited": true,
+  "offline_check_rc": 0,
+  "prior_sources_untouched": true,
+  "diagnostic_limitations": [
+    "Idle lock preceded intended unlocked control; C reclassified using exact journal timestamps.",
+    "Initial journal JSON filter failed on byte-array MESSAGE; journals recovered from owned disk via read-only noload mount, then detached.",
+    "No instrumented C++ stack or patched compositor validation.",
+    "Current guarded PR50 native acceptance not claimed."
+  ]
+}

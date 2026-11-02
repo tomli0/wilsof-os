@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serialize cooperative locker starts; native session lock is the authority."""
+"""Session-local locker lifecycle. Only compositor events report unlock, never exit."""
 import hashlib
 import fcntl
 import json
@@ -71,8 +71,12 @@ def main(args):
         return 64
     action = args[0]
     runtime, key, session, path = context()
-    # No synthetic logind lock/unlock roundtrip. Hyprlock acquires/releases the
-    # compositor protocol; neither requests nor process completion prove PAM.
+    # No asynchronous unlock bridge is enabled: without a generation-bound
+    # compositor observer, delayed notifications can clear a newer lifecycle.
+    # Keep shell lockdown fail-closed; normal unlock-state resynchronization
+    # remains explicitly pending. Process completion is not PAM proof.
+    # Request shell lockdown before starting the password surface. The request
+    # is not proof that the compositor is secured. Never undo it on process exit.
     guard = runtime / ('wilsof-lock-' + key + '.lock')
     fd = os.open(guard, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
     info = os.fstat(fd)
@@ -88,6 +92,7 @@ def main(args):
         return 75
     # Never unlink this inode: stale unlocked files are harmless; unlinking would
     # allow a second guard while a surviving locker still holds the original.
+    command(['loginctl', 'lock-session', session])
     argv = ['hyprlock']
     if action == 'idle':
         config = Path.home() / '.config/hypr/hyprlock-idle.conf'

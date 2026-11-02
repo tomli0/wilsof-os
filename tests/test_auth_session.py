@@ -165,7 +165,7 @@ def test_concurrent_wrappers_share_one_session_lifecycle(lock_env):
     assert second is not None
     assert second.returncode == 75, 'duplicate must report busy, not claim a secured lock'
     assert len([c for c in events(log) if c[0] == 'hyprlock']) == 1
-    assert not any('lock-session' in c for c in events(log))
+    assert len([c for c in events(log) if 'lock-session' in c]) == 1
 
 
 @pytest.mark.parametrize('death', [signal.SIGTERM, signal.SIGKILL])
@@ -216,8 +216,7 @@ def test_absent_environment_session_is_resolved_from_compositor_pid(lock_env):
     env.pop('XDG_SESSION_ID')
     p = subprocess.run([str(ROOT / 'bin/wilsof-lock')], env=env, capture_output=True, timeout=8)
     assert p.returncode == 0
-    assert any('GetSessionByPID' in c for c in events(log))
-    assert not any('lock-session' in c for c in events(log))
+    assert ['loginctl', 'lock-session', '42'] in events(log)
 
 
 @pytest.mark.parametrize('bad', ['symlink', 'hardlink', 'mode'])

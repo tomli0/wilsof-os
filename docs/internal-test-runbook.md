@@ -20,11 +20,18 @@ and a separate empty output directory. No host disks, credentials, `.ssh`, Git
 credential helpers or private home directories may be mounted into the build.
 The source payload is limited by `runtime/image-files.txt`; symlinks are rejected.
 
+    SOURCE_DATE_EPOCH=<reviewed-source-commit-epoch> \
+    WILSOF_ISO_VERSION=<unique-internal-version> \
     WILSOF_SOURCE_COMMIT=<exact-reviewed-40-character-commit> \
     WILSOF_ISO_WORKDIR=/export/new-work \
     WILSOF_ISO_OUTDIR=/export/new-output \
     WILSOF_HYPRIDLE_PACKAGE=/verified-artifacts/hypridle-0.1.8-2.1-x86_64.pkg.tar.zst \
     /src/scripts/build-iso.sh --build
+
+For the complete non-root archive/marker plus explicit sudo procedure, see
+[the build command](iso.md#safe-reversible-build-only-test--separately-authorized-future-use).
+The builder records and freezes its resolved package/profile/public-keyring inputs
+before mkarchiso. This does not demonstrate byte-identical ISO reproducibility.
 
 The internal Hypridle artifact is supplied separately, never committed as a
 binary. Its package and installed-executable SHA256 are pinned in

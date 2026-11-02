@@ -9,12 +9,49 @@ import shutil
 import runpy
 
 
+def inventory(directory):
+    """Content/mode/link identity; deliberately exclude mtimes and checkout state."""
+    result = {}
+    for path in sorted(directory.rglob('*')):
+        relative = path.relative_to(directory)
+        if any(p in ('.git', '__pycache__', '.pytest_cache') for p in relative.parts):
+            continue
+        mode = path.lstat().st_mode & 0o7777
+        if path.is_symlink():
+            result[str(relative)] = {'link': str(path.readlink()), 'mode': mode}
+        elif path.is_file():
+            result[str(relative)] = {'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'mode': mode}
+    return result
+
+
 def prepare(upstream, output, source, commit, *, hypridle_package=None):
     if not re.fullmatch(r'[0-9a-f]{40}', commit):
         raise ValueError('An exact source commit is required')
-    if output.exists():
+    if output.exists() or output.is_symlink():
         raise ValueError('Output profile must be a new dedicated directory')
+    destination = output.resolve()
+    for folder in (source, upstream):
+        canonical = folder.resolve(strict=True)
+        if destination == canonical or destination in canonical.parents or canonical in destination.parents:
+            raise ValueError('Output profile must be disjoint from source/releng inputs')
+    if any(p.is_symlink() and p.is_dir() for p in upstream.rglob('*')):
+        raise ValueError('Refusing releng directory symlink')
+    for name in ('packages.x86_64', 'pacman.conf', 'profiledef.sh'):
+        if (upstream / name).is_symlink():
+            raise ValueError('Refusing releng input symlink')
+    package = None
+    if hypridle_package is not None:
+        pin = runpy.run_path(str(source / 'runtime/pinned-package.py'))
+        package = pin['verified_package'](hypridle_package.parent)
+        if package != hypridle_package:
+            raise ValueError('Exact verified Hypridle package filename required')
+    if any((upstream / name).exists() or (upstream / name).is_symlink()
+           for name in ('BUILD-SOURCE.json', 'BUILD-INPUTS.json', '.build-inputs')):
+        raise ValueError('Refusing inherited reserved provenance path')
+    inputs = {'source_commit': commit, 'source': inventory(source), 'releng': inventory(upstream)}
     shutil.copytree(upstream, output, symlinks=True)
+    with (output / 'BUILD-SOURCE.json').open('x', encoding='utf-8') as record:
+        record.write(json.dumps(inputs, indent=2, sort_keys=True) + '\n')
     shutil.copy2(source / 'iso/profiledef.sh', output / 'profiledef.sh')
     packages = set((upstream / 'packages.x86_64').read_text().splitlines())
     packages.update((source / 'iso/packages.x86_64').read_text().splitlines())
@@ -65,11 +102,7 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     (payload / 'FILES.sha256.json').write_text(json.dumps(sums, indent=2, sort_keys=True) + '\n')
     # Gate the installed image dependency even when preparing without a local package.
     customization = "import runpy; pin=runpy.run_path('/usr/share/wilsof/source/runtime/pinned-package.py'); pin['verify_arch_chroot_support']()"
-    if hypridle_package is not None:
-        pin = runpy.run_path(str(source / 'runtime/pinned-package.py'))
-        package = pin['verified_package'](hypridle_package.parent)
-        if package != hypridle_package:
-            raise ValueError('Exact verified Hypridle package filename required')
+    if package is not None:
         packages_dir = root / 'usr/share/wilsof/packages'
         packages_dir.mkdir(parents=True)
         shutil.copyfile(package, packages_dir / package.name)

@@ -64,59 +64,21 @@ def test_search_rejects_unsupported_actions():
     assert "Usage" in result.stderr
 
 
-def test_lock_delegates_to_hyprlock_and_rejects_arguments(tmp_path):
-    fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
-    log = tmp_path / "args"
-    hyprlock = fake_bin / "hyprlock"
-    hyprlock.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" > {log}\n", encoding="utf-8")
-    hyprlock.chmod(0o755)
-    pgrep = fake_bin / "pgrep"
-    pgrep.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
-    pgrep.chmod(0o755)
-    result = run(LOCK, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
-    assert result.returncode == 0, result.stderr
-    assert log.read_text(encoding="utf-8").strip() == ""
-    rejected = run(LOCK, "unexpected")
-    assert rejected.returncode == 64
+def test_lock_wrappers_delegate_to_one_lifecycle_and_reject_arguments():
+    for name, action in [('wilsof-lock', 'lock'), ('wilsof-idle', 'idle')]:
+        script = ROOT / 'bin' / name
+        source = script.read_text()
+        assert '/wilsof-lock-session" ' + action in source
+        assert 'unlock-session' not in source
+        assert run(script, 'unexpected').returncode == 64
 
 
-def test_lock_marks_logind_session_locked_around_hyprlock(tmp_path):
-    # The locker must reflect the lock in logind session state so shell
-    # components (DMS SessionService) observe it, and clear it on unlock.
-    fake_bin = tmp_path / 'bin'
-    fake_bin.mkdir()
-    log = tmp_path / 'calls'
-    hyprlock = fake_bin / 'hyprlock'
-    hyprlock.write_text(f'#!/bin/sh\nprintf "%s\\n" hyprlock >> "{log}"\n', encoding='utf-8')
-    hyprlock.chmod(0o755)
-    loginctl = fake_bin / 'loginctl'
-    loginctl.write_text(f'#!/bin/sh\nprintf "%s\\n" "loginctl $*" >> "{log}"\n', encoding='utf-8')
-    loginctl.chmod(0o755)
-    pgrep = fake_bin / 'pgrep'
-    pgrep.write_text('#!/bin/sh\nexit 1\n', encoding='utf-8')
-    pgrep.chmod(0o755)
-    env = {'PATH': f"{fake_bin}:{os.environ['PATH']}", 'XDG_SESSION_ID': '42'}
-    result = run(LOCK, env=env)
-    assert result.returncode == 0, result.stderr
-    calls = log.read_text(encoding='utf-8').splitlines()
-    assert 'loginctl lock-session 42' in calls
-    assert calls.index('loginctl lock-session 42') < calls.index('hyprlock')
-    assert 'loginctl unlock-session 42' in calls
-    assert calls.index('hyprlock') < calls.index('loginctl unlock-session 42')
-
-
-def test_idle_wrapper_locks_once_with_the_idle_presentation_and_logind_state(tmp_path):
-    # The 3-minute Terminal Idle tier must reuse Hyprlock (PAM) with the idle
-    # presentation, deduplicate like wilsof-lock, and reflect logind state.
-    idle = ROOT / "bin" / "wilsof-idle"
-    source = idle.read_text(encoding="utf-8")
-    assert "hyprlock" in source
-    assert "-c" in source
-    assert "hyprlock-idle.conf" in source
-    assert "loginctl lock-session" in source
-    assert "loginctl unlock-session" in source
-    assert "pgrep -x -u" in source
+def test_unverified_unlock_bridge_is_withheld_fail_closed():
+    source = (ROOT / 'bin/wilsof-lock-session').read_text()
+    assert 'unlock-session' not in source
+    assert 'SetLockedHint' not in source
+    assert 'pgrep' not in source
+    assert 'pass_fds=(fd,)' in source
 
 
 def test_idle_policy_defines_three_tiers_with_dpms_and_secure_relock():
@@ -296,18 +258,11 @@ def test_help_viewer_rejects_malformed_manifest(tmp_path):
     assert "invalid shortcut manifest" in result.stderr
 
 
-def test_lock_is_idempotent_only_for_the_current_user(tmp_path):
-    fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
-    hyprlock = fake_bin / "hyprlock"
-    hyprlock.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    hyprlock.chmod(0o755)
-    pgrep = fake_bin / "pgrep"
-    pgrep.write_text("#!/bin/sh\nprintf '%s\\n' \"$*\"\nexit 0\n", encoding="utf-8")
-    pgrep.chmod(0o755)
-    result = run(LOCK, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
-    assert result.returncode == 0
-    assert "already active" in result.stderr
+def test_lock_guard_is_session_scoped_not_uid_wide():
+    source = (ROOT / 'bin/wilsof-lock-session').read_text()
+    assert 'GetSessionByPID' in source
+    assert 'LOCK_EX | fcntl.LOCK_NB' in source
+    assert 'O_NOFOLLOW' in source
 
 
 def test_installer_deploys_the_help_viewer_and_shared_shortcut_manifest():

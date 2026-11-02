@@ -49,3 +49,21 @@ def test_appearance_reset_preserves_all_nonappearance_preferences(tmp_path):
     owned = {'currentThemeName', 'customThemeFile', 'wallpaperFillMode', 'barConfigs'}
     assert {k: v for k, v in actual.items() if k not in owned} == {k: v for k, v in original.items() if k not in owned}
     assert actual['currentThemeName'] == 'custom'
+
+
+def test_reapply_repairs_only_owned_regular_helper_mode(tmp_path):
+    import os
+    entry = tmp_path / '.config/hypr/hyprland.lua'
+    entry.parent.mkdir(parents=True)
+    entry.write_text('-- generated base\n')
+    runtime = load_runtime()
+    runtime.install_user(ROOT, tmp_path)
+    helper = tmp_path / '.local/bin/wilsof-search'
+    helper.chmod(0o644)
+    personal = tmp_path / '.config/ghostty/config'
+    personal.write_text('# personal\n')
+    personal.chmod(0o600)
+    runtime.install_user(ROOT, tmp_path)
+    assert os.stat(helper).st_mode & 0o777 == 0o755
+    assert os.stat(personal).st_mode & 0o777 == 0o600
+    assert personal.read_text() == '# personal\n'

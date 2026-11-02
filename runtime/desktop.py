@@ -37,6 +37,13 @@ def install_user(source, home, *, live=False):
         if path.is_symlink():
             raise RuntimeError(f'Refusing managed symlink: {relative}')
         if path.exists() and path.read_bytes() == data:
+            # Mode-only repair is confined to our own unshared regular helpers.
+            # Do not chmod personal configs or a hard-linked external inode.
+            if mode == 0o755:
+                info = path.lstat()
+                if not path.is_file() or info.st_uid != os.getuid() or info.st_nlink != 1:
+                    raise RuntimeError(f'Refusing mode repair of unowned/shared file: {relative}')
+                path.chmod(mode)
             return
         if path.exists():
             saved = confined(str((backup / relative).relative_to(home)))

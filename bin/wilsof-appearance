@@ -18,8 +18,7 @@ from pathlib import Path
 EXIT_OK = 0
 EXIT_UNAVAILABLE = 69
 
-RELEVANT = ("currentThemeName", "customThemeFile", "wallpaperFillMode", "barConfigs",
-            "powerMenuActions", "sortAppsAlphabetically", "spotlightBarShowModeChips")
+RELEVANT = ("currentThemeName", "customThemeFile", "wallpaperFillMode", "barConfigs")
 
 
 def fail(message):
@@ -81,16 +80,18 @@ def command_reset(home, defaults):
     if not settings.exists():
         return fail("DMS settings are unavailable; nothing has been changed")
     try:
-        json.loads(settings.read_text(encoding="utf-8"))
+        current = json.loads(settings.read_text(encoding="utf-8"))
+        if not isinstance(current, dict):
+            return fail("DMS settings must be an object; file preserved")
     except (OSError, json.JSONDecodeError) as error:
         return fail(f"DMS settings are unreadable ({error}); nothing has been changed")
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     backup = home / ".local" / "state" / "wilsof-os" / "backups" / stamp / "settings.json"
     backup.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(settings, backup)
-    restored = dict(defaults)
+    restored = dict(current)
+    restored.update({key: defaults[key] for key in RELEVANT if key in defaults})
     restored["customThemeFile"] = str(home / ".local" / "share" / "wilsof-os" / "wilsof-theme.json")
-    restored["customPowerActionLock"] = str(home / ".local" / "bin" / "wilsof-lock")
     write_atomic(settings, json.dumps(restored, ensure_ascii=False) + "\n")
     print(f"Wilsof appearance defaults restored; personal settings backed up to {backup}")
     return EXIT_OK

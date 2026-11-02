@@ -33,3 +33,19 @@ def test_reset_refuses_collision_without_writing_either_file(tmp_path):
     assert result.returncode == 65, result.stderr
     assert [p.read_bytes() for p in files] == before
     assert run_cli(tmp_path, 'reset').returncode == 0
+
+
+def test_appearance_reset_preserves_all_nonappearance_preferences(tmp_path):
+    from test_appearance import seed_home, run_cli
+    settings = seed_home(tmp_path)
+    original = json.loads(settings.read_text()) | {
+        'personalSentinel': {'keep': [1, 2]}, 'loginctlLockIntegration': False,
+        'customPowerActionLock': '/personal/locker', 'powerMenuActions': ['logout'],
+        'sortAppsAlphabetically': False, 'spotlightBarShowModeChips': False,
+    }
+    settings.write_text(json.dumps(original))
+    assert run_cli(tmp_path, 'reset').returncode == 0
+    actual = json.loads(settings.read_text())
+    owned = {'currentThemeName', 'customThemeFile', 'wallpaperFillMode', 'barConfigs'}
+    assert {k: v for k, v in actual.items() if k not in owned} == {k: v for k, v in original.items() if k not in owned}
+    assert actual['currentThemeName'] == 'custom'

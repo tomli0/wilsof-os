@@ -1,0 +1,52 @@
+{
+  "red_stage": {
+    "output": "FF.                                                                      [100%]\n=================================== FAILURES ===================================\n_________________ test_delayed_release_cannot_clear_new_intent _________________\n\n    def test_delayed_release_cannot_clear_new_intent():\n        p = ready()\n        a = p.begin()\n        assert p.ack_closed(a, p.ui_epoch)\n        assert p.start(a)\n        p.event(\"locked\", a, 1)\n        b = p.begin()\n        assert b.generation > a.generation\n        p.event(\"released\", a, 2)\n>       assert not p.can_open(), \"release A reopened the gate after lock intent B\"\nE       AssertionError: release A reopened the gate after lock intent B\nE       assert not True\nE        +  where True = can_open()\nE        +    where can_open = <legacy_boolean.LegacyBoolean object at 0x733b936e9010>.can_open\n\nspikes/as02-lock-protocol/test_protocol.py:22: AssertionError\n_____________ test_password_start_requires_current_ui_lockdown_ack _____________\n\n    def test_password_start_requires_current_ui_lockdown_ack():\n        p = ready()\n        a = p.begin()\n>       assert not p.start(a), \"password interface may start before confirmed UI lockdown\"\nE       AssertionError: password interface may start before confirmed UI lockdown\nE       assert not True\nE        +  where True = start(Token(session='boot/logind/compositor', authority=1, generation=1))\nE        +    where start = <legacy_boolean.LegacyBoolean object at 0x733b936239d0>.start\n\nspikes/as02-lock-protocol/test_protocol.py:28: AssertionError\n=========================== short test summary info ============================\nFAILED spikes/as02-lock-protocol/test_protocol.py::test_delayed_release_cannot_clear_new_intent\nFAILED spikes/as02-lock-protocol/test_protocol.py::test_password_start_requires_current_ui_lockdown_ack\n2 failed, 1 passed in 0.05s",
+    "exit_code": 1,
+    "error": null
+  },
+  "first_green": {
+    "output": "...                                                                      [100%]\n3 passed in 0.03s",
+    "exit_code": 0,
+    "error": null
+  },
+  "expanded_prototype": {
+    "output": "......................                                                   [100%]\n22 passed in 0.07s",
+    "exit_code": 0,
+    "error": null
+  },
+  "related_regressions": {
+    "output": ".......................................                                  [100%]\n39 passed in 5.40s",
+    "exit_code": 0,
+    "error": null
+  },
+  "demo": {
+    "scope": "conditional in-memory model, production blocked",
+    "trace": [
+      {
+        "event": "trusted hypothetical idle baseline",
+        "open": true
+      },
+      {
+        "event": "begin A before UI ack",
+        "start": false,
+        "open": false
+      },
+      {
+        "event": "begin B while A still owns native slot",
+        "start": false,
+        "open": false
+      },
+      {
+        "event": "delayed release A",
+        "open": false
+      },
+      {
+        "event": "hypothetical origin-bound release B",
+        "open": true
+      }
+    ]
+  },
+  "bounded_schedules": 6561,
+  "schedule_depth": 4,
+  "known_counterexamples_are_successful_demonstrations_not_fixed_behaviour": true
+}

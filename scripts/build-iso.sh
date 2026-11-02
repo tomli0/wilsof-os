@@ -26,9 +26,15 @@ w, o = Path(work), Path(out)
 if not w.is_absolute() or not o.is_absolute() or len(w.parts) < 3 or len(o.parts) < 3:
     raise SystemExit('Dedicated absolute build paths required')
 w, o = w.resolve(), o.resolve()
-profile = Path(str(w) + '-profile')
-if w == o or w in o.parents or o in w.parents or w.exists() or profile.exists():
-    raise SystemExit('Work must be new; work/output paths must be disjoint')
+# Use the same lexical profile name that prepare-iso receives, then resolve it;
+# resolving work first would derive a different sibling through a symlink alias.
+profile = Path(str(Path(work)) + '-profile').resolve()
+paths = (w, profile, o)
+if any(a == b or a in b.parents or b in a.parents
+       for i, a in enumerate(paths) for b in paths[i + 1:]):
+    raise SystemExit('Work/profile/output paths must be pairwise disjoint')
+if w.exists() or profile.exists():
+    raise SystemExit('Work and profile must be new')
 if o.exists() and any(o.iterdir()):
     raise SystemExit('Output must be empty')
 PY

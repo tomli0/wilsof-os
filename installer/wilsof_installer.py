@@ -14,6 +14,8 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
+from installer.accounts import validate_username
+
 ROOT = Path(__file__).resolve().parents[1]
 ARCHINSTALL_VERSION = '4.5'
 LSBLK = ['lsblk', '--json', '--bytes', '--paths', '--output',
@@ -87,9 +89,10 @@ def validate_plan(plan):
         raise Refusal('Encryption is not supported by this adapter')
     if plan['bootloader'] != 'systemd-boot':
         raise Refusal('Only systemd-boot is supported')
-    name = plan['account']['username']
-    if not re.fullmatch(r'[a-z_][a-z0-9_-]{0,31}', name) or name in {'root', 'greetd', 'nobody'}:
-        raise Refusal('Unsupported username')
+    try:
+        validate_username(plan['account']['username'])
+    except ValueError as error:
+        raise Refusal(str(error)) from error
     if plan['optional_packages'] or plan['codecs'] not in ({}, {'selected': False}):
         raise Refusal('Optional packages and codec selection are not supported')
     return plan
@@ -147,13 +150,21 @@ def load_archinstall():
 
 
 def check_target_mount(path):
-    if path.is_symlink() or not path.is_dir() or any(path.iterdir()):
-        raise Refusal('Target mount directory must exist, be empty and not be a symlink')
-    # findmnt lists the entire mount table, including mounts below an empty directory.
-    mounts = read_json(['findmnt', '--json', '--list', '--output', 'TARGET'])
-    if any(Path(item['target']) == path or path in Path(item['target']).parents
-           for item in mounts['filesystems']):
-        raise Refusal('Target mount directory already contains a mount')
+    try:
+        path = Path(path)
+        canonical = path.resolve(strict=True)
+        if (not path.is_absolute() or canonical != path
+                or any(part.is_symlink() for part in (path, *path.parents))
+                or not canonical.is_dir() or any(canonical.iterdir())):
+            raise Refusal('Target mount directory must be empty and canonical, without symlinks')
+        # Canonicalize table entries too: lexical aliases must not hide a mount.
+        mounts = read_json(['findmnt', '--json', '--list', '--output', 'TARGET'])
+        for item in mounts['filesystems']:
+            mounted = Path(item['target']).resolve()
+            if mounted == canonical or canonical in mounted.parents:
+                raise Refusal('Target mount directory already contains a mount')
+    except (OSError, RuntimeError) as error:
+        raise Refusal('Target mount directory cannot be safely resolved') from error
 
 
 class ArchinstallExecutor:

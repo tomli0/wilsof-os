@@ -193,13 +193,19 @@ def command_set(home, table, overrides, args):
 
 
 def command_reset(home, table, overrides, args):
+    candidate = dict(overrides)
     if args.action:
         if args.action not in table["actions"]:
             return fail(f"unknown or non-editable action: {args.action}", EXIT_UNKNOWN)
-        if args.action in overrides:
-            del overrides[args.action]
+        candidate.pop(args.action, None)
     else:
-        overrides = {}
+        candidate = {}
+    actions = effective_actions(table, candidate)
+    for action_id, spec in actions.items():
+        conflict = find_conflict(actions, table["reserved"], action_id, spec["keys"])
+        if conflict:
+            return fail(conflict, EXIT_CONFLICT)
+    overrides = candidate
     state = state_path(home)
     write_atomic(state, json.dumps({"schema": 1, "overrides": overrides}, ensure_ascii=False) + "\n")
     regenerate_lua(home, table, overrides)

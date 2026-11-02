@@ -1,5 +1,7 @@
 bin/wilsof-search
 bin/wilsof-lock
+bin/wilsof-idle
+bin/wilsof-lock-session
 bin/wilsof-help
 bin/wilsof-help-view
 bin/wilsof-doctor
@@ -10,6 +12,7 @@ bin/wilsof-session
 bin/wilsof-apply-wallpaper
 bin/wilsof-install
 installer/__init__.py
+installer/accounts.py
 installer/wilsof_installer.py
 config/hypr/wilsof.lua
 config/hypr/wilsof.conf

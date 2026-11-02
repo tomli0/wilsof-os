@@ -37,6 +37,13 @@ def install_user(source, home, *, live=False):
         if path.is_symlink():
             raise RuntimeError(f'Refusing managed symlink: {relative}')
         if path.exists() and path.read_bytes() == data:
+            # Mode-only repair is confined to our own unshared regular helpers.
+            # Do not chmod personal configs or a hard-linked external inode.
+            if mode == 0o755:
+                info = path.lstat()
+                if not path.is_file() or info.st_uid != os.getuid() or info.st_nlink != 1:
+                    raise RuntimeError(f'Refusing mode repair of unowned/shared file: {relative}')
+                path.chmod(mode)
             return
         if path.exists():
             saved = confined(str((backup / relative).relative_to(home)))
@@ -57,7 +64,7 @@ def install_user(source, home, *, live=False):
     for relative in ('.local', '.local/state', '.local/state/wilsof-os'):
         confined(relative).mkdir(mode=0o700, exist_ok=True)
 
-    for name in ('wilsof-about-info', 'wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui', 'wilsof-shortcuts', 'wilsof-appearance'):
+    for name in ('wilsof-about-info', 'wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-idle', 'wilsof-lock-session', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui', 'wilsof-shortcuts', 'wilsof-appearance'):
         write(f'.local/bin/{name}', (source / 'bin' / name).read_bytes(), 0o755)
     for name in ('wilsof.lua', 'wilsof.conf', 'hypridle.conf', 'hyprlock.conf', 'hyprlock-idle.conf'):
         write(f'.config/hypr/{name}', (source / 'config/hypr' / name).read_bytes())
@@ -97,10 +104,10 @@ def install_user(source, home, *, live=False):
     plugin_data = json.loads(plugin_path.read_text()) if not new_plugin_settings else {}
     if not isinstance(plugin_data, dict):
         raise ValueError('DMS plugin settings must be an object; file preserved')
-    if 'wilsofProfiles' not in plugin_data:
-        plugin_data['wilsofProfiles'] = {'enabled': True}
-        if new_plugin_settings:
-            plugin_data['wilsofCommandCenter'] = {'enabled': True}
+    original_plugins = dict(plugin_data)
+    for plugin in ('wilsofProfiles', 'wilsofCommandCenter'):
+        plugin_data.setdefault(plugin, {'enabled': True})
+    if plugin_data != original_plugins:
         write(plugin_relative, (json.dumps(plugin_data) + '\n').encode())
 
     settings_relative = '.config/DankMaterialShell/settings.json'

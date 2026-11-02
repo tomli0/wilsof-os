@@ -49,10 +49,19 @@ def test_personal_settings_and_explicit_plugin_disable_survive(tmp_path):
     plugins = tmp_path / '.config/dms/plugin_settings.json'
     plugins.write_text('{"other":{"enabled":true},"wilsofProfiles":{"enabled":false}}\n')
     plugin_bytes = plugins.read_bytes()
-    for _ in range(2):
-        runtime().install_user(ROOT, tmp_path)
+    expected = json.loads(plugin_bytes) | {'wilsofCommandCenter': {'enabled': True}}
+    migrated_bytes = None
+    for attempt in range(2):
+        backup = runtime().install_user(ROOT, tmp_path)
         assert settings.read_bytes() == original
-        assert plugins.read_bytes() == plugin_bytes
+        # DI-01 intentionally migrates a missing entry; explicit disabled values
+        # and unrelated plugin content must survive, including on reapplication.
+        assert json.loads(plugins.read_text()) == expected
+        if attempt == 0:
+            assert (backup / '.config/dms/plugin_settings.json').read_bytes() == plugin_bytes
+            migrated_bytes = plugins.read_bytes()
+        else:
+            assert plugins.read_bytes() == migrated_bytes
 
 
 def test_plugin_settings_corruption_and_symlinks_are_not_repaired(tmp_path):

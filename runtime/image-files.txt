@@ -10,6 +10,7 @@ bin/wilsof-session
 bin/wilsof-apply-wallpaper
 bin/wilsof-install
 installer/__init__.py
+installer/accounts.py
 installer/wilsof_installer.py
 config/hypr/wilsof.lua
 config/hypr/wilsof.conf

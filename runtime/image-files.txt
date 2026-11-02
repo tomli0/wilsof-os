@@ -1,5 +1,7 @@
 bin/wilsof-search
 bin/wilsof-lock
+bin/wilsof-idle
+bin/wilsof-lock-session
 bin/wilsof-help
 bin/wilsof-help-view
 bin/wilsof-doctor

@@ -152,16 +152,26 @@ Dette er separate egenskaper, ikke automatisk videreføring av et «pass». En b
 - Ved avbrudd skal kontrollpunktet angi prosess-/supervisoridentitet, disk/artefakt, logg-/socketstier, tilstand, låseier og eksakt neste trygge handling. Bevar volatile bevis før kontrollert nedstenging når det er trygt.
 - Ikke aktiver scheduler/workere, endre Proxmox, merge til `main`/`arch-install` eller publiser release uten særskilt godkjenning. Når oppdraget er ferdig eller innsnevres, stopp utvidelsen; ikke start en ny forbedringsrunde.
 
-### 12.1 GitHub work-in-progress og konsolidering (foreslått tillegg)
+### 12.1 GitHub work-in-progress og konsolidering
 
 - Maksimalt tre aktive kode-PR-er som normalregel; flere krever et kort, eksplisitt eiergodkjent unntak. Blokkerte eller historiske PR-er er ikke parallelle aktive utviklingsstrømmer.
-- Én aktiv integrasjonsgren: `integration/integration3-20261102`. Andre integrasjonsnavn er historiske referanser eller midlertidige avhengigheter, ikke nye utviklingsstrømmer.
+- Integrasjonsgrener er begrunnede, eiergodkjente unntak, ikke standardbase for nytt arbeid. Eksisterende `integration/integration3-20261102` beholdes som ett særskilt integrasjonsløp; andre integrasjonsnavn er historiske referanser eller midlertidige avhengigheter.
 - `main` SKAL forbli beskyttet. Den aktive integrasjonsgrenen SKAL beskyttes mot sletting og non-fast-forward; dette dokumentet oppretter ikke GitHub-regler.
 - Rutinemessig QA og status SKAL føres på eksisterende issues/PR-kommentarer med eksakt SHA, faktisk resultat, bevisreferanse og neste port. Ingen nye report-only-grener. For slike rutineoppdateringer erstatter kommentaren krav om ny rapportfil/commit i §14, `.hermes.md`, `CONTRIBUTING.md` og rapporteringsprosedyren. Vesentlige milepæler beholder full rapport på eksisterende autorisert leveransegren.
 - Fullførte eller dokumentert erstattede PR-er BØR lukkes raskt med bevaringsbevis og lenke til eksakt erstatning. «Erstattet» er ikke «merget» eller funksjonsaksept; uoppfylte issue-/sikkerhetsporter forblir åpne.
 - Mergede grener BØR slettes etter verifisert bevaring. Umergede grener krever i tillegg bevis for at alt nødvendig unikt innhold er bevart, at ingen åpen PR bruker grenen som head/base, og at intet aktivt arbeid avhenger av den. Varig verifisert arkiv og konkret eiergodkjenning SKAL foreligge før oppryddingssletting.
 - Privat sikkerhetsarbeid SKAL holdes separat fra funksjonsintegrasjon og offentlig dokumentasjon. Ikke publiser privat patch, pakke, reproduksjonsmateriale eller arkiv.
 - Ingen autonome merges eller releases. Ikke bruk force-push, omskrevet historikk eller tag-sletting som opprydding.
+
+### 12.2 Main-først: normal Git-flyt
+
+- Beskyttet `main` SKAL være standardgren. Opprett kortlivede `feat/`, `fix/` eller `docs/`-grener fra oppdatert `main`, med én fokusert endring per gren.
+- Kjør relevante tester og sjekker, og gjennomgå eksakt diff før PR opprettes. Dokumentasjonsendringer krever relevante Markdown-/lenke- og whitespace-sjekker; oppgi hva som ikke er relevant eller ikke er kjørt.
+- PR skal normalt gå direkte mot `main`. Unngå stablede PR-er og unødvendige parallelle grener; grensen på tre aktive kode-PR-er i §12.1 gjelder.
+- Review og påkrevd CI SKAL være fullført før merge. Merge krever eksplisitt eierautorisasjon; en grønn CI eller ferdig draft gir ikke slik tillatelse.
+- Slett mergede feature-/fix-/dokumentasjonsgrener først etter verifisert vellykket integrasjon, bevaring og fravær av aktive avhengigheter, med konkret eiergodkjenning som i §12.1.
+- Ingen report-only-grener eller rutinemessige QA-PR-er. Publiser meningsfulle, sanerte sluttrapporter på relevant eksisterende GitHub-PR eller issue, med eksakt SHA, faktiske sjekker, begrensninger og neste port.
+- Ingen autonome merges, releases eller destruktive vertshandlinger. Integrasjonsunntak, opprydding eller rapportering opphever ikke kravene om separat autorisasjon og privat sikkerhetsarbeid.
 
 ## 13. Definition of Ready
 

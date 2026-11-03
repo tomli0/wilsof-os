@@ -56,6 +56,12 @@ It adds only `Ctrl+Alt+Space`, `Ctrl+Alt+L`, `Ctrl+Alt+I` and `Ctrl+Alt+F1`; it 
 
 The English [user guide](docs/brukerveiledning.md) covers opening applications, settings, help, workspaces, locking, power actions and the VM fallback layer. Architecture and design boundaries are documented in [architecture](docs/arkitektur.md) and [decisions](docs/beslutningslogg.md).
 
+## Reviewed documentation (proposed, not merged)
+
+The [engineering standard](docs/ENGINEERING_STANDARDS.md), [engineering guide](CONTRIBUTING.md), [reporting procedure](docs/development-reporting.md) and [adaptation template](docs/templates/ENGINEERING_STANDARDS_TEMPLATE.md) retain the existing documentation from PR #35.
+
+The [product vision](docs/product/WILSOF_PRODUCT_VISION.md), [UX specification](docs/product/WILSOF_UX_SPECIFICATION.md), [technical architecture](docs/product/WILSOF_TECHNICAL_ARCHITECTURE.md) and [roadmap](docs/product/WILSOF_IMPLEMENTATION_ROADMAP.md) preserve the dated planning baseline from PR #36, not a claim that those features ship on main. Runtime, installer, ISO and physical acceptance remain separate. See the [consolidation provenance and validation](docs/development-reports/2026-11-03-documentation-consolidation.md).
+
 ## Development checks
 
     pytest -q

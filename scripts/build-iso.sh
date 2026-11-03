@@ -1,25 +1,94 @@
 #!/bin/sh
-# Build an internal live-test ISO only when explicitly requested.
+# Build only inside a dedicated Arch environment; never attach or install the ISO.
 set -eu
-
-root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-overlay="$root/iso"
-work=${WILSOF_ISO_WORKDIR:-"$root/.iso-work"}
-out=${WILSOF_ISO_OUTDIR:-"$root/.iso-out"}
-profile="$work/profile"
-
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 if [ "${1:-}" != "--build" ] || [ "$#" -ne 1 ]; then
     printf '%s\n' "Usage: $0 --build" >&2
-    printf '%s\n' "Requires Arch Linux, archiso, root, network package access and free build space. No ISO is published or installed." >&2
     exit 64
 fi
-[ "$(id -u)" -eq 0 ] || { printf '%s\n' "build-iso: run as root on a disposable Arch build host." >&2; exit 77; }
-command -v mkarchiso >/dev/null 2>&1 || { printf '%s\n' "build-iso: mkarchiso is unavailable; install archiso on a dedicated build host." >&2; exit 69; }
-[ -d /usr/share/archiso/configs/releng ] || { printf '%s\n' "build-iso: the upstream archiso releng profile is unavailable." >&2; exit 69; }
-[ -f "$overlay/profiledef.sh" ] || { printf '%s\n' "build-iso: tracked Wilsof overlay is incomplete." >&2; exit 65; }
-
-rm -rf "$profile"
-mkdir -p "$work" "$out"
-cp -a /usr/share/archiso/configs/releng "$profile"
-cp -a "$overlay/." "$profile/"
-exec mkarchiso -v -r -w "$work" -o "$out" "$profile"
+[ "$(id -u)" -eq 0 ] || { printf '%s\n' 'build-iso: root inside an isolated Arch build environment is required.' >&2; exit 77; }
+command -v mkarchiso >/dev/null 2>&1 || { printf '%s\n' 'build-iso: archiso is unavailable.' >&2; exit 69; }
+: "${WILSOF_SOURCE_COMMIT:?Exact reviewed source commit required}"
+: "${WILSOF_ISO_WORKDIR:?Dedicated absolute work directory required}"
+: "${WILSOF_ISO_OUTDIR:?Dedicated absolute output directory required}"
+: "${WILSOF_HYPRIDLE_PACKAGE:?Exact verified internal Hypridle artifact required}"
+: "${SOURCE_DATE_EPOCH:?Fixed source/build epoch required}"
+: "${WILSOF_ISO_VERSION:?Explicit internal image version required}"
+upstream=${WILSOF_ARCHISO_RELENG:-/usr/share/archiso/configs/releng}
+export SOURCE_DATE_EPOCH WILSOF_ISO_VERSION
+LC_ALL=C TZ=UTC
+export LC_ALL TZ
+if [ ! -f "$root/SOURCE_COMMIT" ] || [ "$(cat "$root/SOURCE_COMMIT")" != "$WILSOF_SOURCE_COMMIT" ]; then
+    printf '%s\n' 'Build from a verified git archive with its exact SOURCE_COMMIT marker.' >&2
+    exit 65
+fi
+python3 - "$WILSOF_SOURCE_COMMIT" "$WILSOF_ISO_WORKDIR" "$WILSOF_ISO_OUTDIR" "$root" "$upstream" "$WILSOF_HYPRIDLE_PACKAGE" <<'PY'
+from pathlib import Path
+from runpy import run_path
+import os, re, sys
+commit, work, out = sys.argv[1:4]
+if not re.fullmatch(r'[0-9a-f]{40}', commit):
+    raise SystemExit('Exact 40-character source commit required')
+w, o = Path(work), Path(out)
+if not w.is_absolute() or not o.is_absolute():
+    raise SystemExit('Dedicated absolute build paths required')
+# Derive the same lexical sibling prepare-iso receives, then canonicalize.
+profile = Path(str(w) + '-profile')
+for path in (w, profile, o):
+    if path.is_symlink() or any((p.is_symlink() and not p.exists()) or (p.exists() and not p.is_dir()) for p in path.parents):
+        raise SystemExit('Refusing build path symlink/dangling ancestor')
+w, profile, o = w.resolve(), profile.resolve(), o.resolve()
+paths = (w, profile, o)
+if any(len(p.parts) < 3 for p in paths):
+    raise SystemExit('Dedicated canonical build paths required')
+def overlaps(a, b):
+    return a == b or a in b.parents or b in a.parents
+if any(overlaps(a, b) for i, a in enumerate(paths) for b in paths[i + 1:]):
+    raise SystemExit('Work/profile/output paths must be pairwise disjoint')
+if w.exists() or profile.exists():
+    raise SystemExit('Work and profile must be new')
+if o.exists() and (not o.is_dir() or any(o.iterdir())):
+    raise SystemExit('Output must be an empty directory')
+# The wrapper always supplies inputs; the shorter form supports guard-only tests.
+if len(sys.argv) > 4:
+    source, upstream, package = map(Path, sys.argv[4:])
+    if not all(p.is_absolute() for p in (source, upstream, package)):
+        raise SystemExit('Absolute source/releng/package paths required')
+    for folder, names in ((source, ('SOURCE_COMMIT', 'runtime/pinned-package.py')),
+                          (upstream, ('packages.x86_64', 'pacman.conf', 'profiledef.sh'))):
+        if not folder.is_dir() or any(not (folder / n).is_file() or (folder / n).is_symlink() for n in names):
+            raise SystemExit('Missing required source/releng input')
+    if any((upstream / n).exists() or (upstream / n).is_symlink() for n in ('BUILD-SOURCE.json', 'BUILD-INPUTS.json', '.build-inputs')):
+        raise SystemExit('Refusing inherited reserved provenance path')
+    if any(p.is_symlink() and p.is_dir() for p in upstream.rglob('*')):
+        raise SystemExit('Refusing releng directory symlink')
+    if not package.is_file():
+        raise SystemExit('Missing internal Hypridle package')
+    if any(overlaps(p, i.resolve()) for p in paths for i in (source, upstream, package)):
+        raise SystemExit('Build paths must be disjoint from source/releng/package inputs')
+    pin = run_path(str(source / 'runtime/pinned-package.py'))
+    if pin['verified_package'](package.parent) != package:
+        raise SystemExit('Exact verified internal Hypridle package filename required')
+    if not re.fullmatch(r'[0-9]{1,12}', os.environ['SOURCE_DATE_EPOCH']) or int(os.environ['SOURCE_DATE_EPOCH']) > 253402300799:
+        raise SystemExit('Invalid fixed source/build epoch')
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,63}', os.environ['WILSOF_ISO_VERSION']):
+        raise SystemExit('Invalid internal image version')
+PY
+mkdir -p "$WILSOF_ISO_OUTDIR"
+python3 "$root/scripts/prepare-iso.py" --upstream "$upstream" \
+    --output "${WILSOF_ISO_WORKDIR}-profile" --source "$root" --commit "$WILSOF_SOURCE_COMMIT" \
+    --hypridle-package "$WILSOF_HYPRIDLE_PACKAGE"
+python3 - "$root" "${WILSOF_ISO_WORKDIR}-profile" <<'PY'
+from pathlib import Path
+from runpy import run_path
+import sys
+source, profile = map(Path, sys.argv[1:])
+run_path(str(source / 'scripts/boot-profile.py'))['configure_boot'](profile, source)
+PY
+# Resolve/download against a new local DB and explicit cache, verify every
+# required package/signature, then replace mirrors with the frozen local inputs.
+python3 "$root/scripts/build-inputs.py" "${WILSOF_ISO_WORKDIR}-profile" "$root"
+cp "${WILSOF_ISO_WORKDIR}-profile/BUILD-INPUTS.json" "$WILSOF_ISO_OUTDIR/BUILD-INPUTS.json"
+# Work may contain namespace-owned bind mounts for nested pacman CheckSpace.
+# Retain work/profile as evidence; later cleanup needs a separate mount check.
+exec mkarchiso -v -w "$WILSOF_ISO_WORKDIR" -o "$WILSOF_ISO_OUTDIR" "${WILSOF_ISO_WORKDIR}-profile"

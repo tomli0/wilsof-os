@@ -1,0 +1,170 @@
+"""Exercise the real preflight, substituting only external package tools."""
+import base64
+import hashlib
+from pathlib import Path
+import runpy
+import subprocess
+from types import SimpleNamespace
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture
+def transaction(tmp_path, monkeypatch):
+    profile = tmp_path / 'profile'
+    profile.mkdir()
+    (profile / 'packages.x86_64').write_text('base\n')
+    (profile / 'pacman.conf').write_text('[options]\nSigLevel = Required DatabaseOptional\n[core]\nServer = https://example.invalid\n')
+    cache, db, keys = [tmp_path / name for name in ('alternative-cache', 'empty-db', 'keys')]
+    cache.mkdir()
+    keys.mkdir()
+    for name in ('pubring.gpg', 'trustdb.gpg'):
+        (keys / name).write_bytes(b'public keyring fixture: ' + name.encode())
+    calls = []
+    state = {'missing': False, 'bad_signature': False, 'wrong_identity': False, 'empty': False}
+    data = b'deterministic package fixture, not a real signed Arch package'
+    rows = []
+    for name in ('base', 'dependency'):
+        filename = f'{name}-1-1-any.pkg.tar.zst'
+        rows.append('\t'.join((name, '1-1', 'any', filename, hashlib.sha256(data).hexdigest(), base64.b64encode(b'signature fixture').decode(), 'core')))
+
+    def fake_run(argv, **kwargs):
+        argv = list(map(str, argv))
+        calls.append(argv)
+        text = ''
+        code = 0
+        if argv[0] == 'pacman':
+            if '-Sp' in argv:
+                text = '' if state['empty'] else '\n'.join(rows) + '\n'
+            elif '-Sw' in argv and '--dbpath' in argv and '--needed' not in argv:
+                target_cache = Path(argv[argv.index('--cachedir') + 1])
+                if not state['missing']:
+                    for row in rows:
+                        (target_cache / row.split('\t')[3]).write_bytes(data)
+            elif '-Sy' in argv:
+                sync = Path(argv[argv.index('--dbpath') + 1]) / 'sync'
+                sync.mkdir()
+                (sync / 'core.db').write_bytes(b'frozen repository database fixture')
+            elif '-Q' in argv:
+                text = 'archiso 91-1\npacman 7.1.0-1\narchlinux-keyring 20260101-1\n'
+        elif argv[0] == 'pacman-conf':
+            text = str(keys) + '\n' if argv[-1] == 'GPGDir' else Path(argv[argv.index('--config') + 1]).read_text()
+        elif argv[0] == 'bsdtar' and '-xOf' in argv:
+            filename = Path(argv[argv.index('-xOf') + 1]).name
+            name = filename.split('-1-1-')[0]
+            text = f'pkgname = {"wrong" if state["wrong_identity"] else name}\npkgver = 1-1\narch = any\n'
+        elif argv[0] == 'gpg':
+            code = int(state['bad_signature'])
+            text = '[GNUPG:] VALIDSIG ' + 'A' * 40 + ' 0 0\n[GNUPG:] TRUST_FULLY 0 pgp\n'
+        elif argv[0] == 'zstd':
+            code = 1  # Unrelated historical cache file must never be examined.
+        if kwargs.get('check') and code:
+            raise subprocess.CalledProcessError(code, argv)
+        return SimpleNamespace(returncode=code, stdout=text, stderr='')
+
+    monkeypatch.setattr(subprocess, 'run', fake_run)
+    return profile, cache, db, keys, calls, state
+
+
+def invoke(transaction, monkeypatch):
+    profile, cache, db, keys, _, _ = transaction
+    return runpy.run_path(str(ROOT / 'scripts/package-preflight.py'))['preflight'](profile, cache, db, keys)
+
+
+def test_full_image_transaction_is_independent_of_host_installed_packages(transaction, monkeypatch):
+    invoke(transaction, monkeypatch)
+    profile, cache, db, _, calls, _ = transaction
+    downloads = [a for a in calls if a[0] == 'pacman' and '-Sw' in a]
+    assert len(downloads) == 1
+    assert '--needed' not in downloads[0]
+    assert downloads[0][downloads[0].index('--config') + 1] == str(profile / 'pacman.conf')
+    assert downloads[0][downloads[0].index('--cachedir') + 1] == str(cache)
+    assert downloads[0][downloads[0].index('--dbpath') + 1] == str(db)
+    verified = [a for a in calls if a[0] == 'gpg']
+    assert len(verified) == 2, 'Target and transitive dependency must both be verified'
+
+
+def test_unrelated_corrupt_cache_file_is_ignored(transaction, monkeypatch):
+    _, cache, _, _, calls, _ = transaction
+    (cache / 'unrelated.pkg.tar.zst').write_bytes(b'corrupt')
+    # The legacy block searches a different hard-coded cache: expose the same
+    # unrelated file there without touching that host path.
+    original = Path.glob
+    monkeypatch.setattr(Path, 'glob', lambda p, pattern: iter([cache / 'unrelated.pkg.tar.zst']) if str(p) == '/var/cache/pacman/pkg' else original(p, pattern))
+    invoke(transaction, monkeypatch)
+    assert not any('unrelated.pkg.tar.zst' in ' '.join(a) for a in calls)
+    assert (cache / 'unrelated.pkg.tar.zst').read_bytes() == b'corrupt'
+
+
+@pytest.mark.parametrize('failure', ['missing', 'bad_signature', 'wrong_identity', 'empty'])
+def test_incomplete_or_unverifiable_transaction_fails_closed(transaction, monkeypatch, failure):
+    transaction[-1][failure] = True
+    with pytest.raises((ValueError, SystemExit, subprocess.CalledProcessError)):
+        invoke(transaction, monkeypatch)
+
+
+def test_freeze_binds_package_closure_databases_policy_and_public_keyring(transaction):
+    import json
+    profile, _, _, keys, calls, _ = transaction
+    (profile / 'BUILD-SOURCE.json').write_text('{"source_commit": "' + 'a' * 40 + '"}\n')
+    helper = ROOT / 'scripts/build-inputs.py'
+    assert helper.is_file(), 'Build must consume frozen inputs, not live mirrors'
+    record = runpy.run_path(str(helper))['freeze'](profile, ROOT, '1767225600', 'fixed')
+    frozen = (profile / 'pacman.conf').read_text()
+    assert 'https://example.invalid' not in frozen
+    assert 'Server = file://' in frozen
+    assert 'SigLevel = Required DatabaseOptional' in frozen
+    assert (profile / '.build-inputs/cache/core.db').read_bytes() == b'frozen repository database fixture'
+    assert len(record['packages']) == 2
+    assert record['tools']['packages'][0] == 'archiso 91-1'
+    assert record['configuration'] == {'source_date_epoch': '1767225600', 'iso_version': 'fixed', 'architecture': 'x86_64'}
+    assert record['keyring']['pubring.gpg']['sha256'] == hashlib.sha256((keys / 'pubring.gpg').read_bytes()).hexdigest()
+    assert all(p['signer'] == 'A' * 40 for p in record['packages'])
+    assert json.loads((profile / 'BUILD-INPUTS.json').read_text()) == record
+    assert any(a[0] == 'pacman-conf' for a in calls)
+
+
+def test_equivalent_frozen_inputs_have_identical_metadata(transaction):
+    import shutil
+    profile = transaction[0]
+    (profile / 'BUILD-SOURCE.json').write_text('{"source_commit": "' + 'a' * 40 + '"}\n')
+    other = profile.with_name('second-profile')
+    shutil.copytree(profile, other)
+    freeze = runpy.run_path(str(ROOT / 'scripts/build-inputs.py'))['freeze']
+    first = freeze(profile, ROOT, '1767225600', 'fixed')
+    second = freeze(other, ROOT, '1767225600', 'fixed')
+    assert first == second
+    assert (profile / 'BUILD-INPUTS.json').read_bytes() == (other / 'BUILD-INPUTS.json').read_bytes()
+
+
+@pytest.mark.parametrize('kind', ['file', 'symlink', 'dangling'])
+def test_freeze_refuses_existing_metadata_without_touching_external_target(transaction, kind):
+    profile = transaction[0]
+    (profile / 'BUILD-SOURCE.json').write_text('{}\n')
+    target = profile.parent / 'external-sentinel'
+    if kind != 'dangling':
+        target.write_bytes(b'preserve external bytes')
+    destination = profile / 'BUILD-INPUTS.json'
+    if kind == 'file':
+        destination.write_bytes(b'existing input evidence')
+    else:
+        destination.symlink_to(target)
+    with pytest.raises(ValueError, match='reserved provenance'):
+        runpy.run_path(str(ROOT / 'scripts/build-inputs.py'))['freeze'](profile, ROOT, '1767225600', 'fixed')
+    assert not (profile / '.build-inputs').exists()
+    if kind == 'dangling':
+        assert not target.exists()
+    else:
+        assert target.read_bytes() == b'preserve external bytes'
+
+
+@pytest.mark.parametrize('bad_policy', ['Never', 'Optional', 'Required TrustAll'])
+def test_freeze_refuses_weak_package_policy(transaction, bad_policy):
+    profile = transaction[0]
+    (profile / 'pacman.conf').write_text('[options]\nSigLevel = ' + bad_policy + '\n[core]\nServer = https://example.invalid\n')
+    helper = ROOT / 'scripts/build-inputs.py'
+    assert helper.is_file()
+    with pytest.raises(ValueError, match='signature policy'):
+        runpy.run_path(str(helper))['freeze'](profile, ROOT, '1767225600', 'fixed')

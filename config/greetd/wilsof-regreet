@@ -1,0 +1,10 @@
+#!/bin/sh
+# Wilsof graphical greeter launcher: ReGreet under cage.
+# Authentication is always performed by greetd through PAM; this wrapper adds
+# no authentication of its own. GTK4's default GL/OpenGL renderer painted
+# blank text fields (and crashed once) on the TCG software-rendering path
+# documented in docs/checkpoints/internal-iso-qa-20261026.md; the Cairo
+# renderer is the same diagnostic that rendered text there, applied
+# per-process to the greeter only.
+export GSK_RENDERER=cairo
+exec cage -s -- regreet

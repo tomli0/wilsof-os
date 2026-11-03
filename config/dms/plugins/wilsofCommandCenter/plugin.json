@@ -1,0 +1,11 @@
+{
+  "id": "wilsofCommandCenter",
+  "name": "Wilsof Command Center",
+  "description": "Compact local launcher using DMS search, settings and modal infrastructure.",
+  "version": "0.1.0",
+  "author": "Wilsof OS",
+  "type": "composite",
+  "requires_dms": ">=2.0.0",
+  "components": {"daemon": "CommandCenter.qml"},
+  "permissions": ["process"]
+}

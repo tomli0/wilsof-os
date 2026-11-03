@@ -1,0 +1,44 @@
+# Wilsof Modern Terminal. Seeded once; subsequent user changes are preserved.
+font-family = JetBrainsMono Nerd Font
+font-size = 12
+background = #121820
+foreground = #E7EEF2
+cursor-color = #86B9CE
+cursor-text = #121820
+cursor-style = block
+cursor-style-blink = false
+selection-background = #365362
+selection-foreground = #E7EEF2
+palette = 0=#121820
+palette = 1=#D59898
+palette = 2=#A7BEA5
+palette = 3=#D8B36C
+palette = 4=#86B9CE
+palette = 5=#B7A7C9
+palette = 6=#99C4C0
+palette = 7=#C8D7DE
+palette = 8=#667580
+palette = 9=#E6A0A0
+palette = 10=#B8CCAD
+palette = 11=#E4C58B
+palette = 12=#A9C9D7
+palette = 13=#CAB9D9
+palette = 14=#B2D5D1
+palette = 15=#E7EEF2
+window-padding-x = 12
+window-padding-y = 10
+window-theme = dark
+background-opacity = 1
+background-blur = false
+gtk-titlebar = false
+clipboard-read = ask
+clipboard-write = allow
+clipboard-paste-protection = true
+keybind = ctrl+shift+c=copy_to_clipboard
+keybind = ctrl+shift+v=paste_from_clipboard
+keybind = ctrl+==increase_font_size:1
+keybind = ctrl+-=decrease_font_size:1
+keybind = ctrl+0=reset_font_size
+keybind = ctrl+shift+o=new_split:right
+keybind = ctrl+shift+e=new_split:down
+# Split focus remains Ctrl+Alt+arrows (Ghostty default); no Super conflicts.

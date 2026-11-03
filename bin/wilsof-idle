@@ -1,0 +1,8 @@
+#!/bin/sh
+# Delegate the session-scoped PAM-backed lock lifecycle; never infer unlock.
+set -eu
+if [ "$#" -ne 0 ]; then
+    printf '%s\n' 'Usage: wilsof-idle' >&2
+    exit 64
+fi
+exec "$(dirname -- "$0")/wilsof-lock-session" idle

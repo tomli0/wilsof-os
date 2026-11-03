@@ -2,7 +2,6 @@
 
 > Rutine-QA/status: bruk eksisterende issue-/PR-kommentar etter Engineering Standards §12.1; ingen ny report-only-gren eller rapportcommit. Full rapport kreves fortsatt for vesentlige milepæler på eksisterende autorisert leveransegren. Dette avklarer rapporteringskravene nedenfor, uten å endre sikkerhets- eller godkjenningsgrenser.
 
-
 Denne standarden gjelder normal avslutning av fremtidige Hermes-økter i Wilsof OS: fullført milepæl, dokumentert blokkering, kontrollert stopp, kvote-/API-stopp og dokumentasjonsoppdrag. Rapportering er del av leveransen, ikke et valgfritt svar som bare finnes i terminalhistorikken. Den gir aldri i seg selv tillatelse til utvikling, tester, betalt QA, VM-/ISO-/installeroperasjoner, fysisk disk/USB, Proxmox, merge eller release.
 
 ## Obligatorisk avslutning, i denne rekkefølgen

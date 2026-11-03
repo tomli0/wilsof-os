@@ -1,0 +1,38 @@
+# Local verification package only; not an official Arch package or a release.
+pkgname=hypridle
+pkgver=0.1.8
+pkgrel=2.1
+pkgdesc='Hyprland idle daemon with the scoped Wilsof event-loop teardown patch'
+arch=('x86_64')
+url='https://github.com/hyprwm/hypridle'
+license=('BSD-3-Clause')
+depends=('gcc-libs' 'glibc' 'hyprlang' 'hyprutils' 'sdbus-cpp' 'wayland')
+makedepends=('cmake' 'hyprwayland-scanner' 'hyprland-protocols' 'pkgconf' 'wayland-protocols')
+options=('!debug' '!lto')
+# Generate the pristine tar using git archive at the exact commit in provenance.json.
+# Both local inputs are mandatory and checksum-verified; no moving branch is fetched.
+source=('upstream-pristine.tar' 'event-loop.patch')
+sha256sums=('0b2b424be4f4aeeebc72d4ef1cf8b5f7d05374de3ce747ef80b4a439b8490fab'
+            '5dac72b2e119368d61b1f9f154c4ed480d0be53da9f4567d2c3b9677bb2125e2')
+
+prepare() {
+    cd "$srcdir"
+    patch -Np1 -i "$srcdir/event-loop.patch"
+}
+
+build() {
+    cmake -S "$srcdir" -B build \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build --parallel 2
+}
+
+check() {
+    build/hypridle --version
+    build/hypridle --help
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+    install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

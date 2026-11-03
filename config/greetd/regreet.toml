@@ -1,0 +1,10 @@
+# Wilsof graphical greeter presentation for ReGreet (runs under cage).
+# Authentication is always performed by greetd through PAM; there is no
+# credentials are always required; no custom auth path.
+
+[background]
+fit = "Cover"
+path = "/etc/greetd/wilsof-greeter-bg.png"
+
+[GTK]
+application_prefer_dark_theme = true

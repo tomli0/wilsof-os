@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""Resolve the root-owned live payload, without importing the archinstall CLI."""
+import sys
+from pathlib import Path
+
+payload = Path(__file__).resolve().parents[1]
+if not (payload / 'installer/wilsof_installer.py').is_file():
+    payload = Path('/usr/share/wilsof/source')
+sys.path.insert(0, str(payload))
+from installer.wilsof_installer import main
+
+if __name__ == '__main__':
+    raise SystemExit(main())

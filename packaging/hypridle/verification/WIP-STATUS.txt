@@ -1,0 +1,14 @@
+VERIFIED PORTABLE HARNESS — 2026-10-28
+
+This entry point was originally preserved as unexecuted WIP in 2015a534.
+That historical status is superseded by actual execution on 2026-10-28:
+14/14 normal and 14/14 UBSan cases passed against the exact preserved patched
+v0.1.8 source. No production native package rebuild was performed.
+
+See docs/checkpoints/hypridle-regression-20261028.md for exact native package,
+real compositor teardown, second authenticated login and limitations.
+Private full logs/generated source remain in the documented durable QA directory.
+
+The extracted loop is not full-daemon or ISO acceptance. ThreadSanitizer was
+not passed (historical mapping failure), and physical hardware remains untested.
+Issue31 remains open for explicitly documented lifecycle/latency/ISO gates.

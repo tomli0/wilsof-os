@@ -2,7 +2,6 @@
 
 > Bevart planleggingsgrunnlag fra 29. oktober 2026 (PR #36), ikke en påstand om dagens implementasjon eller godkjent produktdesign. Gjeldende engineering-/sikkerhetsporter og eksakte nyere PR-er gjelder; milepæl-ID-ene her er dokumentlokale og skal ikke likestilles med senere PR-titler. Ingen utvikling eller test starter fra dette dokumentet.
 
-
 Status: planleggingsdokument (ingen implementering). Dato: 2026-10-29 UTC. Kildegrunnlag som i produktvisjonen.[52]
 Designutgangspunkt: eksisterende Wilsof Charcoal-tema og gjeldende binds/hjelp-manifest i `config/`.[52]
 
@@ -19,16 +18,18 @@ Designutgangspunkt: eksisterende Wilsof Charcoal-tema og gjeldende binds/hjelp-m
 
 En profil er en navngitt tilstand med tre deler:
 
-1. **Arbeidsområde 1-oppsett** (CLEAN: tomt; STUDY/DEV/EVERYDAY: dashboard-instans på arbeidsområde 1).
+1. **Arbeidsområde 1-oppsett** (CLEAN: uten Wilsof-dashboard; STUDY/DEV/EVERYDAY: dashboard på arbeidsområde 1 bare når dette ikke fortrenger brukerens vinduer). «Tomt» beskriver første oppstart uten brukerprogrammer, aldri et krav om å tømme et eksisterende arbeidsområde.
 2. **Anbefalt startsett** (appinnstillinger) som brukes bare ved eksplisitt "Åpne …"-handling fra dashboardet — aldri automatisk autostart.
 3. **En profilmarkør** i lokal tilstandsfila (ingen egen brukerkonto, ingen egen DMS-konfigurasjon; personlig `settings.json` berøres ikke, jf. dagens bevaringspraksis).[52]
 
 ### 2.2 CLEAN (standard)
 
-- Alle arbeidsområder 1–9 starter helt tomme; ingen dashboardprosess startes; ingen autostart av arbeidsapper.
+- CLEAN skal alltid gi en ren brukeropplevelse: ingen Wilsof-dashboardflater er synlige på noen skjerm eller noe arbeidsområde, heller ikke fra en tidligere profil. Ingen ny dashboardprosess eller arbeidsapp startes.
+- Eksisterende brukerprogrammer beholdes med samme vinduer, plassering og arbeid. Bare en ny økt uten brukerprogrammer forventes å ha tomme arbeidsområder.
 - Top bar, launcher og vindushåndtering er identiske med andre profiler.
-- Akseptansekriterium M1: `pgrep` viser ingen Wilsof-dashboardprosess; arbeidsområde 1 er tomt; Super+Space/innstillinger fungerer.
-- CLEAN fungerer uavhengig av om noensinne en annen profil er brukt (tilstandsfila tåler fravær og gjenopprettes til CLEAN).
+- En allerede kjørende dashboardprosess kan leve videre skjult for å bevare arbeid; CLEAN betyr **ikke synlig / ingen ny oppstart**, ikke nødvendigvis fravær av en tidligere prosess.
+- M1 tester kun lokal CLI/tilstand uten grafisk økt: fravær gir `clean`, korrupsjon gir `clean` med tydelig stderr og feilstatus, og ingen desktop-/dashboardhandling utføres. GUI-garantien verifiseres først når M2/M4 implementerer den.
+- Fraværende tilstandsfil er vanlig CLEAN-standard uten skriving. Ugyldig fil overskrives ikke automatisk; se [tilstandskontrakten](WILSOF_PROFILE_STATE.md).
 
 ### 2.3 STUDY
 
@@ -49,12 +50,15 @@ En profil er en navngitt tilstand med tre deler:
 
 ### 2.6 Regler for profilbytte med åpne vinduer
 
-1. **Ingen app lukkes noensinne.** Eksisterende vinduer forblir på sine arbeidsområder.
-2. **Byttet er en layoutoperasjon:** valgt profil lagres; hvis målprofilen har dashboard på arbeidsområde 1 og området er tomt, startes dashboard-vinduet; hvis området er opptatt, vises dashboardet i stedet som launcher-handling eller brukeren bytter til et ledig område — aldri tvungen fortrenging.
-3. **Hvis en tidligere profil sitt dashboard fortsatt kjører**, blir det stående; brukeren kan lukke det selv. Ingen bakgrunnsnedstenging.
-4. **Angremulighet:** byttet vises i topbaren umiddelbart; nytt bytte tilbake er alltid en lokal operasjon uten datatap.
-5. **Krasj-uavhengighet:** hvis tilstandsfila er korrupt, faller systemet tilbake til CLEAN og viser én lesbar melding via launcher-hjelpen — innlogging påvirkes aldri.
-- Akseptansekriterium M2: bytt CLEAN→STUDY→CLEAN med 3 åpne vinduer: vinduene beholdes (samme PID-er), ingen dataendring i dashboard-DB, topbar-profilnavn oppdateres <2 s.
+1. **Ingen brukerapp lukkes eller flyttes automatisk.** Profilbytte endrer aldri oppgavedata; eksisterende arbeid og vindusplasseringer beholdes.
+2. **Arbeidsområde 1 opptatt:** hvis et annet brukerprogram er til stede, opprettes/vises ikke dashboard der, ingen fokusstjeling, ingen automatisk flytting til et «ledig» område. Profilen kan velges; dashboard forblir skjult/ustartet. Launcher tilbyr senere en eksplisitt «Åpne dashboard» med brukerens valg av ledig arbeidsområde. Ny kontroll ved åpning hindrer fortrenging hvis området i mellomtiden er blitt opptatt. Flere skjermer inngår i opptattkontrollen.
+3. **CLEAN skjuler tidligere dashboard** (inkludert underdialoger) uten å avslutte prosessen, lukke dokumenter eller endre oppgaver. Bytte tilbake gjenviser samme arbeid når plassering er trygg; ved konflikt gjelder punkt 2. Andre ikke-valgte dashboardflater forblir skjult.
+4. **Synlighetsmekanisme for M2/M4, ikke implementert i M1:** dashboard-appen eier `hide/show` for alle sine Qt-toppnivåvinduer (unmap, ikke close/minimering eller skjermoverlegg). En liten forespørsel/svar-kanal i brukerens private runtime-mappe, med socketmodus 0600, samme-UID peer-kontroll og protokollversjon, lar den fremtidige profilintegrasjonen be en eksisterende instans om å skjule seg og vente på bekreftelse. Ingen egen daemon innføres; kanalen lever bare med appen. App-ID `org.wilsof.Tasks` og registrerte konkrete klient-/prosessidentiteter brukes til målrettet verifikasjon, aldri vindustittelglob, `pkill` eller handlinger mot øvrige klienter. Hvis runtime/kanal er utilgjengelig, avvises synlighetsoperasjonen tydelig; ikke start en dashboardprosess bare for å skjule den.
+5. **Ingen falsk CLEAN-kvittering:** fremtidig integrasjon skiller lagret ønsket profil fra faktisk anvendt synlighet. Den må skjule/bekrefte alle egne flater før CLEAN vises som anvendt; feil gir synlig feil, ikke en grønn CLEAN-påstand. Oppstart/reconnect av dashboard må sjekke siste profil før første mapping; samtidige valg serialiseres og siste tilstand avstemmes før visning. M1 `set` lagrer bare ønsket profil og lover ingen GUI-effekt.
+6. **Tilbake uten tap:** skjuling bevarer usendte redigeringer i levende app, egne oppgaver og visningsfilter. Profilbytte utfører ingen DB-migrering, sletting eller oppdatering av oppgaver. Normal avslutning/krasjgjenoppretting er M4s separate datakontrakt, ikke noe profilbytte kan garantere ved OS-/appkrasj.
+7. **Korrupsjon:** innlogging påvirkes aldri; effektiv profil er CLEAN med lesbar feilmelding. M1 rapporterer via stderr/exitstatus; M2 skal presentere den i UI uten å reparere filen stille.
+
+Aksept M2/M4: CLEAN→STUDY→CLEAN→STUDY med tre åpne brukerprogrammer, opptatt/tomt arbeidsområde 1, flere skjermer og dashboarddialog. Samme brukerklienter/PID-er/plasseringer og uendrede oppgavedata; ingen dashboardflate i CLEAN, ingen ny dashboardprosess ved overgang til CLEAN, bevart usendt redigering ved retur. Test også manglende IPC-bekreftelse, app-restart i CLEAN og konkurrerende profilvalg. Profilmarkør oppdateres ≤2 s etter vellykket anvendelse; feil må ikke skjules. Dette er fremtidige GUI-porter, ikke M1-testresultater.
 
 ### 2.7 Datagarantier
 
@@ -119,7 +123,7 @@ DMS Control Center har allerede Wi-Fi (NetworkDetail), Bluetooth, lyd med enhets
 
 ## 6. Wilsof Dashboard (UX)
 
-- Én applikasjon, fire moduser (CLEAN = ikke kjørende; STUDY/DEV/EVERYDAY = samme Kanban-flate med modusspesifikk startinnhold).
+- Én applikasjon, tre dashboardmoduser (STUDY/DEV/EVERYDAY). CLEAN har ingen synlige dashboardflater og starter ingen ny prosess; en tidligere instans kan beholdes skjult etter §2.6.
 - Tre kolonner: To Do / In Progress / Done; dra-eller-tastaturrekkeflytting (Left/Right + Enter); ny oppgave med N; rediger M; fullfør med Enter på valgt kort; slett Delete.
 - Prosjekt-/fagsvelger øverst; EVERYDAY har ett ikke-slettbart standardprosjekt; STUDY/DEV oppretter/sletter prosjekter fritt.
 - Fristfelt (valgfri dato); oversiktslinje viser antall per kolonne.
@@ -176,3 +180,4 @@ Direkte journalbevis fra den bevarte internal2-evidensen: ved kald start ble den
 - [51] https://github.com/tomli0/wilsof-os/blob/a78d88790754886750bb1a5f93dd33cb257cc47e/docs/ENGINEERING_STANDARDS.md
 - [52] https://github.com/tomli0/wilsof-os/tree/219894f1d4fc365b5e6546c2af9a146141634a1c
 - [53] https://github.com/tomli0/wilsof-os/blob/219894f1d4fc365b5e6546c2af9a146141634a1c/docs/development-reports/2026-10-28-internal2-acceptance.md
+- Synlighetskontraktens primærreferanse (M2/M4): https://doc.qt.io/qt-6/qwidget.html#hide — hide/setVisible(false) er forskjellig fra close; faktisk Wayland-synlighet må fortsatt verifiseres i målmiljøet.

@@ -12,6 +12,7 @@ fail() {
 
 [ "$(id -un)" = "wilsofdev" ] || fail "must run as wilsofdev on the dedicated test VM"
 [ -r /etc/os-release ] || fail "/etc/os-release is unavailable"
+# shellcheck source=/etc/os-release
 . /etc/os-release
 [ "${ID:-}" = "fedora" ] || fail "target must be Fedora; found ${ID:-unknown}"
 [ "${VERSION_ID:-}" = "44" ] || fail "target must be Fedora 44; found ${VERSION_ID:-unknown}"

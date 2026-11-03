@@ -11,6 +11,7 @@ import stat
 import subprocess
 import re
 from pathlib import Path
+import runpy
 
 from jsonschema import Draft202012Validator
 
@@ -179,8 +180,15 @@ class ArchinstallExecutor:
             'brltty', 'espeakup', 'alsa-utils',
             *read_manifest(manifest), *guest[0],
         ]))
+        private = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'runtime/private-hyprland.py'))
+        self.private_record = private['embedded'](Path('/usr/share/wilsof'))
+        self.packages = private['selection'](self.packages, self.private_record)
         self.manifest_digest = 'sha256-' + hashlib.sha256(
-            json.dumps(self.packages, separators=(',', ':')).encode()).hexdigest()
+            json.dumps(self.packages if self.private_record is None else
+                       {'packages': self.packages, 'private_hyprland': {
+                           k: self.private_record[k] for k in
+                           ('name', 'version', 'architecture', 'sha256', 'binary_sha256')}},
+                       separators=(',', ':'), sort_keys=True).encode()).hexdigest()
         self.provision = Path(provision)
         self.target = Path(target)
         if not self.provision.is_file() or not os.access(self.provision, os.X_OK):
@@ -190,6 +198,9 @@ class ArchinstallExecutor:
 
     def execute(self, plan, password, guard):
         import asyncio
+        private = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'runtime/private-hyprland.py'))
+        if private['embedded'](Path('/usr/share/wilsof')) != self.private_record:
+            raise Refusal('Private Hyprland policy changed after package review')
         validate_plan(plan)
         if plan.get('plan_id') != self.manifest_digest:
             raise Refusal('Reviewed package manifest differs from executor')

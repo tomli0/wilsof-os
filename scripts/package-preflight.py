@@ -4,6 +4,7 @@ import base64
 import hashlib
 from pathlib import Path
 import re
+import runpy
 import subprocess
 
 
@@ -16,6 +17,8 @@ def command(argv):
 
 def preflight(profile, cache, db, gpgdir):
     profile, cache, db, gpgdir = map(Path, (profile, cache, db, gpgdir))
+    private = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'runtime/private-hyprland.py'))
+    private_record = private['embedded'](profile / 'airootfs/usr/share/wilsof')
     # A new local database forces dependencies already on the host into the image
     # transaction. Never --needed and never synchronize the host database.
     db.mkdir(parents=True, exist_ok=False)
@@ -47,6 +50,8 @@ def preflight(profile, cache, db, gpgdir):
                              sha256=digest, signature=signature, repository=repo))
     if len({p['name'] for p in packages}) != len(packages) or len({p['filename'] for p in packages}) != len(packages):
         raise ValueError('Duplicate resolved package identity')
+    if private_record is not None and any(p['name'] in ('hyprland', private_record['name']) for p in packages):
+        raise ValueError('Private Hyprland repository fallback rejected')
     command(['pacman', '-Sw', *common, '--', *targets])
     for package in packages:
         path = cache / package['filename']

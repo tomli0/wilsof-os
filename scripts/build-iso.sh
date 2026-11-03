@@ -66,6 +66,14 @@ if len(sys.argv) > 4:
         raise SystemExit('Missing internal Hypridle package')
     if any(overlaps(p, i.resolve()) for p in paths for i in (source, upstream, package)):
         raise SystemExit('Build paths must be disjoint from source/releng/package inputs')
+    if any(k in os.environ for k in ('WILSOF_PRIVATE_EXPERIMENTAL', 'WILSOF_PRIVATE_HYPRLAND_CONTRACT')):
+        private = run_path(str(source / 'runtime/private-hyprland.py'))
+        record = private['load']()
+        private_inputs = (Path(os.environ['WILSOF_PRIVATE_HYPRLAND_CONTRACT']), Path(record['package']))
+        if any(overlaps(p, i.resolve()) for p in paths for i in private_inputs):
+            raise SystemExit('Private Hyprland inputs must be disjoint from build outputs')
+        if any(overlaps(source.resolve(), i.resolve()) for i in private_inputs):
+            raise SystemExit('Private Hyprland inputs must remain outside exported public source')
     pin = run_path(str(source / 'runtime/pinned-package.py'))
     if pin['verified_package'](package.parent) != package:
         raise SystemExit('Exact verified internal Hypridle package filename required')

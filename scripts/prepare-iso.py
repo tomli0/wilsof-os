@@ -25,6 +25,8 @@ def inventory(directory):
 
 
 def prepare(upstream, output, source, commit, *, hypridle_package=None):
+    private = runpy.run_path(str(source / 'runtime/private-hyprland.py'))
+    private_record = private['load']()
     if not re.fullmatch(r'[0-9a-f]{40}', commit):
         raise ValueError('An exact source commit is required')
     if output.exists() or output.is_symlink():
@@ -58,6 +60,7 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     packages.update((source / 'runtime/desktop-packages.txt').read_text().splitlines())
     packages.update({'archinstall', 'python-jsonschema', 'qemu-guest-agent', 'sudo'})
     packages.difference_update({'openssh', 'cloud-init', 'clonezilla', 'drbl'})
+    packages = set(private['selection'](sorted(packages), private_record))
     (output / 'packages.x86_64').write_text('\n'.join(sorted(p for p in packages if p and not p.startswith('#'))) + '\n')
     root = output / 'airootfs'
     (root / 'mnt/wilsof').mkdir(parents=True, exist_ok=True)
@@ -107,6 +110,9 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
         packages_dir.mkdir(parents=True)
         shutil.copyfile(package, packages_dir / package.name)
         customization += "; pin['install_package']('/', '/usr/share/wilsof/packages')"
+    if private_record is not None:
+        private['stage'](private_record, root / 'usr/share/wilsof')
+        customization += "; private=runpy.run_path('/usr/share/wilsof/source/runtime/private-hyprland.py'); private['install']('/', '/usr/share/wilsof', required=True)"
     # Supported by pinned Archiso 91; removed from the image after execution.
     write('root/customize_airootfs.sh', '#!/bin/sh\nset -eu\npython3 -c "' + customization + '"\n', 0o755)
     lib = root / 'usr/local/lib/wilsof'
@@ -117,6 +123,10 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
         if (source / 'bin' / name).is_file():
             write('usr/local/bin/' + name, (source / 'bin' / name).read_text(), 0o755)
     shutil.copy2(source / 'runtime/desktop-packages.txt', root / 'usr/share/wilsof/desktop-packages.txt')
+    if private_record is not None:
+        desktop = (source / 'runtime/desktop-packages.txt').read_text().splitlines()
+        desktop = private['selection'](desktop, private_record)
+        (root / 'usr/share/wilsof/desktop-packages.txt').write_text('\n'.join(desktop) + '\n')
     write('etc/shadow', 'root:!:14871::::::\n', 0o400)
     write('etc/hostname', 'wilsof-live\n')
     write('etc/greetd/config.toml', '[terminal]\nvt = 1\n[default_session]\ncommand = "tuigreet --cmd /usr/local/bin/wilsof-session"\nuser = "greeter"\n[initial_session]\ncommand = "/usr/local/bin/wilsof-session"\nuser = "live"\n')

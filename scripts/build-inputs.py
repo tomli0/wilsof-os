@@ -92,6 +92,12 @@ def freeze(profile, source, epoch, version):
                         'Host tools/kernel, package hooks, filesystem timestamps and ISO tooling still affect output',
                         'Internal Hypridle is the existing SHA256-pinned local trust exception, not an Arch-signed package'],
     }
+    private = runpy.run_path(str(source / 'runtime/private-hyprland.py'))
+    private_record = private['embedded'](profile / 'airootfs/usr/share/wilsof')
+    if private_record is not None:
+        record['private_hyprland'] = {k: private_record[k] for k in
+                                    ('name', 'version', 'architecture', 'sha256', 'binary_sha256')}
+        record['limitations'].append('Private experimental Hyprland: explicit local SHA256 trust input, not upstream acceptance or a signature-policy bypass')
     with destination.open('x', encoding='utf-8') as stream:
         stream.write(json.dumps(record, indent=2, sort_keys=True) + '\n')
     return record

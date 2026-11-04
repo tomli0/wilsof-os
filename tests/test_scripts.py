@@ -141,7 +141,7 @@ def arch_preflight_host(tmp_path):
             f'#!/bin/sh\nprintf "%s\\n" "{command} $*" >> {shlex.quote(str(log))}\n'
         )
         stub.chmod(0o755)
-    return script, release, log, {'PATH': str(fake_bin)}
+    return script, release, log, {'PATH': str(fake_bin), 'ID': '', 'ID_LIKE': ''}
 
 
 @pytest.mark.parametrize('release_text,found', [
@@ -151,8 +151,10 @@ def arch_preflight_host(tmp_path):
     ('NAME=Unknown\n', 'unknown'),
 ])
 def test_arch_preflight_is_read_only_and_rejects_non_arch_hosts(
-    arch_preflight_host, release_text, found
+    arch_preflight_host, release_text, found, monkeypatch
 ):
+    # Even an Arch identity inherited by pytest must not leak into the fixture.
+    monkeypatch.setenv('ID', 'arch')
     script, release, log, env = arch_preflight_host
     release.write_text(release_text)
     result = run(script, env=env)

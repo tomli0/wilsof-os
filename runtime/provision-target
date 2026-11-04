@@ -63,6 +63,8 @@ def main():
     if not live and not target.is_mount():
         raise SystemExit('Installed target must be a mounted root filesystem')
     source = Path('/usr/share/wilsof/source')
+    snapshot = runpy.run_path(str(source / 'runtime/repository-snapshot.py'))
+    snapshot['read'](target)
     private = runpy.run_path(str(source / 'runtime/private-hyprland.py'))
     private_record = private['embedded'](Path('/usr/share/wilsof'))
     if private_record is not None:
@@ -113,6 +115,7 @@ def main():
         raise
     if not live:
         verify_resolver(target)
+    snapshot['read'](target)
 
 
 if __name__ == '__main__':

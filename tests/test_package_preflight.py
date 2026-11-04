@@ -16,14 +16,17 @@ def transaction(tmp_path, monkeypatch):
     profile = tmp_path / 'profile'
     profile.mkdir()
     (profile / 'packages.x86_64').write_text('base\n')
-    (profile / 'pacman.conf').write_text('[options]\nSigLevel = Required DatabaseOptional\n[core]\nServer = https://example.invalid\n')
+    snapshot = runpy.run_path(str(ROOT / 'runtime/repository-snapshot.py'))
+    snapshot['stage'](profile / 'airootfs')
+    (profile / 'pacman.conf').write_text(snapshot['CONFIG'])
     cache, db, keys = [tmp_path / name for name in ('alternative-cache', 'empty-db', 'keys')]
     cache.mkdir()
     keys.mkdir()
     for name in ('pubring.gpg', 'trustdb.gpg'):
         (keys / name).write_bytes(b'public keyring fixture: ' + name.encode())
+    (profile / 'BOOT-CONTRACT.json').write_text('{"archiso_major": 91, "early_kms": "wilsof-explicit"}\n')
     calls = []
-    state = {'missing': False, 'bad_signature': False, 'wrong_identity': False, 'empty': False}
+    state = {'missing': False, 'bad_signature': False, 'wrong_identity': False, 'empty': False, 'archiso': '91-1'}
     data = b'deterministic package fixture, not a real signed Arch package'
     rows = []
     for name in ('base', 'dependency'):
@@ -48,7 +51,7 @@ def transaction(tmp_path, monkeypatch):
                 sync.mkdir()
                 (sync / 'core.db').write_bytes(b'frozen repository database fixture')
             elif '-Q' in argv:
-                text = 'archiso 91-1\npacman 7.1.0-1\narchlinux-keyring 20260101-1\n'
+                text = 'archiso ' + state['archiso'] + '\npacman 7.1.0-1\narchlinux-keyring 20260101-1\n'
         elif argv[0] == 'pacman-conf':
             text = str(keys) + '\n' if argv[-1] == 'GPGDir' else Path(argv[argv.index('--config') + 1]).read_text()
         elif argv[0] == 'bsdtar' and '-xOf' in argv:
@@ -115,7 +118,7 @@ def test_freeze_binds_package_closure_databases_policy_and_public_keyring(transa
     frozen = (profile / 'pacman.conf').read_text()
     assert 'https://example.invalid' not in frozen
     assert 'Server = file://' in frozen
-    assert 'SigLevel = Required DatabaseOptional' in frozen
+    assert 'SigLevel = Required TrustedOnly DatabaseOptional' in frozen
     assert (profile / '.build-inputs/cache/core.db').read_bytes() == b'frozen repository database fixture'
     assert len(record['packages']) == 2
     assert record['tools']['packages'][0] == 'archiso 91-1'
@@ -168,3 +171,55 @@ def test_freeze_refuses_weak_package_policy(transaction, bad_policy):
     assert helper.is_file()
     with pytest.raises(ValueError, match='signature policy'):
         runpy.run_path(str(helper))['freeze'](profile, ROOT, '1767225600', 'fixed')
+
+@pytest.mark.parametrize('version', ['91-1', '92-1', '93-1', '90-1', '92-invalid+release'])
+def test_only_supported_archiso_versions_with_matching_releng_are_accepted(transaction, version):
+    import json
+    profile = transaction[0]
+    transaction[-1]['archiso'] = version
+    (profile / 'BUILD-SOURCE.json').write_text('{}\n')
+    (profile / 'BOOT-CONTRACT.json').write_text(json.dumps({'archiso_major': int(version.split('-')[0]), 'early_kms': 'wilsof-explicit'}))
+    freeze = runpy.run_path(str(ROOT / 'scripts/build-inputs.py'))['freeze']
+    if version in ('91-1', '92-1'):
+        assert 'archiso ' + version in freeze(profile, ROOT, '1767225600', 'fixed')['tools']['packages']
+    else:
+        with pytest.raises(ValueError, match='Archiso'):
+            freeze(profile, ROOT, '1767225600', 'fixed')
+        assert not (profile / '.build-inputs').exists()
+
+
+def test_tool_releng_mismatch_is_rejected_before_package_resolution(transaction):
+    transaction[-1]['archiso'] = '92-1'
+    freeze = runpy.run_path(str(ROOT / 'scripts/build-inputs.py'))['freeze']
+    with pytest.raises(ValueError, match='releng'):
+        freeze(transaction[0], ROOT, '1767225600', 'fixed')
+    assert not (transaction[0] / '.build-inputs').exists()
+
+@pytest.mark.parametrize('drift', [False, True])
+def test_freeze_records_same_runtime_snapshot_and_rejects_build_mirror_escape(transaction, drift):
+    import json
+    profile = transaction[0]
+    snapshot = runpy.run_path(str(ROOT / 'runtime/repository-snapshot.py'))
+    snapshot['stage'](profile / 'airootfs')
+    (profile / 'pacman.conf').write_text(snapshot['CONFIG'])
+    (profile / 'BUILD-SOURCE.json').write_text('{}')
+    if drift:
+        (profile / 'pacman.conf').write_text(snapshot['CONFIG'].replace('2026/11/01', '2026/11/02'))
+    freeze = runpy.run_path(str(ROOT / 'scripts/build-inputs.py'))['freeze']
+    if drift:
+        with pytest.raises(ValueError, match='snapshot'): freeze(profile, ROOT, '1767225600', 'fixed')
+        assert not (profile / '.build-inputs').exists()
+    else:
+        record = freeze(profile, ROOT, '1767225600', 'fixed')
+        assert record['repository_snapshot'] == snapshot['read'](profile / 'airootfs')
+        assert record['boot_contract']['archiso_major'] == 91
+        assert 'file://' not in (profile / 'airootfs/etc/pacman.conf').read_text()
+
+
+def test_image_solver_receives_full_private_versioned_constraints(transaction, monkeypatch):
+    original = runpy.run_path
+    record = {'name': 'hyprland-as02-private', 'dependency_constraints': ['libaquamarine.so=14-64']}
+    monkeypatch.setattr(runpy, 'run_path', lambda path, *a, **k: {'embedded': lambda base: record} if str(path).endswith('private-hyprland.py') else original(path, *a, **k))
+    invoke(transaction, monkeypatch)
+    solve = next(c for c in transaction[4] if '-Sp' in c)
+    assert solve[-2:] == ['base', 'libaquamarine.so=14-64']

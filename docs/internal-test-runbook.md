@@ -15,7 +15,7 @@ part of this image or deployed by this workflow.
 Build only a clean `git archive` export. Record `git rev-parse HEAD` outside the
 build environment, write that exact value to the export's `SOURCE_COMMIT`, and
 check it against the reviewed revision. Set `WILSOF_SOURCE_COMMIT` to that value.
-Use Archiso 91 in an isolated Arch environment, a new absolute work directory
+Use matching Archiso 92/releng in an isolated Arch environment, a new absolute work directory
 and a separate empty output directory. No host disks, credentials, `.ssh`, Git
 credential helpers or private home directories may be mounted into the build.
 The source payload is limited by `runtime/image-files.txt`; symlinks are rejected.
@@ -36,10 +36,18 @@ before mkarchiso. This does not demonstrate byte-identical ISO reproducibility.
 The internal Hypridle artifact is supplied separately, never committed as a
 binary. Its package and installed-executable SHA256 are pinned in
 `runtime/pinned-package.py`; mismatches fail closed. The same verified package
-is installed into the live root during the pinned Archiso 91 customization step
-and copied/installed into the target during provisioning. This step does not
-rebuild Hypridle. The Archiso 91 customization hook is deprecated upstream and
-must be reviewed before changing the supported Archiso version.
+is installed into the live root during the reviewed Archiso 91/92 customization
+step and copied/installed into the target during provisioning. This step does
+not rebuild Hypridle. The deprecated customization hook is still supported by
+the inspected Archiso 92 implementation; removal in a future version needs review.
+Private Hyprland remains a separate explicit input with unchanged identity/pins.
+
+Build, live and installed-target official repositories are fixed to Arch Linux
+Archive 2026-11-01 core/extra. The installer verifies its full signed official
+closure in a new database before disk operations, binds its receipt to review,
+and persists the same policy/receipt into the target. Missing or changed policy
+is fatal, never a reason to select rolling mirrors. See
+[repository policy and resource limits](repository-snapshot.md).
 
 The prepared profile is a sibling of the work directory. The builder deliberately
 omits `mkarchiso -r` and retains work/profile as evidence. Archiso 91's `-r`
@@ -114,10 +122,17 @@ as such; they are not physical-keyboard or hardware evidence.
 
 ## Updates and recovery limits
 
-Arch package updates use the real supported full-system upgrade command:
+This private image deliberately remains on its approved 2026-11-01 snapshot.
+Arch package updates use the real full-system upgrade command against that
+same dated set (normally no new official versions):
 
     sudo pacman -Syu
 
+The frozen snapshot is not a long-term security-update channel. Do not switch
+only a mirror or two libraries to rolling: the retained private compositor needs
+the approved old SONAME providers. Advancing the date requires a coherent set,
+new ABI/signature/runtime review and explicit approval; rebuilding the private
+package is a separate decision if no maintained compatible set remains.
 Read Arch news before a significant update. Never use `pacman -Sy` followed by
 selective installs (partial upgrades). Record package versions and the command's
 actual result. Reboot the test VM when the kernel/system components require it,

@@ -55,7 +55,8 @@ def test_dependency_gate_fails_closed_without_fallback(monkeypatch, failure):
 
 @pytest.mark.parametrize('with_package', [False, True])
 @pytest.mark.parametrize('gate_fails', [False, True])
-def test_materialized_build_runs_gate_before_optional_install(tmp_path, monkeypatch, with_package, gate_fails):
+@pytest.mark.parametrize('snapshot_fails', [False, True])
+def test_materialized_build_runs_gate_before_optional_install(tmp_path, monkeypatch, with_package, gate_fails, snapshot_fails):
     import hashlib
     import json
     import os
@@ -87,16 +88,20 @@ def record(name):
         f.write(json.dumps(name) + '\\n')
     if name == 'gate' and os.environ['GATE_FAILS'] == '1':
         raise RuntimeError('unsupported arch-chroot')
-runpy.run_path = lambda *a, **k: {
-    'verify_arch_chroot_support': lambda: record('gate'),
-    'install_package': lambda *a: record('install'),
-}
+def read_snapshot(*args):
+    record('snapshot')
+    if os.environ['SNAPSHOT_FAILS'] == '1': raise ValueError('repository snapshot rejected')
+def load(path, *args, **kwargs):
+    if str(path).endswith('repository-snapshot.py'): return {'read': read_snapshot}
+    return {'verify_arch_chroot_support': lambda: record('gate'),
+            'install_package': lambda *a: record('install')}
+runpy.run_path = load
 ''')
     env = {**os.environ, 'PATH': str(bindir) + os.pathsep + os.environ['PATH'],
-           'PYTHONPATH': str(tmp_path), 'CALL_LOG': str(log), 'GATE_FAILS': str(int(gate_fails))}
+           'PYTHONPATH': str(tmp_path), 'CALL_LOG': str(log), 'GATE_FAILS': str(int(gate_fails)), 'SNAPSHOT_FAILS': str(int(snapshot_fails))}
     result = subprocess.run(['sh', str(output / 'airootfs/root/customize_airootfs.sh')], env=env, capture_output=True, text=True)
-    assert bool(result.returncode) == gate_fails
-    assert [json.loads(line) for line in log.read_text().splitlines()] == ['gate'] + (['install'] if with_package and not gate_fails else [])
+    assert bool(result.returncode) == (gate_fails or snapshot_fails)
+    assert [json.loads(line) for line in log.read_text().splitlines()] == ['gate'] + ([] if gate_fails else ['snapshot']) + (['install'] if with_package and not gate_fails and not snapshot_fails else [])
 
 
 def provision_transaction(tmp_path, monkeypatch, effect='intact', exit_code=0):
@@ -124,9 +129,17 @@ def provision_transaction(tmp_path, monkeypatch, effect='intact', exit_code=0):
     monkeypatch.setattr(os, 'geteuid', lambda: 0)
     monkeypatch.setattr(sys, 'argv', ['provision-target', str(target), 'demo'])
     original_run_path = runpy.run_path
-    monkeypatch.setattr(runpy, 'run_path', lambda path, *a, **k:
-                        original_run_path(str(ROOT / 'runtime/private-hyprland.py'))
-                        if str(path).endswith('private-hyprland.py') else pin)
+    snapshot = original_run_path(str(ROOT / 'runtime/repository-snapshot.py'))
+    snapshot['stage'](target)
+    def load(path, *a, **k):
+        if str(path).endswith('private-hyprland.py'):
+            return original_run_path(str(ROOT / 'runtime/private-hyprland.py'))
+        if str(path).endswith('repository-snapshot.py'):
+            return snapshot
+        if str(path).endswith('pinned-package.py'):
+            return pin
+        return original_run_path(path, *a, **k)
+    monkeypatch.setattr(runpy, 'run_path', load)
     calls = []
     resolver = target / 'etc/resolv.conf'
 
@@ -268,3 +281,21 @@ def test_root_install_package_complete_flow_without_chroot(tmp_path, monkeypatch
         assert calls == []
     else:
         assert calls == [(['pacman', '-U', '--noconfirm', '--needed', '/usr/share/wilsof/packages/' + api['PACKAGE_NAME']], {'check': True})]
+
+
+@pytest.mark.parametrize('phase', ['before', 'after'])
+def test_provisioning_refuses_snapshot_drift_without_repair_or_fallback(tmp_path, monkeypatch, phase):
+    main, _, calls, installed, target = provision_transaction(tmp_path, monkeypatch)
+    config = target / 'etc/pacman.conf'
+    if phase == 'before':
+        config.write_text('rolling mirrors')
+    else:
+        previous = subprocess.run
+        def run(argv, **kwargs):
+            result = previous(argv, **kwargs)
+            if argv[0] == 'arch-chroot': config.write_text('rolling mirrors')
+            return result
+        monkeypatch.setattr(subprocess, 'run', run)
+    with pytest.raises(ValueError, match='snapshot'): main()
+    assert config.read_text() == 'rolling mirrors'
+    if phase == 'before': assert calls == [] and installed == []

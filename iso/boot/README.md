@@ -1,7 +1,7 @@
 # Wilsof live boot experience
 
 The internal image uses **UEFI systemd-boot only**. Its entries are generated
-from the Archiso 91 releng templates, retaining `%INSTALL_DIR%`, `%ARCH%`,
+from the explicitly supported Archiso 91/92 releng templates, retaining `%INSTALL_DIR%`, `%ARCH%`,
 `%ARCHISO_UUID%`, and `%KERNEL_PARAMS%` for mkarchiso to substitute.
 
 - **Try Wilsof OS** is selected after 10 seconds. It starts the live desktop,
@@ -48,13 +48,19 @@ firmware loading happen before/around splash startup and may remain blank.
 After `prepare(...)`, import `scripts/boot-profile.py` with `importlib.util` and
 call `configure_boot(output, source)`, where both arguments are profile/repository
 paths. Call it before mkarchiso: it adds `plymouth`/`pv`, overlays the theme and
-`/etc/plymouth/plymouthd.conf`, and inserts `keyboard plymouth` after `kms` while
+`/etc/plymouth/plymouthd.conf`, explicitly restores early `kms` for Archiso 92
+(which removed it upstream), and inserts `keyboard plymouth` after `kms` while
 preserving the remaining releng hooks and compression settings. Repeated calls
 are deterministic; original loader templates are retained outside airootfs in
-`.wilsof-boot-upstream/` for regeneration.
+`.wilsof-boot-upstream/` for regeneration. `BOOT-CONTRACT.json` records the
+releng major and deliberate early-KMS policy; freezing requires its major to
+match the installed tool. Critical hooks must remain unique and ordered.
+Archiso 91 retains `/boot/memtest86+/memtest.efi`; 92 uses
+`/boot/memtest86+/memtest86x64.efi`. Unknown layouts fail before boot-file writes.
 
 Run `python -m pytest tests/test_boot_experience.py -q` from the repository.
-The tests use the actual Archiso 91 template format, not a custom bootloader.
+The tests use actual version-tagged Archiso 91 and 92 releng fixtures, not a
+custom bootloader; URLs and SHA256 values are in the fixture provenance ledger.
 They verify menu policy, substitution tokens, theme materialization, unmodified
 logo bytes, hooks, dependencies, and repeatability. These are preparation tests,
 not proof of a rendered splash or successful boot. A full ISO/VM smoke test must
@@ -62,7 +68,7 @@ still check Esc, audio, text fallback and recovery before release.
 
 ## Primary references inspected
 
-- Archiso 91 installed releng: `efiboot/loader/entries/*.conf` and
+- Archiso 91/92 version-tagged releng (see `tests/fixtures/archiso-provenance.json`): `efiboot/loader/entries/*.conf` and
   `airootfs/etc/mkinitcpio.conf.d/archiso.conf`.
 - mkinitcpio-archiso 73 installed package sources: `hooks/archiso`,
   `install/archiso`, and upstream `docs/README.bootparams`:

@@ -204,7 +204,7 @@ def test_resolved_upstream_dependency_aborts_before_download(tmp_path, monkeypat
     (profile / 'packages.x86_64').write_text('base\n')
     original = runpy.run_path
     monkeypatch.setattr(runpy, 'run_path', lambda path, *a, **k:
-                        {'embedded': lambda base: {'name': 'hyprland-as02-private'}}
+                        {'embedded': lambda base: {'name': 'hyprland-as02-private', 'dependency_constraints': []}}
                         if str(path).endswith('private-hyprland.py') else original(path, *a, **k))
     calls = []
     def command(argv):

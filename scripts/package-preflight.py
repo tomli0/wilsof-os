@@ -19,16 +19,24 @@ def preflight(profile, cache, db, gpgdir):
     profile, cache, db, gpgdir = map(Path, (profile, cache, db, gpgdir))
     private = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'runtime/private-hyprland.py'))
     private_record = private['embedded'](profile / 'airootfs/usr/share/wilsof')
+    targets = [line.split('#', 1)[0].strip() for line in (profile / 'packages.x86_64').read_text().splitlines()]
+    targets = [p for p in targets if p]
+    if private_record is not None:
+        targets = list(dict.fromkeys(targets + private_record['dependency_constraints']))
+    return verify_transaction(profile / 'pacman.conf', targets, cache, db, gpgdir, private_record)
+
+
+def verify_transaction(config, targets, cache, db, gpgdir, private_record=None):
+    """Same signature/metadata gate for image and pre-destructive target closure."""
+    config, cache, db, gpgdir = map(Path, (config, cache, db, gpgdir))
     # A new local database forces dependencies already on the host into the image
     # transaction. Never --needed and never synchronize the host database.
     db.mkdir(parents=True, exist_ok=False)
     (db / 'local').mkdir()
     cache.mkdir(parents=True, exist_ok=True)
-    targets = [line.split('#', 1)[0].strip() for line in (profile / 'packages.x86_64').read_text().splitlines()]
-    targets = [p for p in targets if p]
     if not targets or any(p.startswith('-') or any(c.isspace() for c in p) for p in targets):
         raise ValueError('Invalid or empty image package manifest')
-    common = ['--config', str(profile / 'pacman.conf'), '--dbpath', str(db),
+    common = ['--config', str(config), '--dbpath', str(db),
               '--cachedir', str(cache), '--gpgdir', str(gpgdir), '--arch', 'x86_64',
               '--logfile', str(db / 'pacman.log'), '--noconfirm', '--noprogressbar']
     command(['pacman', '-Sy', *common])

@@ -2,7 +2,9 @@
 
 ## Decision and current status
 
-Wilsof overlays a separately supplied Archiso 91 `releng` profile. The builder
+Wilsof overlays a separately supplied, matching Archiso 91 or 92 `releng` profile.
+Archiso 92 is the intended builder for the approved dated baseline; unknown
+versions and tool/releng-major mismatches are refused. The builder
 requires a reviewed archive, explicit source marker, pinned internal Hypridle
 artifact, fixed epoch/version and isolated work/output paths. Source remediation
 is not authorization to build: Integration3's AS-02 deployment blocker remains.
@@ -28,7 +30,7 @@ installation target. No original QA disks, physical block devices, credentials,
 private homes or SSH material may be exposed to it. Isolation is an external
 prerequisite, not a sandbox created by this wrapper.
 
-Required tools: Archiso 91, pacman/pacman-conf, Python 3, GnuPG and bsdtar, with
+Required tools: supported Archiso 91/92, pacman/pacman-conf, Python 3, GnuPG and bsdtar, with
 an accepted public Arch keyring and at least 25 GiB available on the dedicated
 build filesystem. Record actual free space with `df -h /srv` before starting.
 Do not install/upgrade tools as an implicit part of a build attempt.
@@ -43,7 +45,7 @@ The profile is a sibling of work, not `work/profile`.
 ## Safe, reversible build-only test — separately authorized future use
 
 1. In a non-root shell on that isolated machine, verify `uname -m` is `x86_64`,
-   `command -v mkarchiso`, `pacman -Q archiso` (91), the accepted releng/keyring,
+   `command -v mkarchiso`, `pacman -Q archiso` (92 for this baseline), the accepted releng/keyring,
    available capacity and clean reviewed checkout. Set `WILSOF_APPROVED_COMMIT`
    to the independently approved full commit, `WILSOF_EXPORT_ROOT` to a new
    absolute archive-export path, `WILSOF_HYPRIDLE_PACKAGE` to the existing verified
@@ -122,6 +124,8 @@ The profile is a sibling of work, not `work/profile`.
    [mount-lifetime contract](internal-test-runbook.md#scope-and-prerequisites).
    Record actual command/exit status, ISO filename/byte size/SHA256 and input
    manifest identity. Local tests or CI are not proof that an ISO was built.
+   The input record also contains the dated repository and explicit early-KMS
+   boot contracts; neither is a runtime or security acceptance result.
 
 4. To revert a separately authorized test, preserve artifacts and logs first.
    Cleanup itself requires separate exact-path authorization, exited namespace
@@ -132,11 +136,13 @@ The profile is a sibling of work, not `work/profile`.
 
 Labels and default version derive from SOURCE_DATE_EPOCH, never the current
 month/time. Equivalent controlled inputs produce equivalent metadata, excluding
-filesystem mtimes. Tool versions and public trust state are captured, Archiso 91
-is enforced, and mkarchiso consumes the frozen local package closure. The
-initial resolution still depends on the accepted live repositories/keyring;
-retain their bytes and input record to replay or compare it. An immutable
-external snapshot can be supplied via the accepted releng configuration.
+filesystem mtimes. Tool versions and public trust state are captured, supported
+Archiso 91/92 and matching releng are enforced, and mkarchiso consumes the frozen
+local package closure. Initial resolution uses only Arch Linux Archive
+2026-11-01 core/extra x86_64 and the accepted public keyring. Retain those bytes
+and the input record; a dated URL alone is not a complete reproducibility proof.
+See [the shared repository policy](repository-snapshot.md). No build-host
+pacman configuration is changed or host downgrade performed.
 
 This is traceable input freezing, NOT a demonstrated byte-for-byte reproducible
 ISO. Full toolchain/image identity, kernel/namespace behavior, package hooks,

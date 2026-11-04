@@ -58,7 +58,7 @@ if len(sys.argv) > 4:
                           (upstream, ('packages.x86_64', 'pacman.conf', 'profiledef.sh'))):
         if not folder.is_dir() or any(not (folder / n).is_file() or (folder / n).is_symlink() for n in names):
             raise SystemExit('Missing required source/releng input')
-    if any((upstream / n).exists() or (upstream / n).is_symlink() for n in ('BUILD-SOURCE.json', 'BUILD-INPUTS.json', '.build-inputs')):
+    if any((upstream / n).exists() or (upstream / n).is_symlink() for n in ('BUILD-SOURCE.json', 'BUILD-INPUTS.json', 'BOOT-CONTRACT.json', '.build-inputs', '.wilsof-boot-upstream')):
         raise SystemExit('Refusing inherited reserved provenance path')
     if any(p.is_symlink() and p.is_dir() for p in upstream.rglob('*')):
         raise SystemExit('Refusing releng directory symlink')

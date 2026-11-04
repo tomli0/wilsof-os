@@ -21,8 +21,15 @@ def freeze(profile, source, epoch, version):
     if destination.exists() or destination.is_symlink():
         raise ValueError('Refusing existing reserved provenance path')
     installed = sorted(command(['pacman', '-Q']).splitlines())
-    if not any(re.fullmatch(r'archiso 91-[A-Za-z0-9.]+', p) for p in installed):
-        raise ValueError('Supported build tool is Archiso 91; refuse other versions')
+    tools = [re.fullmatch(r'archiso (91|92)-[A-Za-z0-9.]+', p) for p in installed if p.startswith('archiso ')]
+    if len(tools) != 1 or tools[0] is None:
+        raise ValueError('Supported build tools are Archiso 91/92; refuse other versions')
+    boot = profile / 'BOOT-CONTRACT.json'
+    if boot.is_symlink() or not boot.is_file():
+        raise ValueError('Missing reviewed releng boot contract')
+    contract = json.loads(boot.read_text())
+    if contract != {'archiso_major': int(tools[0][1]), 'early_kms': 'wilsof-explicit'}:
+        raise ValueError('Archiso tool/releng contract mismatch')
     conf = profile / 'pacman.conf'
     # pacman-conf expands Include and effective defaults. Never read mirrors or
     # signature configuration from the build host's default pacman invocation.
@@ -34,6 +41,10 @@ def freeze(profile, source, epoch, version):
         raise ValueError('Required trusted package signature policy must be retained')
     if re.search(r'^(Include|XferCommand)\s*=', expanded, re.M):
         raise ValueError('Unexpanded Include/custom downloader is unsupported')
+    snapshot = runpy.run_path(str(source / 'runtime/repository-snapshot.py'))
+    snapshot_record = snapshot['read'](profile / 'airootfs')
+    if conf.read_text() != snapshot['CONFIG']:
+        raise ValueError('Build repository snapshot differs from live/target policy')
     original_keys = Path(command(['pacman-conf', '--config', str(conf), 'GPGDir']).strip())
     state = profile / '.build-inputs'
     state.mkdir()
@@ -78,6 +89,8 @@ def freeze(profile, source, epoch, version):
                      if not k.startswith('.build-inputs/') and k not in ('pacman.conf', 'BUILD-INPUTS.json')}
     record = {
         'schema': 1,
+        'repository_snapshot': snapshot_record,
+        'boot_contract': contract,
         'source': json.loads((profile / 'BUILD-SOURCE.json').read_text()),
         'configuration': {'source_date_epoch': epoch, 'iso_version': version, 'architecture': 'x86_64'},
         'tools': {'packages': installed, 'kernel': os.uname().release,

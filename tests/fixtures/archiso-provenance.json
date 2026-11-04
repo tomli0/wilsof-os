@@ -1,0 +1,42 @@
+{
+  "archiso91/airootfs/etc/mkinitcpio.conf.d/archiso.conf": {
+    "url": "https://raw.githubusercontent.com/archlinux/archiso/v91/configs/releng/airootfs/etc/mkinitcpio.conf.d/archiso.conf",
+    "sha256": "cd1d328d0b343719c5975729bf7c8c5a227542beb396574ff4adeac30381db0b"
+  },
+  "archiso91/efiboot/loader/entries/01-archiso-linux.conf": {
+    "url": "https://raw.githubusercontent.com/archlinux/archiso/v91/configs/releng/efiboot/loader/entries/01-archiso-linux.conf",
+    "sha256": "b42fbbb784d931c198d3f29907e69e4b6c187f1451099d06385c9541d43349fe"
+  },
+  "archiso91/efiboot/loader/entries/02-archiso-speech-linux.conf": {
+    "url": "https://raw.githubusercontent.com/archlinux/archiso/v91/configs/releng/efiboot/loader/entries/02-archiso-speech-linux.conf",
+    "sha256": "26c337c780790c8732664d8f3e4926d51252b97af8ca36203676c25fb14a7f01"
+  },
+  "archiso91/efiboot/loader/entries/03-archiso-memtest86+x64.conf": {
+    "url": "https://raw.githubusercontent.com/archlinux/archiso/v91/configs/releng/efiboot/loader/entries/03-archiso-memtest86+x64.conf",
+    "sha256": "83fe499758a0b93e381977566a436d58b1bd8d430ecbfe829fa880a80b2804eb"
+  },
+  "archiso91/packages.x86_64": {
+    "url": "https://raw.githubusercontent.com/archlinux/archiso/v91/configs/releng/packages.x86_64",
+    "sha256": "8f87cabf3c48161710b367c06ac96c0bfd1b980de3026d52578721372c141553"
+  },
+  "archiso92/airootfs/etc/mkinitcpio.conf.d/archiso.conf": {
+    "url": "https://raw.githubusercontent.com/archlinux/archiso/v92/configs/releng/airootfs/etc/mkinitcpio.conf.d/archiso.conf",
+    "sha256": "ad143618ba35dd8ff00fab585cb6e6324fdccd6e19d7ca59c4abc69a610a1491"
+  },
+  "archiso92/efiboot/loader/entries/01-archiso-linux.conf": {
+    "url": "https://raw.githubusercontent.com/archlinux/archiso/v92/configs/releng/efiboot/loader/entries/01-archiso-linux.conf",
+    "sha256": "b42fbbb784d931c198d3f29907e69e4b6c187f1451099d06385c9541d43349fe"
+  },
+  "archiso92/efiboot/loader/entries/02-archiso-speech-linux.conf": {
+    "url": "https://raw.githubusercontent.com/archlinux/archiso/v92/configs/releng/efiboot/loader/entries/02-archiso-speech-linux.conf",
+    "sha256": "26c337c780790c8732664d8f3e4926d51252b97af8ca36203676c25fb14a7f01"
+  },
+  "archiso92/efiboot/loader/entries/03-archiso-memtest86+x64.conf": {
+    "url": "https://raw.githubusercontent.com/archlinux/archiso/v92/configs/releng/efiboot/loader/entries/03-archiso-memtest86+x64.conf",
+    "sha256": "30763649ff5201248731c4ae5a5625ebb69f3fce2bfd0b066f96118d8cc13fe8"
+  },
+  "archiso92/packages.x86_64": {
+    "url": "https://raw.githubusercontent.com/archlinux/archiso/v92/configs/releng/packages.x86_64",
+    "sha256": "6de2d8759760f961dba80de9aeb398cd34207a3829376c486274b0e2d6de657a"
+  }
+}

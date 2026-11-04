@@ -1,0 +1,86 @@
+{
+  "session": "internal4 completion",
+  "date": "2026-10-31",
+  "resumed_from_checkpoint": "CLOSED_SOURCE_DRAFT_NO_INTERNAL4_ISO",
+  "baseline_commit": "418a4ff8f5e50d79132aeb6a23d8064e5889c162",
+  "branch": "fix/internal4-completion",
+  "base_branch_unchanged": "stabilization/internal4-20261030",
+  "pr_draft": 43,
+  "pr42_unchanged": true,
+  "baseline_tests": {"passed": 326, "skipped": 2},
+  "final_tests": {"passed": 330, "skipped": 2},
+  "skipped_tests": [
+    {"name": "tests/test_arch_chroot_integration.py::test_real_arch_chroot_transaction_and_teardown", "reason": "explicit rootless native-lab opt-in required", "separately_executed": "2 passed", "release_relevant": "installer dependency boundary revalidated"},
+    {"name": "tests/test_wallpaper_recovery.py::test_native_systemd_lifecycle", "reason": "opt-in disposable QEMU user-manager lifecycle; not a CI mock", "separately_executed": "7/7 OK twice (unloaded TCG state; atomic counters)", "release_relevant": "R5 reactivation harness"}
+  ],
+  "commits": {
+    "bluez": "fix(hardware): provide BlueZ daemon and supported activation",
+    "lua_dispatch": "fix(hyprland): use native Lua window dispatchers",
+    "ci_scope": "ci: validate isolated internal4 completion branch",
+    "lifecycle_counters": "test(qa): publish lifecycle counters atomically",
+    "docs": "docs: report internal4 completion gates and physical procedure"
+  },
+  "native_executions": {
+    "arch_chroot_integration": "2 passed (rootless docker, existing image, --pull=never, network none, read-only root)",
+    "wallpaper_lifecycle_first_run": "6 failures + 1 error under loaded TCG desktop; retained as TCG-load observation, no assertion weakened",
+    "wallpaper_lifecycle_unloaded": "7/7 OK unchanged suite",
+    "wallpaper_lifecycle_atomic": "7/7 OK after harness counter fix",
+    "root_cause_counter_race": "in-place write_text exposes empty file to count(); fixed via sibling rename in generated fixtures",
+    "repro": "ValueError invalid literal captured in native run output"
+  },
+  "qemu": {
+    "guests": "2 sequential lifetimes on ONE disposable child COW overlay of preserved source-qa.qcow2",
+    "logins": 3,
+    "cold_boots": 2,
+    "password_prompt_visually_verified_before_secret": true,
+    "start_hyprland_watchdog_observed": 3,
+    "dms_n_restarts": 0,
+    "persistence_hash_preserved_across_reboot": "3189b425efd8097539b9b541b195940a9097df94bbb28517c6979a0f58053e85",
+    "qemu_exits": [0, 0],
+    "offline_qcow2_checks_exit": [0, 0],
+    "original_disk_firmware_unmodified": true
+  },
+  "r2": {
+    "reproduced": 2,
+    "binary": "hyprland-dialog 0.2.2-4",
+    "library": "libhyprtoolkit.so.0.6.0",
+    "frames": ["CWaylandBuffer", "IWaylandWindow::resizeSwapchain", "IWaylandWindow::configure"],
+    "upstream_issue": "hyprwm/hyprtoolkit#144 open",
+    "upstream_fix_pr": "hyprwm/hyprtoolkit#130 closed unmerged (unvouched contributor policy)",
+    "vendor_patch_applied": false
+  },
+  "r1": {
+    "reproduced": 0,
+    "cold_starts_observed": 3,
+    "n_restarts": 0,
+    "oom_or_sigkill_in_journals": false,
+    "root_cause": "unknown; not reclassified as fixed"
+  },
+  "hardware": {
+    "bluez_package_added": "bluez 5.87-2 (official Arch extra, GPL-2.0-only)",
+    "bluez_verified_in_guest": {"installed": true, "files_altered": 0, "alias_created": true, "unit_inactive_without_adapter": true, "radio_power_on": false},
+    "sof_firmware_manifest": "sof-firmware 2026.09.2-1 (BSD-3-Clause AND ISC) retained in shared desktop manifest",
+    "linux_firmware": "20260916-1 present both live and installed",
+    "physical_wi_fi_audio_bluetooth": "PENDING",
+    "diagnostic_script_sha256": "b8f9148b968ee091b3ae371817888f8910fa7ee005617e279b12f16ad45a54ec"
+  },
+  "gates": {
+    "A_code_correctness": "PASS",
+    "B_session_stability": "PASS with R1/R2 documented open",
+    "C_hardware_readiness": "PENDING",
+    "D_installer_provisioning": "PENDING (independent review absent, disclosed; new install not rerun this session)",
+    "E_artifact_authorization": "BLOCKED"
+  },
+  "release_recommendation": "NOT READY — BLOCKERS REMAIN",
+  "iso_builds_this_session": 0,
+  "preservation": {
+    "protected_files_hashed_before": 44,
+    "isos": 6,
+    "remote_refs_before": 16,
+    "scheduleder_worker_state": "enabled=false/paused; worker paused=true/stop_requested=false (hash-verified unchanged)",
+    "lock_owner": {"pid": 703852, "held_through_qemu": true, "released_after_publication": "see closeout"}
+  },
+  "independent_review": "NOT PERFORMED — no paid/delegated reviewer within session bounds; self-review explicitly not counted as independent",
+  "model_route": "gpt-6.1-sol/openai-codex subscription_included; no OpenRouter use, no paid review, config.yaml hash unchanged",
+  "next_manual_action": "Owner runs read-only physical internal3 diagnostics per docs/qa/2026-10-31-internal4-completion-physical.md (one command per step, SHA256-gated), reviews JSON locally before sharing"
+}

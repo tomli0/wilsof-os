@@ -1,4 +1,6 @@
 base
+# Explicit installer API-mount/resolver boundary; build customization gates >= 31 and -r.
+arch-install-scripts
 linux
 linux-firmware
 systemd
@@ -7,7 +9,7 @@ networkmanager
 hyprland
 hypridle
 hyprlock
-dms-shell
+dux-shell
 xdg-desktop-portal
 xdg-desktop-portal-hyprland
 ghostty
@@ -15,3 +17,6 @@ firefox
 nautilus
 gnome-text-editor
 polkit-gnome
+power-profiles-daemon
+plymouth
+pv

@@ -6,6 +6,9 @@ local wilsof_bin = wilsof_home .. "/.local/bin/"
 local vm_test_enabled = wilsof_home .. "/.config/hypr/wilsof-vm-test-enabled.lua"
 
 hl.config({
+    -- Wilsof owns onboarding/help; the optional upstream news window is not
+    -- part of this desktop and crashes on the tested software-buffer path.
+    ecosystem = { no_update_news = true },
     input = {
         kb_layout = "no",
         follow_mouse = 1,
@@ -56,21 +59,36 @@ hl.bind("SUPER + left", hl.dsp.focus({ direction = "left" }))
 hl.bind("SUPER + right", hl.dsp.focus({ direction = "right" }))
 hl.bind("SUPER + up", hl.dsp.focus({ direction = "up" }))
 hl.bind("SUPER + down", hl.dsp.focus({ direction = "down" }))
-hl.bind("SUPER + SHIFT + left", hl.dsp.exec_cmd("hyprctl dispatch movewindow l"))
-hl.bind("SUPER + SHIFT + right", hl.dsp.exec_cmd("hyprctl dispatch movewindow r"))
-hl.bind("SUPER + SHIFT + up", hl.dsp.exec_cmd("hyprctl dispatch movewindow u"))
-hl.bind("SUPER + SHIFT + down", hl.dsp.exec_cmd("hyprctl dispatch movewindow d"))
-hl.bind("SUPER + CTRL + left", hl.dsp.exec_cmd("hyprctl dispatch resizeactive -40 0"))
-hl.bind("SUPER + CTRL + right", hl.dsp.exec_cmd("hyprctl dispatch resizeactive 40 0"))
-hl.bind("SUPER + CTRL + up", hl.dsp.exec_cmd("hyprctl dispatch resizeactive 0 -40"))
-hl.bind("SUPER + CTRL + down", hl.dsp.exec_cmd("hyprctl dispatch resizeactive 0 40"))
+hl.bind("SUPER + SHIFT + left", hl.dsp.window.move({ direction = "left" }))
+hl.bind("SUPER + SHIFT + right", hl.dsp.window.move({ direction = "right" }))
+hl.bind("SUPER + SHIFT + up", hl.dsp.window.move({ direction = "up" }))
+hl.bind("SUPER + SHIFT + down", hl.dsp.window.move({ direction = "down" }))
+hl.bind("SUPER + CTRL + left", hl.dsp.window.resize({ x = -40, y = 0, relative = true }))
+hl.bind("SUPER + CTRL + right", hl.dsp.window.resize({ x = 40, y = 0, relative = true }))
+hl.bind("SUPER + CTRL + up", hl.dsp.window.resize({ x = 0, y = -40, relative = true }))
+hl.bind("SUPER + CTRL + down", hl.dsp.window.resize({ x = 0, y = 40, relative = true }))
 hl.bind("SUPER + Q", hl.dsp.window.close())
-hl.bind("SUPER + F", hl.dsp.exec_cmd("hyprctl dispatch fullscreen"))
+hl.bind("SUPER + F", hl.dsp.window.fullscreen())
 hl.bind("SUPER + SHIFT + space", hl.dsp.window.float({ action = "toggle" }))
 
 for workspace = 1, 9 do
     hl.bind("SUPER + " .. workspace, hl.dsp.focus({ workspace = workspace }))
     hl.bind("SUPER + SHIFT + " .. workspace, hl.dsp.window.move({ workspace = workspace }))
+end
+
+-- Optional, seed-once app bindings; keep user edits and DMS-generated files.
+local app_shortcuts = io.open(wilsof_home .. "/.config/hypr/wilsof-app-shortcuts.lua", "r")
+if app_shortcuts then
+    app_shortcuts:close()
+    require("wilsof-app-shortcuts")
+end
+
+-- Wilsof user shortcut overrides from wilsof-shortcuts; personal and never seeded.
+local user_overrides = wilsof_home .. "/.config/hypr/wilsof-user-shortcuts.lua"
+local override_file = io.open(user_overrides, "r")
+if override_file then
+    override_file:close()
+    require("wilsof-user-shortcuts")
 end
 
 -- Deliberately opt-in: useful only when a VM client intercepts Super.

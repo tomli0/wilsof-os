@@ -25,6 +25,16 @@ This runbook applies only to authorized, disposable Wilsof infrastructure. Do no
 6. It installs the Wilsof Hyprlock presentation file but does not change PAM configuration or account authentication.
 7. Reload only bounded user components while working: `hyprctl reload`, `systemctl --user restart dms.service`, `systemctl --user restart hypridle.service`, and start `wilsof-session.target`. Do not log out or reboot mid-work.
 
+## Power-profile backend
+
+New images install `power-profiles-daemon`, the supported DMS backend. Before changing a profile, check that no competing manager is installed or active (`tlp`, `tuned`, or `auto-cpufreq`); do not enable competing managers together. Verify the system D-Bus name and service with:
+
+    busctl --system status net.hadess.PowerProfiles
+    busctl --system get-property net.hadess.PowerProfiles /net/hadess/PowerProfiles net.hadess.PowerProfiles Profiles
+    systemctl status power-profiles-daemon.service
+
+For a reversible selection test on supported hardware, record the `ActiveProfile` D-Bus property, select only an advertised profile, then restore the recorded profile. Do not test suspend, shutdown, reboot, firmware, or thermal-protection changes. A KVM VM without battery or platform-profile interfaces may only demonstrate backend availability or the clear unavailable state; it cannot validate power savings.
+
 ## VM fallback bindings
 
 If the client intercepts Super before the guest, enable fallback bindings from a graphical Wilsof terminal:

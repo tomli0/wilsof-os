@@ -1,0 +1,22 @@
+{
+  "session_date": "2026-10-26",
+  "branch": "integration/internal-iso-20261026",
+  "base": {"branch": "main", "commit": "d4cb093ec2e6040a5d548c24c62a5ba26fb72a94"},
+  "included_prs": [
+    {"number": 19, "head": "9168ce5c6a86ac1e585da98796199e7ca1b2c2d1", "source_commits": ["8806401b6f95b101a8b0aa42679d05d99cd56b29", "9168ce5c6a86ac1e585da98796199e7ca1b2c2d1"], "notes": "Build documentation and both review fixes; excludes queue-supervisor ancestry and empty CI retrigger commit."},
+    {"number": 21, "head": "e5d28043247f0296abf0a78442a8eef4ac810ef2", "source_commits": ["f89ce6a82a5ddb5ccc4abf4f1e9c703f2e4ec0e9", "ee52e3174eda97ac38ebb757bb471416b7b173e3", "e5d28043247f0296abf0a78442a8eef4ac810ef2"], "notes": "Architecture, validated schema and checkpoint; schema fixes verified, not reimplemented."},
+    {"number": 22, "head": "d858600fd31ae90e61ffb554b04ea7c761c952ec", "notes": "CI/README conflicts retain both shared test requirements and engineering checks. ISO Bash ShellCheck finding corrected in integration."},
+    {"number": 23, "head": "54975844ba78764598b7c9910e73d7c5e5cafc16", "notes": "Security boundaries and removal of embedded SSH defaults; legacy VM installer is not in the image payload."},
+    {"number": 24, "head": "83c5fe8cdd44f8b604a36d71e1a93d26f069f6e7", "notes": "Power backend; test conflict preserves both SSH exclusion and backend coverage. Activatable D-Bus finding corrected in integration."},
+    {"number": 25, "head": "8c5053627d3aa904756cd59c7867477b0a5ba2a9", "notes": "Approved lock logo; scalar size and no-frame findings corrected in integration."}
+  ],
+  "excluded_prs": [
+    {"number": 20, "head": "c8e8e9ba9ca941a31b8696d637b79db9411167f5", "reason": "Standalone unlocked screensaver preview is not required for this ISO milestone."},
+    {"number": 26, "head": "0afa29e2cf8c19038f045ddd9dbb35b63894d7c9", "reason": "Worker/project synchronization and Terra QA changes are excluded and not deployed."}
+  ],
+  "installer_source_commit": "61ef9ff5ddc30e9a0be695a24eee800c37bd9690",
+  "authorization": "Manual internal ISO build and new disposable VM/disk testing authorized by current user request. No merge, public release, physical media write or changes to existing VM 113/Proxmox.",
+  "scheduler": "Existing job and worker control paused; budget gate, approval rules and retry limits preserved.",
+  "environment": "Local isolated Arch mount/PID namespace, Archiso 91, archinstall 4.5; QEMU 8.2.2 TCG with new 24 GiB qcow2 disk and UEFI variables. Proxmox SSH currently unreachable.",
+  "evidence_status": "Integration tests and real dependency imports passed. Build/boot/install/update evidence must be recorded separately; this manifest does not claim those milestones passed."
+}

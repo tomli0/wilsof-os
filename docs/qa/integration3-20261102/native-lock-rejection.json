@@ -1,0 +1,62 @@
+{
+  "date_utc": "2026-11-02",
+  "verdict": "REJECTED: post-acquisition ordinary modal activation received keyboard input",
+  "candidate_source_commit": "6740e3bec97df5b1e9b7d818dae7705ab01b409a",
+  "candidate_payload_sha256": "5442f8476d548bb84905cbc3c2c9c162b27c9c1e5e66532e591e0e56165b2452",
+  "environment": {
+    "qemu": "8.2.2 TCG q35 Nehalem 2vCPU 6144MiB",
+    "hyprland": "0.57.0-1",
+    "hyprland_commit": "0aa6745f705f2c4b0a5004eb019ef76e5bbdb426",
+    "hyprlock": "0.9.6-3",
+    "quickshell": "0.3.2-1",
+    "dux-shell": "2.0.0-1",
+    "hypridle": "0.1.8-2.1",
+    "session_lock_xray": false,
+    "allow_session_lock_restore": false
+  },
+  "sequence": [
+    {
+      "time_utc": "19:31:07",
+      "evidence": "Hypridle: Wayland session got locked"
+    },
+    {
+      "time_utc": "19:31:14",
+      "evidence": "Hyprlock: onLockLocked called"
+    },
+    {
+      "time_utc": "19:31:40\u201319:31:51",
+      "evidence": "DMS IPC close then search lockedactivation; visible=true",
+      "query": "lockedactivation"
+    },
+    {
+      "time_utc": "after 19:31:51, before 19:32:01",
+      "evidence": "QMP send-key: notauthorizedinput and Return; no real password"
+    },
+    {
+      "time_utc": "19:32:01\u201319:32:06",
+      "evidence": "CC query changed; original locker live; no authenticated release journal",
+      "query": "lockedactivationnotauthorizedinput"
+    }
+  ],
+  "observed": {
+    "lock_visual_remained": true,
+    "cc_received_keyboard_sentinel": true,
+    "first_unlock_pam_authenticated": true,
+    "wrong_password_rejected": true,
+    "cooperative_duplicate_reported_busy": true,
+    "guest_wrapper_qml_config_hashes_match_candidate": true
+  },
+  "limits": [
+    "Native root cause not fixed or independently established",
+    "No password entered after forced-activation failure",
+    "Not a claim about every surface or compositor version",
+    "Pointer/touch, DMS restart/disconnect, locker crash, immediate relock, external lock and suspend acceptance not completed",
+    "Final Integration3 restores pre-experiment UI guards; native results do not transfer"
+  ],
+  "lifecycle": {
+    "guest_shutdown": "QGA guest-shutdown",
+    "qemu_exit_code": 0,
+    "owned_qemu_absent": true,
+    "cow_offline_check_rc": 0
+  }
+}

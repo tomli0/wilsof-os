@@ -2,7 +2,6 @@
 
 > Bevart planleggingsgrunnlag fra 29. oktober 2026 (PR #36), ikke en påstand om dagens implementasjon eller godkjent produktdesign. Gjeldende engineering-/sikkerhetsporter og eksakte nyere PR-er gjelder; milepæl-ID-ene her er dokumentlokale og skal ikke likestilles med senere PR-titler. Ingen utvikling eller test starter fra dette dokumentet.
 
-
 Status: planleggingsdokument (ingen implementering). Dato: 2026-10-29 UTC.
 Rekkefølgen er satt etter fullført teknisk kartlegging (se WILSOF_TECHNICAL_ARCHITECTURE.md). Ingen milepæl starter automatisk.
 
@@ -25,7 +24,8 @@ Holdes fullstendig utenfor produktroadmapen; dagens status er internal2 virtuell
 - Leveranser: binær/skript, testfiler, docs-oppdatering.
 - Risiko: lav (ren lokal tilstand, ingen UI).
 - Tester: parser-enheter (gyldig/ugyldig/tom/korrupt), CLI-argumentvalidering, CI-grønn.
-- **Definition of Done:** CLI-grensesnittet testet og grønt i CI; CLEAN-fallback verifisert i VM-enhet; ingen eksisterende atferd endret; diffkontroll og kontrollpunkt etter fast rapporteringsstandard.[51]
+- **Definition of Done (presisert M1):** CLI-grensesnitt, alle fire profiler, korrupsjon/ukjent versjon, rettigheter, atomisk skriving, avbrudd, konkurranse og confinement verifiseres headless i eksisterende pytest/CI. Ingen VM er nødvendig for en ren fil-/CLI-kontrakt. GUI-synlighet er kun kontrakt nå, med aksept i M2/M4. Ingen eksisterende desktopatferd endres; faktisk eksakt-head CI, diffkontroll og kontrollpunkt rapporteres.[51]
+- Detaljer: [tilstandsformat og gjenoppretting](WILSOF_PROFILE_STATE.md), UX §2.2/§2.6 (CLEAN og opptatt arbeidsområde 1). M1 installerer ikke CLI automatisk i eksisterende skrivebord.
 
 ## M2 — Wilsof Launcher-plugin og profil i topbar
 
@@ -59,7 +59,7 @@ Holdes fullstendig utenfor produktroadmapen; dagens status er internal2 virtuell
 ## M5 — Wallpaper-utholdenhet og Restore
 
 - Prioritet: **SHOULD HAVE** (R5-utbedring haster visuelt; Restore er dokumentert audit-funn).
-- Omfang: `wilsof-wallpaper.service` eksplisitt reaktivering/tilkoblingsretry etter dependency-feil; Restart=on-failure alene skal ikke antas å starte en jobb som aldri kjørte; `wilsof-restore --list/--preview/--apply` for Wilsof-eide filer med backupmanifest; negative tester for stier utenfor manifest.
+- Omfang: wallpaper-reaktivering ved DMS-start/restart etter [R5-oppfølgingen](../qa/2026-10-29-wallpaper-follow-up.md); ikke `Restart=on-failure` alene ved avhengighetsfeil. Separat `wilsof-restore --list/--preview/--apply` for Wilsof-eide filer med backupmanifest; negative tester for stier utenfor manifest.
 - Forutsetninger: M1 (distribusjonsutvidelser på plass).
 - Risiko: lav-middels (systemd-unit-endring; ingen ny tjeneste).
 - Tester: enhet på restore-valg/diff; VM-port: DMS-restart → bakgrunn korrekt; restore avWilsof-fil med forhåndsvisning.

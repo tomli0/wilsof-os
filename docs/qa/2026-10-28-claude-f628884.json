@@ -1,0 +1,220 @@
+{
+  "target_commit": "f628884b314dd13c3bf9d7059eee2fefec1b3400",
+  "review_mode": "One independent static Claude review; zero tools; no fallback; no new execution tests",
+  "provenance": {
+    "configured_route": "auxiliary.review",
+    "model": "anthropic/claude-sonnet-4.6",
+    "provider": "openrouter",
+    "model_api_calls": 1,
+    "duration_seconds": 114.75,
+    "tool_calls": 0,
+    "fallback_enabled": false,
+    "input_packet_sha256": "822959900059e41d9f59434fc8c259a9c9d1e282f5105f4bf669541d12319bd1",
+    "source_files_sha256": {
+      "docs/native-chroot-contract-test.md": "cd9e993fde866df174c9c11fccf7a9992eafac46a0338647ffaa07774b64fbb9",
+      "iso/packages.x86_64": "2b42fab630c0340537550fd8e9a31bab88663a8d1b9d4e6108eacab07750a9eb",
+      "runtime/pinned-package.py": "be477208836e31af1bdf6e7655d463d9710488ab419939fadff4c2d25574ce1b",
+      "runtime/provision-target": "408546b35d99b8e1b9793477169b9edb49cd0a4d55f832977629d0c0b3a8f73b",
+      "scripts/prepare-iso.py": "028336585be50838e27930dad56002bde043e4cecb14e993fb3119d0a37483c4",
+      "tests/integration/arch_chroot_lab.py": "10f6a2cd8785caec2049a58aa179a8d5859eb07511355c14a424a123b5a3317f",
+      "tests/integration/prepare_arch_fixture.py": "659e609303200ebfe341c235210863c5fac2f3c300e9d56a191351b08a283fd3",
+      "tests/test_arch_chroot_integration.py": "24613dbea5799dd0f8a30352246fc735e9b237ed6ef13e296e07d2f95bada2ee",
+      "tests/test_chroot_contract.py": "c4fa75090981dcc4a5c6c4a1e4250f04702bbb449fcff7e091db7a1fc1dbc6a2",
+      "tests/test_pinned_package.py": "f284ee2812e68b935d77e238bb4d9cedf06c5873097a421613db831751c93db4",
+      "installer/wilsof_installer.py": "7e6eb3f9e066e5e279a4b274c2500dc9d2fc5f75a42609b2c86560a103452e59",
+      "runtime/image-files.txt": "d6cc66a5245382759b29e9a3f117ea587419d7aba3b4344384aba691a52d0943",
+      "iso/profiledef.sh": "9442f421582fca83a385257a043fa6c2a7cca0349805148f6be4601ecd37a241",
+      ".github/workflows/validate.yml": "3b5a198a71a358b8459c396a5c21bd7f0ba5d9e9a483783640d24856aab146e8"
+    }
+  },
+  "cost": {
+    "estimated_usd": 0.303399,
+    "cost_status": "estimated",
+    "actual_invoice_usd": null,
+    "observed_key_usage_delta_usd": 0.303399,
+    "input_total": 60895,
+    "input_noncache": 3,
+    "cache_write": 60892,
+    "cache_read": 0,
+    "output": 5003
+  },
+  "claude_review": {
+    "commit": "f628884b314dd13c3bf9d7059eee2fefec1b3400",
+    "reviewer_model": "anthropic/claude-sonnet-4.6",
+    "scope": [
+      "A: verify_arch_chroot_support() gate i runtime/pinned-package.py",
+      "B: verify_resolver() postbetingelse i runtime/provision-target",
+      "C: install_package(Path('/')) regresjon og full flyt",
+      "D: native integrasjonstest i tests/integration/arch_chroot_lab.py og tests/test_arch_chroot_integration.py",
+      "Relatert: scripts/prepare-iso.py customization-generering",
+      "Relatert: iso/packages.x86_64 pakkeerklæring",
+      "Relatert: tests/test_chroot_contract.py og tests/test_pinned_package.py"
+    ],
+    "assessment": {
+      "A": "Korrekt og trygg implementasjon. verify_arch_chroot_support() (pinned-package.py:12-23) utfører tre adskilte, nødvendige sjekker: (1) pacman -Q for installert versjon med eksakt parsing av to felt, (2) vercmp for sammenligning mot 31 med validert utfall i {-1,0,1} og avvisning av -1, (3) faktisk arch-chroot -r -h som bekrefter at -h parseres uten segfault. Rekkefølgen er korrekt – vercmp etter pakkeidentifikasjon, opsjonsparsing sist. check=True på alle tre kall betyr at fravær av pakken eller binæren eksploderer med CalledProcessError, uten stilltiende fallback. Customization-generering i prepare-iso.py:67 injecter kallet ubetinget, og testen test_materialized_build_runs_gate_before_optional_install verifiserer faktisk shell-/Python-kontrollflyt med log-opptak – ingen ren strenginspeksjon. Upstream arch-chroot (linje 247) bekrefter at -r finnes i getopts ':hSNu:r' og setter keepresolvconf=1. Historisk påstand om v28 er korrekt avvist i dokumentasjonen; baseline >=31 er konservativ og begrunnet. arch-chroot -r -h tester faktisk opsjonsparsing, men ikke monteringsatferd – dette er dokumentert og tilstrekkelig som gate. Ingen blokkerende funn.",
+      "B": "Korrekt implementasjon med ett observerbart forbehold. verify_resolver() (provision-target:41-45) bruker os.readlink() direkte, noe som er riktig fordi den også skal akseptere dangling symlinks (der Path.resolve() ville feile). Postbetingelsen kjøres etter vellykket kommando (linje 101-102) og ved kommandofeil for installert modus (linje 93-99). Feilpropageringen er korrekt: CalledProcessError beholdes som primær, resolver-skade legges til som __note__ via add_note(). OSError ved inspeksjonsfeil fanges og legges til som merknad uten å erstatte originalfeilen (linje 97-98). Live-modus hopper korrekt over postbetingelsen (linjer 94, 101). Testdekning i test_chroot_contract.py:152-193 dekker intact/wrong/regular/missing/directory-tilfeller med faktiske midlertidige filer og ekte os.readlink-oppslag. Ett forbehold: resolver.mkdir()-tilfellet (effect=='directory') setter en katalog i stedet for en lenke – dette er et uvanlig OS-tilstand, men testen dekker det (test_successful_transaction_rejects_resolver_postcondition_failure parametrisert over 'directory'). Ingen blokkerende funn.",
+      "C": "Korrekt og fullstendig regresjon. target_command(Path('/')) returnerer list(command) uten arch-chroot-wrapper (linje 31-33), og install_package (linje 45-59) bruker Path(target) konsistent. Symlink-sjekken på destination og dens foreldre (linje 49-50) er korrekt og nødvendig. Betingelsen package != destination (linje 52) forhindrer selvkopiering når kilden allerede er innebygd i target-roten. test_root_install_package_complete_flow_without_chroot dekker 9 tilfeller inkludert same-source, symlink i kilde og mål, tampert pakke, manglende pakke, pacman-feil og feil binær. Monkeypatch av Path('/') til build-rot er korrekt avgrenset – kun install_package.__globals__['Path'] patces, og target_command-testen bruker ekte Path-semantikk separat. BINARY_SHA256-kontrollen etter pacman (linje 58-59) er nødvendig og korrekt. Pacman-argv for '/' er ['pacman', '-U', '--noconfirm', '--needed', inside] uten arch-chroot-prefiks, noe testlinjen 263-264 bekrefter. Ingen blokkerende funn.",
+      "D": "Solid isolasjondesign med eksplisitt dokumenterte grenser. CAPABILITIES-konstanten (linje 17: (1<<21)|(1<<18)|(1<<7)|(1<<6)|(1<<0) = SYS_ADMIN|SYS_CHROOT|SETUID|SETGID|CHOWN = 0x2400C1) samsvarer med verify_isolation-sjekken og native-rapport (cap_eff: 2359489 = 0x2400C1). uid_map-sjekken avviser mapping[0][1]==0 (host root), krever minst én bruker i non-root-range, og network_interfaces == ['lo'] håndheves. lab_mount-adapteren erstatter kun devtmpfs og sysfs-bind med allerede isolert /dev og /sys – upstream-script er uendret, dette er eksplisitt dokumentert. inside() verifiserer isolasjon FØR enhver privilegert operasjon. Fixture-manifest-verifisering (sha256 for filer, os.readlink for lenker) forhindrer tampered-fixture-angrep. WILSOF_LAB_FAIL_SYSFS=1-testen verifiserer at injisert API-oppsettfeil propageres og at teardown skjer. clean()-funksjonen verifiserer mount-topologi, resolver og fravær av blokknoder etter hver operasjon. Containerkonfigurasjon kontrolleres etter create men før start. Container fjernes i finally-blokk og fravær re-verifiseres. Begrensning: dev/sys-bind er ikke produksjons-devtmpfs; dette er åpent dokumentert og ikke en skjult omgåelse."
+    },
+    "findings": [
+      {
+        "id": "QA01",
+        "severity": "low",
+        "file": "runtime/pinned-package.py",
+        "line_start": 19,
+        "line_end": 19,
+        "title": "vercmp-utfallsvalidering er unødvendig kompleks men korrekt",
+        "evidence": "Linje 19: `if comparison not in ('-1', '0', '1') or comparison == '-1':` – den doble sjekken er ekvivalent med `if comparison != '0' and comparison != '1':` men mer forvirrende å lese. Funksjonelt er den korrekt: bare '0' eller '1' passerer. vercmp returnerer eksakt en av disse tre verdiene ved suksess.",
+        "impact": "Ingen funksjonell feil. Vedlikeholdsrisiko ved fremtidig refaktorering dersom logikken misforstås.",
+        "confidence": "confirmed_from_source",
+        "blocking": false,
+        "recommended_action": "Forenkle til `if comparison not in ('0', '1'):` for klarhet.",
+        "existing_coverage": "test_dependency_gate_checks_version_and_actual_r_option verifiserer at '1' passerer; test_dependency_gate_fails_closed_without_fallback verifiserer at '-1' (failure='old') feiler etter 2 kall."
+      },
+      {
+        "id": "QA02",
+        "severity": "low",
+        "file": "runtime/provision-target",
+        "line_start": 32,
+        "line_end": 32,
+        "title": "os-release ID-sjekk bruker in-operator mot splitlines(), aksepterer 'ID=arch' som delstreng i lengre linjer",
+        "evidence": "Linje 32: `'ID=arch' not in release.read_text().splitlines()` – sjekken er True dersom INGEN linje i filen er eksakt strengen 'ID=arch'. En linje som 'ID=arch-linux' ville passere fordi 'ID=arch' er en delstreng av den, men 'ID=arch' in ['ID=arch-linux'] er False (in-operator sjekker listemedlemskap, ikke substringmatch). Faktisk er sjekken for streng i liste, ikke substring i tekst – dette betyr at kun eksakt 'ID=arch' som hel linje passerer. Logikken er altså korrekt for Arch Linux, men uventet lesbar: man kan tro den gjør substring-sjekk mot hele filen.",
+        "impact": "Ingen funksjonell sikkerhetssvakhet. En distribusjon med 'ID=arch-linux' ville korrekt bli avvist. Koden er forsvarlig men krever dobbeltlesing.",
+        "confidence": "confirmed_from_source",
+        "blocking": false,
+        "recommended_action": "Legg til kommentar eller bruk eksplisitt `any(line == 'ID=arch' for line in ...)` for klarhet.",
+        "existing_coverage": "provision-target-testene bruker 'ID=arch\\n' og ville avvise annen ID, men tester ikke eksplisitt grensetilfelle med 'ID=arch-linux'."
+      },
+      {
+        "id": "QA03",
+        "severity": "low",
+        "file": "tests/integration/arch_chroot_lab.py",
+        "line_start": 146,
+        "line_end": 147,
+        "title": "SHA-pin-overstyring via __globals__ er knyttet til eksakt referanseidentitet i native-kontekst",
+        "evidence": "Linje 146-147: `pin['verified_package'].__globals__['PACKAGE_SHA256'] = ...` og `pin['install_package'].__globals__['BINARY_SHA256'] = ...`. Siden verified_package og install_package begge er definert i pinned-package.py og deler samme globals-dict (ett module-namespace fra runpy.run_path), er dette korrekt. Dokumentasjonen bekrefter eksplisitt at dette kun gjelder testens isolerte Python-namespace og ikke endrer produksjonspinnene.",
+        "impact": "Ingen produksjonspåvirkning. I et hypotetisk scenario der runpy.run_path returnerte separate namespaces per funksjon, ville overtyringen feile stille. Dette er ikke tilfellet for Python-moduler.",
+        "confidence": "confirmed_from_source",
+        "blocking": false,
+        "recommended_action": "Legg til assert at `pin['verified_package'].__globals__ is pin['install_package'].__globals__` for eksplisitt namespace-garanti, eller dokumenter antagelsen.",
+        "existing_coverage": "native-rapport viser pacman_install_exit: 0, som bekrefter at overstyringen fungerte korrekt ved faktisk kjøring."
+      },
+      {
+        "id": "QA04",
+        "severity": "info",
+        "file": "scripts/prepare-iso.py",
+        "line_start": 67,
+        "line_end": 78,
+        "title": "customize_airootfs.sh genereres alltid, også uten Hypridle-pakke",
+        "evidence": "Linje 67-78: `customization` er alltid satt og `write('root/customize_airootfs.sh', ...)` kalles ubetinget. Tidligere var skriptet kun generert dersom hypridle_package var satt (gammel kode i diff). Nå kjøres gaten alltid. Dette er et tilsiktet og ønskelig design (gate uavhengig av lokal pakke), men diff-revieweren bør merke seg at customization-skriptet alltid vil eksistere i output-profilen.",
+        "impact": "Ingen sikkerhetsimplikasjon. Ønskelig atferdsendring – gaten kjøres alltid. Eksisterende test dekker både with_package=False og with_package=True.",
+        "confidence": "confirmed_from_source",
+        "blocking": false,
+        "recommended_action": "Ingen handling nødvendig. Atferden er korrekt og dokumentert.",
+        "existing_coverage": "test_materialized_build_runs_gate_before_optional_install(with_package=[False,True], gate_fails=[False,True]) dekker alle fire kombinasjoner eksplisitt."
+      },
+      {
+        "id": "QA05",
+        "severity": "info",
+        "file": "tests/integration/arch_chroot_lab.py",
+        "line_start": 52,
+        "line_end": 55,
+        "title": "lab_mount path-validation bruker is_relative_to('/work/target') som krever Python 3.9+",
+        "evidence": "Linje 55: `if not target.is_relative_to('/work/target') or '..' in target.parts:` – Path.is_relative_to() ble introdusert i Python 3.9. CI-workflowen (validate.yml:19) bruker python-version: '3.12', og lab kjøres i et Docker-image med Python 3.11+. Dette er ikke et problem i praksis, men er en implisitt minimumskrav.",
+        "impact": "Ingen funksjonell risiko gitt dokumentert Python 3.11+-krav for lab-imaget.",
+        "confidence": "confirmed_from_source",
+        "blocking": false,
+        "recommended_action": "Ingen nødvendig handling gitt eksisterende versjonskrav. Eventuelt dokumenter Python-minimumskrav i lab-kommentaren.",
+        "existing_coverage": "Dokumentasjonen (native-chroot-contract-test.md:36) angir eksplisitt Python 3.11+ som forutsetning for lab-imaget."
+      }
+    ],
+    "verified_vs_unverified": {
+      "read": [
+        "runtime/pinned-package.py (komplett)",
+        "runtime/provision-target (komplett)",
+        "scripts/prepare-iso.py (komplett)",
+        "tests/test_chroot_contract.py (komplett)",
+        "tests/test_pinned_package.py (komplett)",
+        "tests/test_arch_chroot_integration.py (komplett)",
+        "tests/integration/arch_chroot_lab.py (komplett)",
+        "tests/integration/prepare_arch_fixture.py (komplett)",
+        "iso/packages.x86_64 (komplett)",
+        "runtime/image-files.txt (komplett)",
+        "iso/profiledef.sh (komplett)",
+        ".github/workflows/validate.yml (komplett)",
+        "installer/wilsof_installer.py (komplett)",
+        "docs/native-chroot-contract-test.md (komplett)",
+        "Upstream arch-chroot-script (komplett, linje 1-290)",
+        "Produksjonsdiff (komplett)",
+        "native-report.json (lest som påstand fra primæragent)",
+        "fixture-complete-final-manifest.json (lest som påstand fra primæragent)",
+        "ci-code-verified.json (lest som påstand fra primæragent)",
+        "full-suite-review-snapshot.txt (lest som påstand fra primæragent)",
+        "D-native-review-snapshot.txt (lest som påstand fra primæragent)",
+        "static-checks.json (lest som påstand fra primæragent)",
+        "Engineering Standards PR35 (komplett)"
+      ],
+      "executed": [],
+      "limits": [
+        "Ingen tester kjørt – all vurdering er statisk kildekodeanalyse",
+        "native-report.json, CI-resultater og snapshot-filer er primæragentpåstander, ikke uavhengig bevis; konsistens mot kilden er kontrollert men ikke uavhengig verifisert ved kjøring",
+        "arch-chroot upstream SHA256 (56c50ac2...) er oppgitt i native-rapporten og matches mot fixture-manifestet – men uavhengig binary-verifisering er ikke utført",
+        "Fixture-manifestets 62 filer og 52 lenker er lest men ikke krysskontrollert mot ISO-bytes",
+        "Produksjonsdiff er lest mot full kildetekst; ingen git-operasjoner utført",
+        "CAPABILITIES-konstant (0x2400C1) er manuelt verifisert mot Linux capability-bitverdier: CAP_CHOWN=0, CAP_SETGID=6, CAP_SETUID=7, CAP_SYS_CHROOT=18, CAP_SYS_ADMIN=21 – (1<<0)|(1<<6)|(1<<7)|(1<<18)|(1<<21) = 1+64+128+262144+2097152 = 2359489 = 0x2400C1 – stemmer med rapporten",
+        "Reviewer har ikke tilgang til privat QA-kontrollpunktsgruppe eller RED/GREEN-logger"
+      ]
+    },
+    "verdict": "no_blocking_findings",
+    "summary": "Alle fire tiltak (A–D) er korrekt implementert og tilstrekkelig testet for en intern, ikke-offentlig distribusjon. Fem ikke-blokkerende funn er identifisert: én logisk forenkling (QA01), én lesbarhetsforbedring (QA02), én namespace-garanti (QA03), og to informasjonspunkter (QA04, QA05). Ingen kritiske, høye eller medium funn. Sikkerhetsgrenseraten er respektert: symlink-avvisning i pakke- og målsti, vercmp-versjonsgating, eksplisitt capabilities-grense uten CAP_MKNOD/CAP_SYS_RAWIO, uid_map-avvisning av host-root-mapping, faktisk opsjonsparsing fremfor historisk versjonspåstand, og korrekt feilpropagering uten stilltiende fallback. Lab-isolasjonens dev/sys-substitusjon er en kjent og eksplisitt dokumentert begrensning, ikke en skjult omgåelse av produksjonsatferd. Resolver-postbetingelsen dekker alle relevante tilstandsoverganger inkludert dangling symlink. Koden er klar for review-godkjenning av de fire avgrensede tiltakene; det gjenstår separate porter (ny ISO, installasjon, disk-only boot, vanlig autentisering) som ikke er del av denne reviewens omfang."
+  },
+  "primary_assessment": [
+    {
+      "id": "QA01",
+      "disposition": "accepted_nonblocking_style",
+      "severity_after_assessment": "low",
+      "reason": "Both forms accept exactly 0 or 1. Existing tests cover accepted 1 and rejected old-version comparison; no functional failure. Optional readability change not applied under no-code scope.",
+      "file": "runtime/pinned-package.py",
+      "line": 19
+    },
+    {
+      "id": "QA02",
+      "disposition": "substring_defect_refuted_readability_optional",
+      "severity_after_assessment": "info",
+      "reason": "The title contradicts the reviewer own evidence. List membership is exact, not substring matching: ID=arch passes; ID=arch-linux is rejected. Read-only semantic probe confirms both. This validation predates the reviewed commit. No security defect substantiated; optional readability suggestion retained.",
+      "file": "runtime/provision-target",
+      "line": 32
+    },
+    {
+      "id": "QA03",
+      "disposition": "optional_test_assertion_not_functional_defect",
+      "severity_after_assessment": "info",
+      "reason": "Both functions share the actual globals dictionary; read-only runpy inspection confirms identity. Native evidence shows this fixture pin override worked. Separate dictionaries under the same module execution are a hypothetical, not demonstrated failure. Production pins remain unchanged.",
+      "file": "tests/integration/arch_chroot_lab.py",
+      "line": 146
+    },
+    {
+      "id": "QA04",
+      "disposition": "confirmed_intended_behavior",
+      "severity_after_assessment": "info",
+      "reason": "Always generated customization is the requested A gate. Existing parametrized materialization tests cover package present/absent and gate success/failure. No fix needed.",
+      "file": "scripts/prepare-iso.py",
+      "line": 67
+    },
+    {
+      "id": "QA05",
+      "disposition": "confirmed_already_documented_requirement",
+      "severity_after_assessment": "info",
+      "reason": "Python >=3.11 is explicitly documented for the container image, and CI uses 3.12. is_relative_to is therefore within the supported runtime. No compatibility regression demonstrated.",
+      "file": "tests/integration/arch_chroot_lab.py",
+      "line": 55
+    }
+  ],
+  "interpretation_limits": [
+    "Original Claude statements are preserved as reviewer claims, not automatically established facts.",
+    "QA02 title alleges substring acceptance but its own evidence retracts the allegation; exact membership rejects ID=arch-linux.",
+    "Manifest hashes establish identity relative to the trusted manifest, not authenticity against a malicious fixture producer able to replace both.",
+    "No independent runtime/ISO/physical acceptance; previous native test evidence was supplied for static assessment.",
+    "No application-code changes or second QA round authorized/performed."
+  ]
+}

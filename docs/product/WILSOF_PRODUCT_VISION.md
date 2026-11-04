@@ -2,9 +2,7 @@
 
 > Kildeavvik: den opprinnelige tokenen `2198989f1d4fc365b5e6546c2af9a146141634a1c` nedenfor er ikke en gyldig 40-tegns commit-SHA og er ikke validert. Bevares ordrett som proveniens. Den separat verifiserte kildehenvisningen [52] er `219894f1d4fc365b5e6546c2af9a146141634a1c`.
 
-
 > Bevart planleggingsgrunnlag fra 29. oktober 2026 (PR #36), ikke en påstand om dagens implementasjon eller godkjent produktdesign. Gjeldende engineering-/sikkerhetsporter og eksakte nyere PR-er gjelder; milepæl-ID-ene her er dokumentlokale og skal ikke likestilles med senere PR-titler. Ingen utvikling eller test starter fra dette dokumentet.
-
 
 Status: planleggingsdokument (ingen implementering). Dato: 2026-10-29 UTC.
 Autorisert kildegrunnlag: `integration/internal-iso-20261026` @ `2198989f1d4fc365b5e6546c2af9a146141634a1c` (samme kode som internal2-ISO-bygget),[52] med Engineering Standards fra draft-PR #35 @ `a78d887`.[51]
@@ -42,7 +40,7 @@ Wilsofs identitet ligger i sjikt 4: kuraterte valg, norsk-first påstand, profil
 
 ## 4. De fire profilene (sammendrag; detaljer i UX-spesifikasjonen)
 
-- **CLEAN** — standard ved første oppstart. Tomme arbeidsområder, ingen dashboardprosess, minimal bakgrunnsaktivitet. Beviskrav: CLEAN må fungere identisk uten at noen Wilsof-profilkode kjører.
+- **CLEAN** — standard ved første oppstart: ingen synlige Wilsof-dashboardflater, ingen ny dashboardprosess. Brukerens eksisterende vinduer og arbeid beholdes. En tidligere dashboardinstans kan leve skjult; se UX §2.6. Første oppstart uten brukerprogrammer er tom, ikke en regel om å tømme arbeidsområder.
 - **STUDY** — arbeidsområde 1 med Study Dashboard (Kanban To Do/In Progress/Done knyttet til fag), arbeidsområder 2+ for skolearbeid.
 - **DEVELOPMENT** — arbeidsområde 1 med Development Dashboard (prosjekter/oppgaver/fremdrift), arbeidsområder 2+ for editor/terminal/dokumentasjon.
 - **EVERYDAY** — arbeidsområde 1 med enkel personlig oppgaveliste, arbeidsområder 2+ for vanlige apper.

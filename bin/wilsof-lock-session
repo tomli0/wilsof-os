@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""Session-local locker lifecycle. Only compositor events report unlock, never exit."""
+import hashlib
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import stat
+import subprocess
+import sys
+
+BUS = 'org.freedesktop.login1'
+MANAGER = '/org/freedesktop/login1'
+SESSION = BUS + '.Session'
+
+
+def command(argv):
+    return subprocess.run(argv, check=True, capture_output=True, text=True, timeout=8).stdout
+
+
+def context():
+    runtime = Path(os.environ['XDG_RUNTIME_DIR'])
+    info = runtime.lstat()
+    if (not runtime.is_absolute() or runtime.resolve() != runtime or
+            not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or
+            stat.S_IMODE(info.st_mode) != 0o700):
+        raise ValueError('private runtime directory required')
+    display = os.environ['WAYLAND_DISPLAY']
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+', display):
+        raise ValueError('invalid Wayland display')
+    sock = (runtime / display).lstat()
+    if not stat.S_ISSOCK(sock.st_mode) or sock.st_uid != os.getuid():
+        raise ValueError('owned Wayland socket required')
+    instances = json.loads(command(['hyprctl', '-j', 'instances']))
+    signature = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE')
+    candidates = [i for i in instances if i['wl_socket'] == display and
+                  (not signature or i['instance'] == signature)]
+    if len(candidates) != 1:
+        raise ValueError('ambiguous compositor identity')
+    instance = candidates[0]
+    pid = int(instance['pid'])
+    if pid <= 0 or Path(f'/proc/{pid}').stat().st_uid != os.getuid():
+        raise ValueError('compositor ownership mismatch')
+    reply = shlex.split(command(['busctl', '--system', 'call', BUS, MANAGER, BUS + '.Manager',
+                                 'GetSessionByPID', 'u', str(pid)]))
+    if len(reply) != 2 or reply[0] != 'o' or not re.fullmatch(r'/org/freedesktop/login1/session/[A-Za-z0-9_]+', reply[1]):
+        raise ValueError('invalid session path')
+    path = reply[1]
+    reply = shlex.split(command(['busctl', '--system', 'get-property', BUS, path, SESSION, 'Id']))
+    if len(reply) != 2 or reply[0] != 's' or not re.fullmatch(r'[A-Za-z0-9]+', reply[1]):
+        raise ValueError('invalid session identity')
+    session = reply[1]
+    supplied = os.environ.get('XDG_SESSION_ID')
+    if supplied and supplied != session:
+        raise ValueError('stale session environment')
+    properties = dict(line.split('=', 1) for line in command([
+        'loginctl', 'show-session', session, '-p', 'Id', '-p', 'User', '-p', 'Type', '-p', 'Class', '-p', 'State'
+    ]).splitlines())
+    if (properties.get('Id') != session or properties.get('User') != str(os.getuid()) or
+            properties.get('Type') != 'wayland' or properties.get('Class') != 'user' or
+            properties.get('State') not in ('active', 'online')):
+        raise ValueError('not an owned live Wayland session')
+    key = hashlib.sha256((session + ':' + instance['instance']).encode()).hexdigest()
+    return runtime, key, session, path
+
+
+def main(args):
+    if len(args) != 1 or args[0] not in ('lock', 'idle'):
+        return 64
+    action = args[0]
+    runtime, key, session, path = context()
+    # No asynchronous unlock bridge is enabled: without a generation-bound
+    # compositor observer, delayed notifications can clear a newer lifecycle.
+    # Keep shell lockdown fail-closed; normal unlock-state resynchronization
+    # remains explicitly pending. Process completion is not PAM proof.
+    # Request shell lockdown before starting the password surface. The request
+    # is not proof that the compositor is secured. Never undo it on process exit.
+    guard = runtime / ('wilsof-lock-' + key + '.lock')
+    fd = os.open(guard, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+    info = os.fstat(fd)
+    if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or
+            stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1):
+        os.close(fd)
+        raise ValueError('unsafe session guard')
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        print('wilsof-lock: lifecycle busy; secure lock not independently confirmed.', file=sys.stderr)
+        return 75
+    # Never unlink this inode: stale unlocked files are harmless; unlinking would
+    # allow a second guard while a surviving locker still holds the original.
+    command(['loginctl', 'lock-session', session])
+    argv = ['hyprlock']
+    if action == 'idle':
+        config = Path.home() / '.config/hypr/hyprlock-idle.conf'
+        if not config.is_file():
+            raise ValueError('idle lock configuration missing')
+        argv += ['-c', str(config)]
+    try:
+        result = subprocess.run(argv, check=False, pass_fds=(fd,))
+    finally:
+        os.close(fd)
+    return result.returncode if result.returncode >= 0 else 128 - result.returncode
+
+
+if __name__ == '__main__':
+    try:
+        raise SystemExit(main(sys.argv[1:]))
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        # Never print command output, environment, or arbitrary exceptions.
+        print('wilsof-lock: session/locker operation failed; lock is not confirmed. '
+              'No unlock notification was sent by the locker path.', file=sys.stderr)
+        raise SystemExit(1)

@@ -1,0 +1,301 @@
+{
+  "source_commit": "f7c39451e2ff00ae28b6eb2a1809b17ae29072fe",
+  "reviewed_production_commit": "f628884b314dd13c3bf9d7059eee2fefec1b3400",
+  "production_code_changed_since_review": false,
+  "prior_claude_verdict": "no_blocking_findings",
+  "new_claude_reviews": 0,
+  "source_ci": {
+    "run_id": 40777612201,
+    "head_sha": "f7c39451e2ff00ae28b6eb2a1809b17ae29072fe",
+    "conclusion": "success",
+    "pytest": "201 passed, 1 skipped"
+  },
+  "iso": {
+    "version": "2026.10.28-internal2",
+    "source_commit": "f7c39451e2ff00ae28b6eb2a1809b17ae29072fe",
+    "bytes": 2546053120,
+    "sha256": "dc4bfb3944767e743f858880d32b0d1179b5a6c629e5cfed68410e3a73a4f8d1",
+    "public_release": false,
+    "filename": "wilsof-internal-2026.10.28-internal2-x86_64.iso"
+  },
+  "artifact_group": "internal-test-20261028-internal2",
+  "private_evidence_group": "internal2-20261028",
+  "build": {
+    "exitcode": 0,
+    "full_builds": 1,
+    "rebuilds": 0,
+    "fresh_verified_bootstrap": true,
+    "archiso": "91-1",
+    "arch_install_scripts": "32-1",
+    "retired_roots_used": false,
+    "checks_weakened": false
+  },
+  "installer": {
+    "installer_pid": 1578,
+    "exitcode": 0,
+    "prompts_answered": 5,
+    "expected_prompts": 5,
+    "plaintext_password_seen_in_terminal_output": false,
+    "completion_message": true,
+    "timed_out": false,
+    "transcript_bytes": 1255696,
+    "started_unix": 1793226962.5374274,
+    "finished_unix": 1793229923.2201107,
+    "input_method": "Synthetic PTY against actual immutable ISO entrypoint; not GUI or physical keyboard evidence"
+  },
+  "acceptance": {
+    "result": "13 functional gates passed, including two gates with disclosed runtime caveats; not clean-runtime or physical acceptance",
+    "gates": [
+      {
+        "number": 1,
+        "criterion": "UEFI boot from actual ISO",
+        "result": "passed",
+        "evidence": "live-vm/02-live-boot-probe.json"
+      },
+      {
+        "number": 2,
+        "criterion": "Normal live desktop",
+        "result": "passed_with_caveat",
+        "evidence": "live-vm/11-live-late.png; live gvfsd-fuse crash disclosed"
+      },
+      {
+        "number": 3,
+        "criterion": "Actual disk selection and exact safety confirmation",
+        "result": "passed",
+        "evidence": "live-vm/installer-transcript.log; 5/5 real PTY prompts"
+      },
+      {
+        "number": 4,
+        "criterion": "Installer terminated with exit 0",
+        "result": "passed",
+        "evidence": "live-vm/installer-result.json; driver also exited 0"
+      },
+      {
+        "number": 5,
+        "criterion": "Installed target structural/security verification",
+        "result": "passed",
+        "evidence": "live-vm/29-installed-target-verification.json; fstab verification"
+      },
+      {
+        "number": 6,
+        "criterion": "Installation guest controlled shutdown",
+        "result": "passed",
+        "evidence": "live-vm/qemu-exit.json; offline-after-install.json"
+      },
+      {
+        "number": 7,
+        "criterion": "Installed disk-only boot, no ISO attached",
+        "result": "passed",
+        "evidence": "installed-vm/01-query-block-no-iso.json; 02-disk-only-root.json"
+      },
+      {
+        "number": 8,
+        "criterion": "Ordinary greeter password login",
+        "result": "passed",
+        "evidence": "installed-vm/07-normal-password-login.json; actual QMP keyboard input"
+      },
+      {
+        "number": 9,
+        "criterion": "Installed desktop and representative applications",
+        "result": "passed_with_caveat",
+        "evidence": "rendered terminal/browser/files/editor; edit/save; DMS automatic cold-start restart and auxiliary dialog crash disclosed"
+      },
+      {
+        "number": 10,
+        "criterion": "Session lock",
+        "result": "passed",
+        "evidence": "installed-vm/30-lock-request.json; 31-lock-initial.png"
+      },
+      {
+        "number": 11,
+        "criterion": "Wrong password rejected",
+        "result": "passed",
+        "evidence": "installed-vm/32-wrong-password-control.json; same locker PID 2125; PAM failure"
+      },
+      {
+        "number": 12,
+        "criterion": "Correct password unlocks original session",
+        "result": "passed",
+        "evidence": "installed-vm/34-correct-unlock.json; 35-unlocked-original-session.png"
+      },
+      {
+        "number": 13,
+        "criterion": "Controlled final shutdown",
+        "result": "passed",
+        "evidence": "installed-vm/qemu-exit.json; final-offline.json"
+      }
+    ]
+  },
+  "disk_only": {
+    "no_iso_in_launch": true,
+    "qmp_block_backends_checked": true,
+    "root_device": "/dev/vda2",
+    "root_fstype": "ext4",
+    "live_root_absent": true,
+    "fresh_uefi_variables": true
+  },
+  "authentication": {
+    "ordinary_greeter_input": true,
+    "pam_login_session_uid": 1000,
+    "wrong_password_pam_rejection": true,
+    "same_locker_pid_after_rejection": 2125,
+    "correct_password_unlock_no_admin_kill": true,
+    "same_compositor_pid_after_unlock": 757,
+    "same_application_pids_after_unlock": [
+      1400,
+      1436,
+      1715,
+      1999
+    ]
+  },
+  "shutdown": {
+    "installation_guest_exit": 0,
+    "installed_guest_exit": 0,
+    "final_qcow2_check_exit": 0,
+    "forced_qemu_quit_used": false,
+    "final_iso_sha256": "dc4bfb3944767e743f858880d32b0d1179b5a6c629e5cfed68410e3a73a4f8d1"
+  },
+  "runtime_caveats": [
+    {
+      "id": "R1",
+      "finding": "One automatic DMS restart after UI child SIGKILL during cold installed startup; PID 816/827 replaced by 1097/1103; root cause/killer unknown; no kernel OOM evidence, memory limit infinity, effective startup timeout 300s. No manual restart or configuration repair."
+    },
+    {
+      "id": "R2",
+      "finding": "hyprland-dialog SIGSEGV in libhyprtoolkit CWaylandBuffer while presenting Application Not Responding for cold Nautilus. Nautilus subsequently rendered; this was not a Hyprlock crash."
+    },
+    {
+      "id": "R3",
+      "finding": "Live gvfsd-fuse SIGSEGV during live provisioning. Installed normal-login runtime did not show this coredump."
+    },
+    {
+      "id": "R4",
+      "finding": "Nautilus reported Tracker indexer unavailable; local files rendered. Both system and user failed-unit lists were empty at final pre-shutdown inspection."
+    },
+    {
+      "id": "R5",
+      "finding": "Desktop background seen during installed acceptance was upstream DMS artwork, not accepted as WS-wallpaper/persistence proof. Branded Hyprlock surface was visually verified."
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "internal2-20261028/live-desktop.png",
+      "sha256": "102b0f8727745e04271b6ff0ae21595f2fe9a0dac432dbcf09a7586b68639ff6",
+      "source": "actual QEMU framebuffer, visually inspected; synthetic input, not physical hardware"
+    },
+    {
+      "file": "internal2-20261028/disk-only-greeter.png",
+      "sha256": "0b22a3062b00f9a2585551e35bbbb817d63648e0909993574376f43fae420807",
+      "source": "actual QEMU framebuffer, visually inspected; synthetic input, not physical hardware"
+    },
+    {
+      "file": "internal2-20261028/terminal.png",
+      "sha256": "8424f2d0665df23e71db61b62b80b022ef3acd0a6be3b757eca0eb84d80b91ec",
+      "source": "actual QEMU framebuffer, visually inspected; synthetic input, not physical hardware"
+    },
+    {
+      "file": "internal2-20261028/firefox-local-fixture.png",
+      "sha256": "dd5255677a8ab79811a801d08893a2fb2730cc5f7a41436b79c9075ce2753f27",
+      "source": "actual QEMU framebuffer, visually inspected; synthetic input, not physical hardware"
+    },
+    {
+      "file": "internal2-20261028/files.png",
+      "sha256": "4fea7ddaae02179ffa0e8073027c1a3329aac54f47552a1002aca15d8c831dab",
+      "source": "actual QEMU framebuffer, visually inspected; synthetic input, not physical hardware"
+    },
+    {
+      "file": "internal2-20261028/editor.png",
+      "sha256": "1a9a490050b411385215f7c2dc2392e39d33110fa19c87a817f628ffda926028",
+      "source": "actual QEMU framebuffer, visually inspected; synthetic input, not physical hardware"
+    },
+    {
+      "file": "internal2-20261028/lock.png",
+      "sha256": "5fe2bd517132400c2ef57a053242febf6abd96b0d5809b09b6597f297e23652d",
+      "source": "actual QEMU framebuffer, visually inspected; synthetic input, not physical hardware"
+    },
+    {
+      "file": "internal2-20261028/wrong-password-lock-retained.png",
+      "sha256": "32df072dfd9706e68b0ba270f6b7996baef41caea35e288b81873d113378e4b7",
+      "source": "actual QEMU framebuffer, visually inspected; synthetic input, not physical hardware"
+    },
+    {
+      "file": "internal2-20261028/unlocked-original-session.png",
+      "sha256": "a0a7e9b124c94eee51b0066b7b15fc91237d8c4379907366cc1a45865e8f670e",
+      "source": "actual QEMU framebuffer, visually inspected; synthetic input, not physical hardware"
+    }
+  ],
+  "physical_hardware_tested": false,
+  "automatic_idle_interval_tested": false,
+  "package_upgrade_and_config_recovery_tested_in_this_task": false,
+  "model_config_unchanged": true,
+  "scheduler_enabled": false,
+  "worker_paused": true,
+  "storage_snapshot": {
+    "utc": "2026-10-28T23:51:35.682770+00:00",
+    "available_bytes": 106667229184,
+    "available_gib": 99.34159851074219
+  },
+  "billing_snapshot": {
+    "utc": "2026-10-28T23:51:35.682574+00:00",
+    "session": {
+      "id": "20261028_221423_e0190f",
+      "model": "gpt-6.1-sol",
+      "billing_provider": "openai-codex",
+      "billing_mode": "subscription_included",
+      "api_call_count": 115,
+      "input_tokens": 291922,
+      "output_tokens": 51939,
+      "cache_read_tokens": 24077568,
+      "cache_write_tokens": 0,
+      "estimated_cost_usd": 0.0,
+      "actual_cost_usd": null,
+      "cost_status": "included"
+    },
+    "rows": [
+      {
+        "model": "gpt-6.1-sol",
+        "billing_provider": "openai-codex",
+        "billing_mode": "",
+        "task": "title_generation",
+        "api_call_count": 1,
+        "input_tokens": 537,
+        "output_tokens": 147,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "actual_cost_usd": 0.0,
+        "cost_status": null
+      },
+      {
+        "model": "gpt-6.1-sol",
+        "billing_provider": "openai-codex",
+        "billing_mode": "subscription_included",
+        "task": "",
+        "api_call_count": 115,
+        "input_tokens": 291922,
+        "output_tokens": 51939,
+        "cache_read_tokens": 24077568,
+        "cache_write_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "actual_cost_usd": 0.0,
+        "cost_status": "included"
+      },
+      {
+        "model": "gpt-6.1-sol",
+        "billing_provider": "openai-codex",
+        "billing_mode": "",
+        "task": "vision",
+        "api_call_count": 17,
+        "input_tokens": 21622,
+        "output_tokens": 3633,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "actual_cost_usd": 0.0,
+        "cost_status": null
+      }
+    ],
+    "scope": "Provisional task-session snapshot before documentation/publication. Not an invoice; subsequent reporting calls not included."
+  },
+  "publication_commit": "Recorded separately in Git history and GitHub receipt to avoid self-reference."
+}

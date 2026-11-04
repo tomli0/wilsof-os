@@ -6,6 +6,7 @@ if [ ! -r /etc/os-release ]; then
   printf '%s\n' "Fedora preflight: /etc/os-release is unavailable." >&2
   exit 1
 fi
+# shellcheck source=/etc/os-release
 . /etc/os-release
 if [ "${ID:-}" != "fedora" ]; then
   printf '%s\n' "Fedora preflight: target must be Fedora; found ${ID:-unknown}." >&2

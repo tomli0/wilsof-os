@@ -18,6 +18,7 @@ Wilsof is under active development. It is not yet a production-ready distributio
 - Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe and VLC are part of the test-VM package set. Ghostty remains the standard terminal; its actual active-session launch is verified on VM 113.
 - `wilsof-doctor` is a read-only development/support check for dependencies, Wilsof-owned files, session units and relevant log locations.
 - [`docs/iso.md`](docs/iso.md) describes the internal-only Archiso test-image profile and its safety limits; no ISO is bundled or published.
+- [`docs/security.md`](docs/security.md) defines the threat model, audit results, security reporting policy and proposed release gates. Those gates are proposals, not release approval.
 
 ## Screenshots from the Arch test session
 
@@ -56,7 +57,9 @@ It adds only `Ctrl+Alt+Space`, `Ctrl+Alt+L`, `Ctrl+Alt+I` and `Ctrl+Alt+F1`; it 
 
 The English [user guide](docs/brukerveiledning.md) covers opening applications, settings, help, workspaces, locking, power actions and the VM fallback layer. Architecture and design boundaries are documented in [architecture](docs/arkitektur.md) and [decisions](docs/beslutningslogg.md).
 
-## Reviewed documentation (proposed, not merged)
+## Engineering and product documentation
+
+Engineering and reporting standards were merged through PR #52 and #53. The product documents remain dated planning material; Integration3 source consolidation does not constitute native, security, ISO or release acceptance.
 
 The [engineering standard](docs/ENGINEERING_STANDARDS.md), [engineering guide](CONTRIBUTING.md), [reporting procedure](docs/development-reporting.md) and [adaptation template](docs/templates/ENGINEERING_STANDARDS_TEMPLATE.md) retain the existing documentation from PR #35.
 
@@ -64,8 +67,13 @@ The [product vision](docs/product/WILSOF_PRODUCT_VISION.md), [UX specification](
 
 ## Development checks
 
-    pytest -q
-    sh -n scripts/*.sh automation/*.sh bin/wilsof-*
+Read the concise [engineering guide](CONTRIBUTING.md) before contributing. The [quality audit](docs/quality-audit.md) records the current evidence, fixes and bounded follow-ups.
+
+    python3 -m pip install -r requirements-dev.txt
+    python3 -m pytest -q
+    shellcheck --exclude=SC1091 --shell=sh bin/wilsof-doctor bin/wilsof-help bin/wilsof-lock bin/wilsof-search bin/wilsof-vm-test-binds scripts/bootstrap-desktop.sh scripts/build-iso.sh scripts/install-user-config.sh scripts/preflight-arch.sh scripts/preflight-fedora.sh
+    shellcheck --shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh iso/profiledef.sh
+
     python3 -m json.tool config/dms/wilsof-theme.json
 
 The bounded [GitHub workflow](docs/github-workflow.md) documents the project queue, approval marker, hourly model-free queue check and the reason automatic model starts are disabled.

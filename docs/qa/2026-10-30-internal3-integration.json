@@ -1,0 +1,34 @@
+{
+  "status": "BLOCKED_PRE_ISO_FINALIZATION",
+  "date_utc": "2026-10-30",
+  "integration_pr": 41,
+  "base": "219894f1d4fc365b5e6546c2af9a146141634a1c",
+  "tested_code": "aa913d7c6f5d54dbea716b9e4597e4df2b3f82f8",
+  "frozen_build_source": "448e0190e786475f083abdce223b3b24dc2a85ef",
+  "source_pr_heads": {
+    "38": "f8709a38d4cf939c4088bbadf6eb8abf2d487a70",
+    "39": "28e0a8f856eacc4ecac8e8d5ceb79d0580e36929",
+    "40": "ad159b0eeb545d60912355256e9f012a1c331de1"
+  },
+  "production_mapping": [
+    {"source": "e4aecd6f8d1259098a843a9b56d8a2a2fef00fce", "integrated": "ed1128a604eb8c6efbb565ce2f50d8b4a3389c05"},
+    {"source": "ac037b0e57ca4a7e5dac266fdacddddfbb71fbad", "integrated": "46c15d7c74f909506508c40f08ee30ab5bdb7950"},
+    {"source": "7ba3bb89322258eefbcc1f6a7b82a82444070355", "integrated": "2419841c3b4d202839c61ebe8467d2f6355453c9"},
+    {"source": "d05ec2f8c11730c00145bf1bc9239bfdf4d4aaac", "integrated": "9cd979f5793a25f73033517235ab958ca72bacae"}
+  ],
+  "tests": {"passed":311,"skipped":2,"native_systemd_lifecycle_passed":7,"new_combined_cases":6,"umask_red_failed":2,"umask_red_passed_controls":4},
+  "ci": {"code_runs":[41027794029,41027889824],"frozen_source_runs":[41032565922,41032571570],"all_exact_head_success":true},
+  "source_gui": {"ordinary_password_login":true,"all_four_visual_profile_choices":true,"all_four_bar_labels":true,"ordinary_clients_preserved_through_all_four":3,"esc_closes_without_state_change":true,"wrong_password_rejected":true,"real_correct_unlock":true,"restart_posthook_and_wallpaper":true,"cold_posthook_and_wallpaper":true,"performance_accepted":false,"physical_or_multimonitor_accepted":false,"qemu_lifetimes":2,"concurrent_qemu_max":1,"both_qemu_exit0_and_offline_check0":true},
+  "build": {"initial_invocation_exit":1,"initial_failure":"exact scope TasksMax1024 fork rejection; GPGME errors; signature gate retained","single_package_signature_control_exit":0,"same_work_resume_exit":1,"resume_tasks_max":1800,"resume_memory_max_bytes":8589934592,"observed_resume_tasks":1631,"observed_resume_pids_events_max":0,"resume_failure":"mkarchiso cleanup of privately bind-mounted airootfs: Device or resource busy; before ISO creation","iso_outputs":0,"completed_iso_rebuilds":0,"fresh_installations":0,"partial_squashfs_bytes":1997139968,"partial_squashfs_sha256":"6f5c4f925780e46df8795056016f9e11ae3b6763dd4294f726081fc2ddccdcf7","partial_is_not_iso_acceptance":true},
+  "old_internal2_iso_sha256":"dc4bfb3944767e743f858880d32b0d1179b5a6c629e5cfed68410e3a73a4f8d1",
+  "old_internal2_disk_sha256":"f28d75d3cfc9845424519922e1eba6ff73eff1a1f5aab8492d4326245b229b6e",
+  "old_internal2_firmware_sha256":"6c31b3818d5f111ba9eaf12321d24cf23892ddf9edbe5a925f318113f0cee9ca",
+  "original_artifacts_verified_unchanged":true,
+  "original_remote_refs_verified_unchanged":14,
+  "new_independent_review":false,
+  "cost":{"baseline_key_usage_usd":"48.328455501","closeout_key_usage_usd":"48.328455501","observed_delta_usd":"0.000000000","actual_invoice_known":false,"administrative_session_cap_usd":5,"new_paid_reviews":0,"primary":"gpt-6.1-sol/openai-codex","routing_changed":false},
+  "physical_test_readiness":"NO-GO_FOR_INTERNAL3",
+  "scheduler_enabled":false,
+  "worker_paused":true,
+  "no_more_work_auto_started":true
+}

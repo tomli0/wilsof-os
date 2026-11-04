@@ -1,0 +1,29 @@
+hyprland
+hyprlock
+hypridle
+dux-shell
+greetd
+greetd-tuigreet
+networkmanager
+# DMS uses org.bluez over D-Bus; bluez-libs alone supplies no daemon.
+bluez
+power-profiles-daemon
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+firefox
+ghostty
+nautilus
+gnome-text-editor
+papers
+loupe
+vlc
+pipewire
+pipewire-pulse
+wireplumber
+# Generic Sound Open Firmware: releng live includes this; installed targets must too.
+sof-firmware
+polkit-gnome
+noto-fonts
+inter-font
+ttf-jetbrains-mono-nerd
+adwaita-icon-theme

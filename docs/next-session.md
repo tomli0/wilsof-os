@@ -1,6 +1,20 @@
-# Next session — Wilsof Arch VM 113
+# Next session — internal ISO and preserved VM 113 history
 
-Updated: 2026-10-16 UTC
+Updated: 2026-10-27 UTC
+
+## Current entry point
+
+- Use draft PR #27 and branch `integration/internal-iso-20261026`, not the historical branch below. Preserve unrelated work and acquire the existing worker lock before development.
+- Read the [controlled session close](checkpoints/session-close-20261027.md) first; it supersedes active-work instructions in earlier checkpoints. This session is closed. Original candidate2 and diagnostic shutdown/offline verification completed; do not query obsolete installer/VM PIDs or repeat installation.
+- Existing disk-only boot, ordinary login, representative GUI/default GTK and genuine wrong/correct-password Hyprlock checks passed. Full package upgrade exposed issue #30; reviewed local-source fix `e38902b` passes actual config preservation/file recovery, but the immutable ISO still contains the original updater. Use the newest private checkpoint for VM ownership/shutdown/remaining gates before acting.
+- Earlier [QA evidence](checkpoints/internal-iso-qa-20261026.md), [source composition](checkpoints/internal-iso-integration.json) and [runbook](internal-test-runbook.md) remain relevant history, not acceptance of the later artifact. Older-image GTK/Hyprlock evidence must not be promoted to final-candidate evidence.
+- Both QA guests are off and the diagnostic offline preservation checks passed. The full Hypridle native package build is now complete; do not repeat it without changed inputs. Only after explicit resumption: finish the WIP portable regression entry point and one real teardown check using that existing package. No new broad investigation, default parallel agents, VM or ISO is authorized by this close-out.
+- Keep scheduled development paused and retain the original provider budget gate. Use only the verified subscription route; quota/auth failure means checkpoint/stop, not fallback.
+- No merge, release, physical USB write or spare-PC installation is approved by this checkpoint. Obtain separate approval and verify disk ownership/identity before any such action.
+
+## Historical VM 113 checkpoint — not today's test target
+
+The observations below are retained from October 16 and must be reverified before use. Do not infer that the historical VM is reachable or unlocked now.
 
 ## Checkpoint
 

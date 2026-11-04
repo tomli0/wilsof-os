@@ -1,0 +1,13 @@
+#!/bin/sh
+# Apply a locally reviewed source bundle as the current desktop user, never root.
+set -eu
+if [ "$(id -u)" -eq 0 ]; then
+    printf '%s\n' 'Run without sudo, as the desktop user.' >&2
+    exit 77
+fi
+if [ "$#" -ne 1 ] || [ ! -f "$1/runtime/desktop.py" ]; then
+    printf '%s\n' 'Usage: wilsof-config-update /absolute/path/to/reviewed-source' >&2
+    exit 64
+fi
+case "$1" in /*) ;; *) printf '%s\n' 'Source must be an absolute reviewed local path.' >&2; exit 64 ;; esac
+exec python3 "$1/runtime/desktop.py" --source "$1"

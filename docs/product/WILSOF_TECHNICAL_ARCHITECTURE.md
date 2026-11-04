@@ -2,7 +2,6 @@
 
 > Bevart planleggingsgrunnlag fra 29. oktober 2026 (PR #36), ikke en påstand om dagens implementasjon eller godkjent produktdesign. Gjeldende engineering-/sikkerhetsporter og eksakte nyere PR-er gjelder; milepæl-ID-ene her er dokumentlokale og skal ikke likestilles med senere PR-titler. Ingen utvikling eller test starter fra dette dokumentet.
 
-
 Status: planleggingsdokument (ingen implementering). Dato: 2026-10-29 UTC. Kildegrunnlag: `integration/internal-iso-20261026` @ `219894f`[52] + Engineering Standards @ `a78d887`.[51]
 Vedlikeholdsstatus (lest 2026-10-29): Dux Shell/DMS aktiv, MIT, v2.0.0 utgitt 2026-10-20;[54] Hyprland aktiv, BSD-3-Clause, v0.57.0 utgitt 2026-10-28;[56] Quickshell aktiv, LGPL-3.0, v0.3.2;[58] archinstall aktiv, GPL-3.0, v4.5;[57] Planify aktiv, GPL-3.0, v4.20;[59] Omarchy aktiv, MIT, v4.0.6.[55]
 
@@ -40,7 +39,7 @@ Basert på direkte kildelesning av `config/`, `runtime/`, `bin/` og `installer/`
 3. **Launcherelementer** for hurtigtaster/innstillinger/systemhandlinger: ren QML-plugin-konfig.
 4. **Restore-kommando for Wilsof-filer** (`wilsof-restore`, se §8): gjenbruk av eksisterende backup-struktur fra `runtime/desktop.py`/`install-user-config.sh` med manifest og forhåndsvisning.
 5. **Modal-dialog-vindusregel** i `wilsof.lua` (én `hl.window_rule` med `match = { modal = true }`, `float`, `center`).[45]
-6. **Wallpaper-utholdenhet:** `Restart=on-failure` + `After=dms.service`-retry-semantikk (se §9).
+6. **Wallpaper-utholdenhet:** eksplisitt ny aktivering etter vellykket DMS-start (se §9); `Restart=on-failure`/`After=` alene løser ikke en startjobb som feilet på avhengighet.
 
 ## 4. Krever større utvikling/vedlikehold (kategori 4) — unngås i MVP
 
@@ -52,17 +51,18 @@ Basert på direkte kildelesning av `config/`, `runtime/`, `bin/` og `installer/`
 
 ## 5. Komponentanalyse (per Engineering Standards §2–§8-format)[51]
 
-### 5.1 Profiltjeneste (wilsof-profile)
+### 5.1 Profilkomponent (wilsof-profile; ingen tjeneste)
 
 - **Problem:** Fire arbeidsflyter trenger et valgbart oppsett uten flere brukerkontoer.
 - **Finnes:** Plasma Activities ligner (men binder KDE-shell); Hyprland/DMS har ingen profilbegrep. Ikke behovsdekket i denne stacken.
 - **Løsning:** Egen liten tilstandsløs CLI + JSON-fil; launcher-plugin og bar-widget leser samme fil. Én kilde til sannhet.
-- **Avhengigheter:** kun kjerneverktøy; ingen.
+- **Avhengigheter:** eksisterende Python 3, kun standardbibliotek (Linux `fcntl`, filsystem og JSON); ingen nye eksterne pakker.
 - **Kompleksitet:** lav (~1–2 dager inkl. tester).
 - **Drift:** ingen bakgrunnsprosess; fil formatter/versjon felt (schema v1) med fallback til CLEAN.
 - **Sikkerhet/feil:** ugyldig fil → lesbar feil + CLEAN-fallback; ingen privilegier; confine innen `~/.local/state/wilsof-os/`.
 - **Lisens:** egen GPL-vennlig; ingen ny avhengighet. (Merk: repo mangler prosjektlisens — Engineering Standards krever lisensavklaring før offentlig distribusjon;[51] følges opp som eierbeslutning.)
-- **Test:** enhet på filparser (gyldig/ugyldig/tom/fraværende), launcher-plugin-elementer, bar-visning; VM-port M2.
+- **M1-kontrakt:** [WILSOF_PROFILE_STATE.md](WILSOF_PROFILE_STATE.md) beskriver CLI, eksakt skjema, korruptfil-nekt, atomisk skriving, rettigheter og konkurranse. CLI leveres selvstendig i `bin/wilsof-profile`; eksisterende desktop-/installer-manifester endres ikke i M1. Distribusjonskobling og UI krever separat M2-omfang.
+- **Test:** M1 kjører headless pytest med reelle filer/prosesser, feilinjeksjon og avbrudd. Launcher/bar/dashboard- og synlighetsporter tilhører M2/M4, ikke M1.
 - **Akseptanse:** bytter oppdaterer topbar ≤2 s; CLEAN-fallback ved korrupt fil; ingen vinduslukking (M2-matrise).
 
 ### 5.2 Wilsof Tasks (dashboard/Kanban)
@@ -136,7 +136,7 @@ Begrunnelse (sammenfattet fra §5.2 og §5.3): DMS-plugin ville arvet shell-pros
 ## 9. Wallpaper-utholdenhet (internal2-funn R5)
 
 - **Faktisk årsak (journalbevis):** `wilsof-wallpaper.service` (oneshot, `Requires=dms.service`) fikk `Job ... failed with result 'dependency'` da første DMS-UI ble SIGKILLet; ingen retry skjedde, og DMS sin friske session viste upstream standard.[53]
-- **Planlagt utbedring (M5, ikke utført nå):** verifisere en mekanisme som faktisk reaktiverer en jobb som aldri startet etter en dependency-feil. `Restart=on-failure` alene er ikke dokumentert løsning for dette tilfellet; la en eksplisitt DMS-tilkoblings-/reaktiveringsmekanisme prøves separat; `wilsof-apply-wallpaper` gjenbrukes uendret (den allerede validerer IPC-svar). En eventuell `ExecCondition`-beholdelse dokumenteres i enheten.
+- **Presisering fra M1, ingen kodeendring:** `After=` er kun rekkefølge. Wallpaper-prosessen ble ikke startet ved `dependency`; `Restart=on-failure` på den prosessen alene gir derfor ingen ny startjobb. Helperen har allerede begrenset IPC-retry. Minste foreslåtte rettelse er en ikke-blokkerende, feil-isolert aktivering i eksisterende DMS-dropin etter vellykket DMS-start, slik at både kaldstart og senere DMS-restart utløser wallpaper på nytt. Dette er et forslag med egen testport, ikke verifisert runtime-rettelse; se [avgrenset R5-analyse](../qa/2026-10-29-wallpaper-follow-up.md).
 - **Akseptanse (M5):** etter simulert DMS-restart (systemctl --user restart dms) vises godkjent asset; `dms ipc call wallpaper get` returnerer samme sti i alle profiler; ingen manuell kommando trengs ved innlogging.
 - Ingen ISO-endring inngår i dette dokumentet.
 

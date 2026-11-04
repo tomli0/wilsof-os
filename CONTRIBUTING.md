@@ -2,8 +2,7 @@
 
 > Rutine-QA/status: bruk eksisterende issue-/PR-kommentar etter Engineering Standards §12.1; ingen ny report-only-gren eller rapportcommit. Full rapport kreves fortsatt for vesentlige milepæler på eksisterende autorisert leveransegren. Dette avklarer rapporteringskravene nedenfor, uten å endre sikkerhets- eller godkjenningsgrenser.
 
-> Valideringskommandoene nedenfor stammer fra integrasjonskilden i PR #35, ikke fra den eldre main-koden. Kjør bare relevante kommandoer mot en identifisert kilde der filene faktisk finnes; dokumentasjonskonsolideringen importerer ikke runtime, installer, tester eller pakkemanifester.
-
+> Engineering- og rapporteringsreglene fra PR #52/#53 beholdes. Denne integrasjonskandidaten inkluderer Integration3-kilden fra PR #51; kjør bare relevante valideringskommandoer mot eksakt identifisert revisjon. Kildetester er ikke native-, sikkerhets-, ISO- eller fysisk aksept.
 
 Wilsof is a safety-bounded desktop prototype. Prefer a small, reviewed change with direct evidence over a broad rewrite.
 
@@ -29,6 +28,7 @@ Wilsof is a safety-bounded desktop prototype. Prefer a small, reviewed change wi
 Run the checks below before requesting review. Add a focused regression test for each fixed behavior; test a relevant failure mode as well as success. Use temporary directories and mocks for destructive or system operations.
 
     python3 -m pytest -q
+    python3 -c "import ast, pathlib; ast.parse(pathlib.Path('bin/wilsof-profile').read_text())"
     shellcheck --exclude=SC1091 --shell=sh bin/wilsof-doctor bin/wilsof-help bin/wilsof-lock bin/wilsof-search bin/wilsof-vm-test-binds scripts/bootstrap-desktop.sh scripts/build-iso.sh scripts/install-user-config.sh scripts/preflight-arch.sh scripts/preflight-fedora.sh
     shellcheck --shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh iso/profiledef.sh
     python3 -m json.tool config/wilsof-shortcuts.json >/dev/null
@@ -37,6 +37,8 @@ Run the checks below before requesting review. Add a focused regression test for
     git diff --check
 
 Record commands and results in the PR. State the tested commit and any deployed revision separately.
+
+The standalone M1 profile CLI and its headless safety/recovery contract are documented in [Profile State](docs/product/WILSOF_PROFILE_STATE.md). Run focused checks with `python3 -m pytest tests/test_profile.py tests/test_profile_integrity.py tests/test_profile_boundaries.py -q`. M1 changes no desktop provisioning or running session.
 
 ## Session close-out and GitHub reporting
 

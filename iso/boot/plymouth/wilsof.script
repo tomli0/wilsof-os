@@ -1,0 +1,84 @@
+# Native Plymouth handles Esc: do not register a keyboard callback.
+# The moving segment indicates activity only, not estimated boot completion.
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+logo_original = Image("logo.png");
+logo = Sprite();
+track = Sprite(Image("track.png"));
+activity = Sprite(Image("activity.png"));
+stage = Sprite(Image.Text("Starting Wilsof OS...", 0.78, 0.87, 0.92));
+hint = Sprite(Image.Text("Esc: show boot logs", 0.6, 0.67, 0.72));
+message = Sprite(Image.Text("", 0.85, 0.9, 0.95));
+frame = 0;
+last_width = 0;
+last_height = 0;
+
+fun center_text(sprite, y)
+{
+    sprite.SetPosition(Window.GetX() + (Window.GetWidth() - sprite.GetImage().GetWidth()) / 2, Window.GetY() + y, 2);
+}
+
+fun refresh_callback()
+{
+    local.w = Window.GetWidth();
+    local.h = Window.GetHeight();
+    if (w != last_width || h != last_height)
+    {
+        local.scale = Math.Min(1, Math.Min(520 / logo_original.GetWidth(), Math.Min(w * 0.68 / logo_original.GetWidth(), h * 0.3 / logo_original.GetHeight())));
+        logo.SetImage(logo_original.Scale(Math.Max(1, Math.Int(logo_original.GetWidth() * scale)), Math.Max(1, Math.Int(logo_original.GetHeight() * scale))));
+        logo.SetPosition(Window.GetX() + (w - logo.GetImage().GetWidth()) / 2, Window.GetY() + (h - logo.GetImage().GetHeight()) / 2, 1);
+        global.last_width = w;
+        global.last_height = h;
+    }
+    local.width = Math.Min(320, w * 0.6);
+    track.SetImage(Image("track.png").Scale(Math.Max(1, Math.Int(width)), 4));
+    track.SetPosition(Window.GetX() + (w - width) / 2, Window.GetY() + h * 0.70, 1);
+    local.segment_width = Math.Max(1, Math.Int(width / 5));
+    activity.SetImage(Image("activity.png").Scale(segment_width, 4));
+    activity.SetPosition(Window.GetX() + (w - width) / 2 + (width - segment_width) * (Math.Sin(frame * 0.045) + 1) / 2, Window.GetY() + h * 0.70, 2);
+    center_text(stage, h * 0.76);
+    center_text(message, h * 0.81);
+    center_text(hint, h * 0.88);
+    global.frame++;
+}
+
+fun root_mounted_callback()
+{
+    stage.SetImage(Image.Text("Starting live services...", 0.78, 0.87, 0.92));
+}
+
+fun display_message_callback(text)
+{
+    message.SetImage(Image.Text(text, 0.85, 0.9, 0.95));
+}
+
+fun hide_message_callback(text)
+{
+    message.SetImage(Image.Text("", 0.85, 0.9, 0.95));
+}
+
+# Preserve interactive prompts should an upstream boot component request input.
+fun password_callback(prompt, bullets)
+{
+    local.mask = "";
+    for (local.i = 0; i < bullets; i++) mask += "*";
+    display_message_callback(prompt + " " + mask);
+}
+
+fun question_callback(prompt, entry)
+{
+    display_message_callback(prompt + " " + entry);
+}
+
+fun normal_callback()
+{
+    hide_message_callback("");
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);
+Plymouth.SetRootMountedFunction(root_mounted_callback);
+Plymouth.SetDisplayMessageFunction(display_message_callback);
+Plymouth.SetHideMessageFunction(hide_message_callback);
+Plymouth.SetDisplayPasswordFunction(password_callback);
+Plymouth.SetDisplayQuestionFunction(question_callback);
+Plymouth.SetDisplayNormalFunction(normal_callback);

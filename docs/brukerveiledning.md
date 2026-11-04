@@ -33,6 +33,14 @@ The ice-blue border identifies the active window. The top bar shows workspace or
 
 The DMS system menu includes lock, log out, restart, power off and suspend. DMS displays a 500 ms hold confirmation before the destructive actions. During testing, cancel those confirmations rather than executing a destructive action.
 
+## Power profiles
+
+DMS uses the system `power-profiles-daemon` D-Bus service for its power-profile control. Wilsof installs that backend in new test VMs; it does not install or enable TLP, TuneD, auto-cpufreq, or another competing power manager.
+
+If DMS says `ERROR: power-profiles-daemon not available`, the backend is missing or not reachable on D-Bus. Run `wilsof-doctor` and inspect `journalctl -b -u power-profiles-daemon.service`; do not treat a profile label alone as proof of reduced power use.
+
+The test VM runs under KVM and exposes neither a battery nor an ACPI platform-profile interface. It is therefore an integration check for the D-Bus backend and DMS unavailable state, not evidence of laptop battery life, thermals, or a hardware performance profile. Use physical laptop hardware for those measurements.
+
 ## Optional VM fallback bindings
 
 Some VM clients intercept Super before the guest receives it. From a graphical Wilsof terminal, enable the optional layer:

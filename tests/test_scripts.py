@@ -31,27 +31,83 @@ def test_search_delegates_to_the_single_dms_launcher_api(tmp_path):
     assert log.read_text(encoding="utf-8").strip() == "ipc call spotlight toggle"
 
 
+def test_search_uses_command_center_marker_without_double_toggling(tmp_path):
+    fake_bin = tmp_path / 'bin'
+    fake_bin.mkdir()
+    log = tmp_path / 'calls'
+    dms = fake_bin / 'dms'
+    dms.write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nprintf "%s\\n" WILSOF_COMMAND_CENTER_OK\n')
+    dms.chmod(0o755)
+    result = run(SEARCH, 'toggle', env={'PATH': f"{fake_bin}:{os.environ['PATH']}"})
+    assert result.returncode == 0
+    assert log.read_text().splitlines() == ['ipc call commandCenter toggle']
+
+
+def test_search_treats_locked_session_marker_as_handled(tmp_path):
+    # While the session is locked the Command Center answers with a distinct
+    # marker; the wrapper must treat it as handled and never fall back to the
+    # upstream launcher, which would reopen a keyboard-grabbing modal.
+    fake_bin = tmp_path / 'bin'
+    fake_bin.mkdir()
+    log = tmp_path / 'calls'
+    dms = fake_bin / 'dms'
+    dms.write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{log}"\nprintf "%s\\n" WILSOF_COMMAND_CENTER_LOCKED\n')
+    dms.chmod(0o755)
+    result = run(SEARCH, 'toggle', env={'PATH': f"{fake_bin}:{os.environ['PATH']}"})
+    assert result.returncode == 0
+    assert log.read_text().splitlines() == ['ipc call commandCenter toggle']
+
+
 def test_search_rejects_unsupported_actions():
     result = run(SEARCH, "anything-else")
     assert result.returncode == 64
     assert "Usage" in result.stderr
 
 
-def test_lock_delegates_to_hyprlock_and_rejects_arguments(tmp_path):
-    fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
-    log = tmp_path / "args"
-    hyprlock = fake_bin / "hyprlock"
-    hyprlock.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" > {log}\n", encoding="utf-8")
-    hyprlock.chmod(0o755)
-    pgrep = fake_bin / "pgrep"
-    pgrep.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
-    pgrep.chmod(0o755)
-    result = run(LOCK, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
-    assert result.returncode == 0, result.stderr
-    assert log.read_text(encoding="utf-8").strip() == ""
-    rejected = run(LOCK, "unexpected")
-    assert rejected.returncode == 64
+def test_lock_wrappers_delegate_to_one_lifecycle_and_reject_arguments():
+    for name, action in [('wilsof-lock', 'lock'), ('wilsof-idle', 'idle')]:
+        script = ROOT / 'bin' / name
+        source = script.read_text()
+        assert '/wilsof-lock-session" ' + action in source
+        assert 'unlock-session' not in source
+        assert run(script, 'unexpected').returncode == 64
+
+
+def test_unverified_unlock_bridge_is_withheld_fail_closed():
+    source = (ROOT / 'bin/wilsof-lock-session').read_text()
+    assert 'unlock-session' not in source
+    assert 'SetLockedHint' not in source
+    assert 'pgrep' not in source
+    assert 'pass_fds=(fd,)' in source
+
+
+def test_idle_policy_defines_three_tiers_with_dpms_and_secure_relock():
+    hypridle = (ROOT / "config" / "hypr" / "hypridle.conf").read_text(encoding="utf-8")
+    assert "timeout = 180" in hypridle
+    assert "wilsof-idle" in hypridle
+    assert "timeout = 300" in hypridle
+    assert "wilsof-lock" in hypridle
+    assert "timeout = 600" in hypridle
+    assert "dpms off" in hypridle
+    assert "dpms on" in hypridle
+    assert "before_sleep_cmd" in hypridle
+
+
+def test_idle_presentation_matches_the_approved_terminal_idle_design():
+    conf = (ROOT / "config" / "hypr" / "hyprlock-idle.conf").read_text(encoding="utf-8")
+    assert "rgb(9, 15, 20)" in conf
+    assert "[ W S ]" in conf
+    assert "SYSTEM IDLE_" in conf
+    assert "enabled = false" in conf
+    # It must remain a real Hyprlock PAM surface with an input field.
+    assert "input-field" in conf
+
+
+def test_installer_deploys_the_idle_tier_files():
+    content = INSTALL.read_text(encoding="utf-8")
+    assert 'bin/wilsof-idle' in content
+    assert 'config/hypr/hyprlock-idle.conf' in content
+    assert '"$HOME/.config/hypr/hyprlock-idle.conf"' in content
 
 
 def test_preflight_is_read_only_and_reports_missing_fedora_tools():
@@ -84,11 +140,14 @@ def test_installer_selects_arch_or_fedora_preflight_explicitly():
     assert 'arch) "$root/scripts/preflight-arch.sh"' in content
 
 
-def test_wallpaper_unit_requires_dms_and_quotes_asset_path_with_spaces():
+def test_wallpaper_unit_requires_dms_and_uses_argument_safe_readiness_helper():
     content = WALLPAPER_UNIT.read_text(encoding="utf-8")
     assert "Requires=dms.service" in content
     assert "After=dms.service" in content
-    assert '"%h/.local/share/wilsof-os/assets/Mørk geometrisk bakgrunn med isblått WS-monogram.png"' in content
+    assert 'ExecStart=%h/.local/bin/wilsof-apply-wallpaper' in content
+    helper = (ROOT / 'bin/wilsof-apply-wallpaper').read_text()
+    assert "['dms', 'ipc', 'call', 'wallpaper', 'set', str(image)]" in helper
+    assert 'Mørk geometrisk bakgrunn med isblått WS-monogram.png' in helper
 
 
 def test_installer_integrates_with_the_dms_lua_entrypoint_and_locking():
@@ -100,6 +159,7 @@ def test_installer_integrates_with_the_dms_lua_entrypoint_and_locking():
     assert 'bin/wilsof-help' in content
     assert 'require("wilsof")' in content
     assert 'systemctl --user enable dms.service hypridle.service' in content
+    assert 'assets/Wilsof OS-logo med geometrisk WS-monogram.png' in content
 
 
 def test_installer_seeds_static_dms_theme_only_once():
@@ -114,8 +174,8 @@ def test_installer_seeds_static_dms_theme_only_once():
 def test_static_theme_defines_the_approved_base_and_accent():
     theme = (ROOT / "config" / "dms" / "wilsof-theme.json").read_text(encoding="utf-8")
     assert '"primary": "#86B9CE"' in theme
-    assert '"surface": "#14181E"' in theme
-    assert '"background": "#14181E"' in theme
+    assert '"surface": "#121820"' in theme
+    assert '"background": "#121820"' in theme
 
 
 def test_vm_test_binding_wrapper_is_opt_in_and_reversible(tmp_path):
@@ -198,18 +258,11 @@ def test_help_viewer_rejects_malformed_manifest(tmp_path):
     assert "invalid shortcut manifest" in result.stderr
 
 
-def test_lock_is_idempotent_only_for_the_current_user(tmp_path):
-    fake_bin = tmp_path / "bin"
-    fake_bin.mkdir()
-    hyprlock = fake_bin / "hyprlock"
-    hyprlock.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    hyprlock.chmod(0o755)
-    pgrep = fake_bin / "pgrep"
-    pgrep.write_text("#!/bin/sh\nprintf '%s\\n' \"$*\"\nexit 0\n", encoding="utf-8")
-    pgrep.chmod(0o755)
-    result = run(LOCK, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
-    assert result.returncode == 0
-    assert "already active" in result.stderr
+def test_lock_guard_is_session_scoped_not_uid_wide():
+    source = (ROOT / 'bin/wilsof-lock-session').read_text()
+    assert 'GetSessionByPID' in source
+    assert 'LOCK_EX | fcntl.LOCK_NB' in source
+    assert 'O_NOFOLLOW' in source
 
 
 def test_installer_deploys_the_help_viewer_and_shared_shortcut_manifest():
@@ -255,6 +308,7 @@ def test_doctor_reports_missing_dependencies_with_a_nonzero_exit(tmp_path):
     assert result.returncode == 1
     assert "MISSING dms" in result.stdout
     assert "MISSING ghostty" in result.stdout
+    assert "MISSING busctl (cannot inspect the power-profile D-Bus backend)" in result.stdout
 
 
 def test_doctor_is_read_only_and_reports_a_present_empty_ghostty_config(tmp_path):
@@ -281,6 +335,12 @@ def test_doctor_is_read_only_and_reports_a_present_empty_ghostty_config(tmp_path
     assert (config / "config.ghostty").exists()
 
 
+def test_doctor_checks_the_power_profile_package_and_dbus_backend():
+    doctor = (ROOT / "bin" / "wilsof-doctor").read_text(encoding="utf-8")
+    assert 'pacman -Q power-profiles-daemon' in doctor
+    assert 'busctl --system status net.hadess.PowerProfiles' in doctor
+
+
 def test_search_uses_dms_spotlight_all_mode_and_rejects_other_actions(tmp_path):
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
@@ -294,6 +354,61 @@ def test_search_uses_dms_spotlight_all_mode_and_rejects_other_actions(tmp_path):
     assert run(SEARCH, "files", env={"PATH": f"{fake_bin}:{os.environ['PATH']}"}).returncode == 64
 
 
+def test_vm_installer_provisions_regreet_with_tuigreet_fallback():
+    content = (ROOT / "scripts" / "install-arch-test-vm.sh").read_text(encoding="utf-8")
+    # Established distro packages; no custom greeter or auth stack.
+    assert "greetd-regreet" in content
+    assert "cage" in content
+    assert "greetd-tuigreet" in content
+    # The verified tuigreet greeter stays the default; ReGreet is provisioned
+    # and documented as a one-line opt-in because QEMU/TCG evaluation could
+    # not safely verify input delivery to the GTK entry.
+    assert 'command = "tuigreet --time --cmd Hyprland"' in content
+    assert '"wilsof-regreet"' in content
+    assert "wilsof-greeter-bg.png" in content
+
+
+def test_regreet_uses_the_approved_branding_and_dark_theme():
+    regreet = (ROOT / "config" / "greetd" / "regreet.toml").read_text(encoding="utf-8")
+    assert "wilsof-greeter-bg.png" in regreet
+    assert "application_prefer_dark_theme = true" in regreet
+    # No autologin: regreet always asks for credentials through greetd PAM.
+    assert "autologin" not in regreet
+
+
+def test_regreet_wrapper_forces_cairo_gtk_rendering_without_custom_auth():
+    wrapper = ROOT / "config" / "greetd" / "wilsof-regreet"
+    assert wrapper.is_file(), "the greeter wrapper must be tracked in the repository"
+    text = wrapper.read_text(encoding="utf-8")
+    # GTK4 default GL renderer painted blank text (and crashed once) on the
+    # TCG software-rendering path; Cairo is the documented diagnostic that
+    # rendered text. Keep the fix per-process inside the greeter wrapper.
+    assert "GSK_RENDERER=cairo" in text
+    assert "cage -s -- regreet" in text
+    # The wrapper launches the stock greeter only; no auth logic of its own.
+    assert "exec " in text
+    assert text.count("\n") >= 5
+
+
+def test_regreet_wrapper_exports_environment_and_execs_cage(tmp_path):
+    wrapper = ROOT / "config" / "greetd" / "wilsof-regreet"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    cage = fake_bin / "cage"
+    cage.write_text("#!/usr/bin/env bash\nprintf '%s\\n' \"$GSK_RENDERER\" \"$@\"\n", encoding="utf-8")
+    cage.chmod(0o755)
+    result = run(wrapper, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
+    assert result.returncode == 0, result.stderr
+    lines = result.stdout.splitlines()
+    assert lines[0] == "cairo"
+    assert lines[1:] == ["-s", "--", "regreet"]
+
+
+def test_vm_installer_installs_the_regreet_wrapper():
+    content = (ROOT / "scripts" / "install-arch-test-vm.sh").read_text(encoding="utf-8")
+    assert "config/greetd/wilsof-regreet /usr/local/bin/wilsof-regreet" in content
+
+
 def test_iso_profile_and_builder_are_present_and_keep_secrets_out_of_the_profile():
     profile = ROOT / "iso" / "profiledef.sh"
     packages = ROOT / "iso" / "packages.x86_64"
@@ -305,5 +420,24 @@ def test_iso_profile_and_builder_are_present_and_keep_secrets_out_of_the_profile
     assert "archiso" not in package_text
     assert "openssh" not in package_text
     assert "ghostty" in package_text
-    assert "dms-shell" in package_text
+    assert "dux-shell" in package_text
+    assert "power-profiles-daemon" in package_text
     assert "mkarchiso" in builder.read_text(encoding="utf-8")
+
+
+def test_engineering_guide_and_audit_are_linked_from_the_readme():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    guide = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    audit = (ROOT / "docs" / "quality-audit.md").read_text(encoding="utf-8")
+    assert "[engineering guide](CONTRIBUTING.md)" in readme
+    assert "[quality audit](docs/quality-audit.md)" in readme
+    assert "physical client" in guide
+    assert "High: validation did not cover every executable shell path" in audit
+
+
+def test_validation_workflow_uses_shellcheck_for_each_shell_dialect():
+    workflow = (ROOT / ".github" / "workflows" / "validate.yml").read_text(encoding="utf-8")
+    assert "apt-get install --yes shellcheck" in workflow
+    assert "bin/wilsof-doctor" in workflow
+    assert "--shell=sh" in workflow
+    assert "--shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh" in workflow

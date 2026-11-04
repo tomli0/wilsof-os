@@ -1,6 +1,9 @@
 import os
+import shlex
 import subprocess
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -116,10 +119,62 @@ def test_preflight_is_read_only_and_reports_missing_fedora_tools():
     assert "Fedora" in result.stderr
 
 
-def test_arch_preflight_is_read_only_and_rejects_non_arch_hosts():
-    result = run(ARCH_PREFLIGHT)
-    assert result.returncode != 0
-    assert "Arch" in result.stderr
+@pytest.fixture
+def arch_preflight_host(tmp_path):
+    # Redirect only the OS-file boundary in a disposable copy. Production keeps
+    # its fixed /etc/os-release path: no runtime override or weakened OS guard.
+    release = tmp_path / 'os release'
+    script = tmp_path / 'preflight-arch.sh'
+    source = ARCH_PREFLIGHT.read_text(encoding='utf-8')
+    check = '[ ! -r /etc/os-release ]'
+    load = '. /etc/os-release\n'
+    assert source.count(check) == source.count(load) == 1
+    source = source.replace(check, f'[ ! -r {shlex.quote(str(release))} ]')
+    script.write_text(source.replace(load, f'. {shlex.quote(str(release))}\n'))
+    script.chmod(0o755)
+    fake_bin = tmp_path / 'bin'
+    fake_bin.mkdir()
+    log = tmp_path / 'commands'
+    for command in ('systemctl', 'pacman', 'hyprctl', 'dms', 'loginctl'):
+        stub = fake_bin / command
+        stub.write_text(
+            f'#!/bin/sh\nprintf "%s\\n" "{command} $*" >> {shlex.quote(str(log))}\n'
+        )
+        stub.chmod(0o755)
+    return script, release, log, {'PATH': str(fake_bin)}
+
+
+@pytest.mark.parametrize('release_text,found', [
+    ('ID=fedora\n', 'fedora'),
+    ('ID=ubuntu\nID_LIKE=arch\n', 'ubuntu'),
+    ('ID=archlinux\n', 'archlinux'),
+    ('NAME=Unknown\n', 'unknown'),
+])
+def test_arch_preflight_is_read_only_and_rejects_non_arch_hosts(
+    arch_preflight_host, release_text, found
+):
+    script, release, log, env = arch_preflight_host
+    release.write_text(release_text)
+    result = run(script, env=env)
+    assert result.returncode == 1
+    assert result.stderr == f'Arch preflight: target must be Arch Linux; found {found}.\n'
+    assert result.stdout == ''
+    assert not log.exists(), 'Non-Arch hosts must be rejected before tool/package probes'
+    assert release.read_text() == release_text
+
+
+def test_arch_preflight_accepts_arch_fixture_without_writing_host_state(arch_preflight_host):
+    script, release, log, env = arch_preflight_host
+    release.write_text('ID=arch\n')
+    result = run(script, env=env)
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ''
+    assert 'PASS package: hyprland\n' in result.stdout
+    assert 'PASS user systemd session\n' in result.stdout
+    calls = log.read_text().splitlines()
+    assert calls[-1] == 'systemctl --user show-environment'
+    assert all(call.startswith('pacman -Q ') for call in calls[:-1])
+    assert release.read_text() == 'ID=arch\n'
 
 
 def test_arch_preflight_checks_the_apps_required_by_wilsof_flows():

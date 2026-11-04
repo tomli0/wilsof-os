@@ -123,7 +123,10 @@ def provision_transaction(tmp_path, monkeypatch, effect='intact', exit_code=0):
     monkeypatch.setattr(Path, 'is_mount', lambda value: value == target)
     monkeypatch.setattr(os, 'geteuid', lambda: 0)
     monkeypatch.setattr(sys, 'argv', ['provision-target', str(target), 'demo'])
-    monkeypatch.setattr(runpy, 'run_path', lambda *a, **k: pin)
+    original_run_path = runpy.run_path
+    monkeypatch.setattr(runpy, 'run_path', lambda path, *a, **k:
+                        original_run_path(str(ROOT / 'runtime/private-hyprland.py'))
+                        if str(path).endswith('private-hyprland.py') else pin)
     calls = []
     resolver = target / 'etc/resolv.conf'
 

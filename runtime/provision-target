@@ -63,6 +63,13 @@ def main():
     if not live and not target.is_mount():
         raise SystemExit('Installed target must be a mounted root filesystem')
     source = Path('/usr/share/wilsof/source')
+    private = runpy.run_path(str(source / 'runtime/private-hyprland.py'))
+    private_record = private['embedded'](Path('/usr/share/wilsof'))
+    if private_record is not None:
+        if live:
+            private['verify'](target, private_record)
+        else:
+            private['install'](target, Path('/usr/share/wilsof'), required=True)
     pin = runpy.run_path(str(source / 'runtime/pinned-package.py'))
     if not live:
         pin['install_package'](target, '/usr/share/wilsof/packages')

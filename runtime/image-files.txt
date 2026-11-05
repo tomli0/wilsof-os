@@ -28,6 +28,8 @@ config/wilsof-shortcuts.json
 runtime/desktop.py
 runtime/pinned-package.py
 runtime/private-hyprland.py
+runtime/repository-snapshot.py
+scripts/package-preflight.py
 runtime/provision-target
 runtime/desktop-packages.txt
 runtime/image-files.txt

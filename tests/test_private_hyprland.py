@@ -204,13 +204,13 @@ def test_resolved_upstream_dependency_aborts_before_download(tmp_path, monkeypat
     (profile / 'packages.x86_64').write_text('base\n')
     original = runpy.run_path
     monkeypatch.setattr(runpy, 'run_path', lambda path, *a, **k:
-                        {'embedded': lambda base: {'name': 'hyprland-as02-private'}}
+                        {'embedded': lambda base: {'name': 'hyprland-as02-private', 'dependency_constraints': []}}
                         if str(path).endswith('private-hyprland.py') else original(path, *a, **k))
     calls = []
     def command(argv):
         calls.append(argv)
         if '-Sp' in argv:
-            return '\t'.join(['hyprland', '1.0-1', 'x86_64', 'hyprland-1.pkg.tar.zst', '0' * 64, 'c2ln', 'extra'])
+            return '\t'.join(['hyprland', '1.0-1', 'x86_64', 'hyprland-1.0-1-x86_64.pkg.tar.zst', '0' * 64, 'c2ln', 'extra'])
         return ''
     monkeypatch.setitem(module['preflight'].__globals__, 'command', command)
     with pytest.raises(ValueError, match='repository fallback'):

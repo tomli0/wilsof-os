@@ -2,6 +2,10 @@
 import importlib.util
 from pathlib import Path
 
+import json
+import re
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 NORMAL = '''title    Arch Linux install medium (%ARCH%, UEFI)
 sort-key 01
@@ -130,3 +134,50 @@ def test_upstream_presentation_flags_cannot_override_safe_menu_policy(tmp_path):
     configure(output)
     after = {str(p.relative_to(output)): p.read_bytes() for p in output.rglob('*') if p.is_file()}
     assert after == before, 'Overlay must be deterministic and idempotent'
+
+@pytest.mark.parametrize('version', [91, 92])
+def test_real_releng_contract_restores_explicit_kms_and_preserves_memtest(tmp_path, version):
+    import shutil
+    output = tmp_path / 'profile'
+    shutil.copytree(ROOT / 'tests/fixtures' / f'archiso{version}', output)
+    configure(output)
+    config = (output / 'airootfs/etc/mkinitcpio.conf.d/archiso.conf').read_text()
+    hooks = re.search(r'^HOOKS=\(([^)]*)\)', config, re.M)[1].split()
+    for hook in ('udev', 'modconf', 'kms', 'keyboard', 'plymouth', 'archiso'):
+        assert hooks.count(hook) == 1
+    assert hooks.index('modconf') < hooks.index('kms') < hooks.index('keyboard') < hooks.index('plymouth') < hooks.index('archiso')
+    expected = 'memtest.efi' if version == 91 else 'memtest86x64.efi'
+    assert '/boot/memtest86+/' + expected in (output / 'efiboot/loader/entries/05-wilsof-memtest.conf').read_text()
+    assert json.loads((output / 'BOOT-CONTRACT.json').read_text()) == {'archiso_major': version, 'early_kms': 'wilsof-explicit'}
+    if version == 92:
+        assert 'linux-atm' not in (output / 'packages.x86_64').read_text().splitlines()
+    before = {str(p.relative_to(output)): p.read_bytes() for p in output.rglob('*') if p.is_file()}
+    configure(output)
+    assert before == {str(p.relative_to(output)): p.read_bytes() for p in output.rglob('*') if p.is_file()}
+
+
+@pytest.mark.parametrize('change', ['missing-udev', 'missing-modconf', 'duplicate-kms', 'duplicate-keyboard', 'wrong-order', 'bad-memtest'])
+def test_invalid_boot_contract_rejected_before_writes(tmp_path, change):
+    output = profile(tmp_path)
+    config = output / 'airootfs/etc/mkinitcpio.conf.d/archiso.conf'
+    changes = {'missing-udev': ('udev ', ''), 'missing-modconf': ('modconf ', ''),
+               'duplicate-kms': ('kms ', 'kms kms '), 'duplicate-keyboard': ('keyboard)', 'keyboard keyboard)'),
+               'wrong-order': ('modconf kms', 'kms modconf')}
+    if change == 'bad-memtest':
+        (output / 'efiboot/loader/entries/03-archiso-memtest86+x64.conf').write_text('efi /wrong.efi\n')
+    else:
+        config.write_text(config.read_text().replace(*changes[change]))
+    before = {str(p.relative_to(output)): p.read_bytes() for p in output.rglob('*') if p.is_file()}
+    with pytest.raises(ValueError):
+        configure(output)
+    assert before == {str(p.relative_to(output)): p.read_bytes() for p in output.rglob('*') if p.is_file()}
+
+
+def test_upstream_fixture_bytes_match_provenance_ledger():
+    import hashlib
+    directory = ROOT / 'tests/fixtures'
+    ledger = json.loads((directory / 'archiso-provenance.json').read_text())
+    assert len(ledger) == 10
+    for relative, record in ledger.items():
+        assert record['url'].startswith('https://raw.githubusercontent.com/archlinux/archiso/v')
+        assert hashlib.sha256((directory / relative).read_bytes()).hexdigest() == record['sha256']

@@ -48,7 +48,7 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
         if package != hypridle_package:
             raise ValueError('Exact verified Hypridle package filename required')
     if any((upstream / name).exists() or (upstream / name).is_symlink()
-           for name in ('BUILD-SOURCE.json', 'BUILD-INPUTS.json', '.build-inputs')):
+           for name in ('BUILD-SOURCE.json', 'BUILD-INPUTS.json', 'BOOT-CONTRACT.json', '.build-inputs', '.wilsof-boot-upstream')):
         raise ValueError('Refusing inherited reserved provenance path')
     inputs = {'source_commit': commit, 'source': inventory(source), 'releng': inventory(upstream)}
     shutil.copytree(upstream, output, symlinks=True)
@@ -63,6 +63,9 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     packages = set(private['selection'](sorted(packages), private_record))
     (output / 'packages.x86_64').write_text('\n'.join(sorted(p for p in packages if p and not p.startswith('#'))) + '\n')
     root = output / 'airootfs'
+    snapshot = runpy.run_path(str(source / 'runtime/repository-snapshot.py'))
+    snapshot['stage'](root)
+    (output / 'pacman.conf').write_text(snapshot['CONFIG'])
     (root / 'mnt/wilsof').mkdir(parents=True, exist_ok=True)
     for relative in ('root', 'etc/ssh', 'etc/systemd/network',
                      'etc/systemd/system/getty@tty1.service.d',
@@ -104,7 +107,7 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     sums = {str(p.relative_to(payload)): hashlib.sha256(p.read_bytes()).hexdigest() for p in payload.rglob('*') if p.is_file()}
     (payload / 'FILES.sha256.json').write_text(json.dumps(sums, indent=2, sort_keys=True) + '\n')
     # Gate the installed image dependency even when preparing without a local package.
-    customization = "import runpy; pin=runpy.run_path('/usr/share/wilsof/source/runtime/pinned-package.py'); pin['verify_arch_chroot_support']()"
+    customization = "import runpy; pin=runpy.run_path('/usr/share/wilsof/source/runtime/pinned-package.py'); pin['verify_arch_chroot_support'](); snapshot=runpy.run_path('/usr/share/wilsof/source/runtime/repository-snapshot.py'); snapshot['read']()"
     if package is not None:
         packages_dir = root / 'usr/share/wilsof/packages'
         packages_dir.mkdir(parents=True)

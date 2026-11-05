@@ -62,7 +62,8 @@ execute-saved-plan option, automatic retry, SSH setup or automatic reboot.
 Schema: `schemas/installation-plan.schema.json`. The digest is `sha256-` plus the
 hex SHA-256 of UTF-8 JSON with sorted keys, compact separators, ASCII escaping and
 no NaN, excluding only `review_digest`. `plan_id` binds the reviewed effective
-package-list digest. Encryption-enabled plans, optional package choices and codec
+package list, private input identity and full signed repository-transaction
+receipt. Encryption-enabled plans, optional package choices and codec
 selection are rejected rather than silently ignored.
 
 The initial probe and final pre-filesystem guard both require:
@@ -103,10 +104,13 @@ The parent build must supply, root-owned and not writable by live users:
    desktop, greeter/frontend and DMS dependencies. The adapter adds base, linux,
    linux-firmware, mkinitcpio, networkmanager, sudo and greetd. It also explicitly
    reviews efibootmgr, filesystem tools, Intel/AMD microcode and the possible
-   upstream accessibility package additions. The digest binds requested packages;
-   official repository dependencies are resolved by pacman and recorded separately.
-   Online official
-   repositories/mirrors must work; offline package availability is not promised.
+   upstream accessibility package additions. Before disk operations, a fresh
+   temporary pacman database resolves/downloads the entire official dependency
+   closure using the shared dated policy. The existing package hash/metadata/
+   trusted-signature verifier is reused, with private versioned constraints and
+   no repository Hyprland fallback. Its receipt binds the review digest.
+   Archive access and enough writable live storage are required; offline install
+   is not promised. See [repository policy](repository-snapshot.md).
 3. Executable `/usr/local/lib/wilsof/provision-target TARGET USER [--live]`.
    The adapter calls exactly `provision-target /mnt/wilsof USER` after the account
    exists and before enabling services/final success. **No `--live` for installed
@@ -117,6 +121,14 @@ The parent build must supply, root-owned and not writable by live users:
 4. Create empty `/mnt/wilsof`; provide Python >=3.14, python-jsonschema,
    archinstall exactly 4.5 and its dependencies, util-linux and installation
    tools. Present a fresh zero-filled disposable disk with a stable serial/WWN.
+5. The shared `runtime/repository-snapshot.py` policy,
+   `scripts/package-preflight.py` verifier and root-owned
+   `/usr/share/wilsof/REPOSITORY-SNAPSHOT.json`. Live pacman.conf and mirrorlist
+   must exactly match this policy. After minimal installation the adapter stages
+   that policy into the fresh target, checks every preflight-resolved official
+   name/version before local private replacements, and stores
+   `/usr/share/wilsof/REPOSITORY-INPUTS.json`. Provisioning checks policy before
+   package operations and again after successful configuration.
 
 `systemd-detect-virt --vm` reporting qemu/kvm adds `qemu-guest-agent`; its service
 is enabled only when `/dev/virtio-ports/org.qemu.guest_agent.0` exists. No network
@@ -131,5 +143,6 @@ identity/size/mount changes, schema/digest restrictions, package names, lazy
 imports, safe read-only CLI, firmware and mocked archinstall success/failure paths.
 No test calls a real partitioner or filesystem operation. Real Arch dependency
 imports and installation need the parent's isolated-chroot helper/disposable VM;
-they are not validated by mocked tests. This work changes no build profile,
-desktop provisioning code, updates code, scheduler or public release state.
+they are not validated by mocked tests. Source support and repository metadata
+do not establish native dependency/signature/loadability, installation, desktop
+or security acceptance. No scheduler or public release is activated.

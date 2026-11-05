@@ -170,10 +170,18 @@ def test_manifest_requires_package_names_not_options_or_shell(tmp_path):
 
 
 @pytest.fixture
-def fake_arch(tmp_path):
+def fake_arch(tmp_path, monkeypatch):
     from types import SimpleNamespace as NS
     from unittest.mock import Mock
     events = []
+    # External live-root/package boundary. Real policy behavior has separate tests.
+    policy = {'date': '2026-11-01'}
+    monkeypatch.setattr(runtime(), 'snapshot', {
+        'preflight': lambda *a, **k: {'snapshot': dict(policy), 'packages': []},
+        'read': lambda *a: dict(policy),
+        'stage': lambda *a: dict(policy),
+        'verify_installed': lambda *a: None,
+    }, raising=False)
     boot = NS(mountpoint=Path('/boot'), fs_type='fat32')
     root = NS(mountpoint=Path('/'), fs_type='ext4')
     mod = NS(partitions=[boot, root])
@@ -481,3 +489,52 @@ def test_valid_schema_does_not_imply_supported_runtime(field, value):
     plan['review_digest'] = m.review_digest(plan)
     with pytest.raises(m.Refusal):
         m.validate_plan(plan)
+
+
+@pytest.mark.parametrize('failure', ['signature', 'dependency'])
+def test_snapshot_failure_blocks_executor_before_formatting(fake_arch, monkeypatch, failure):
+    import subprocess
+    m, f = runtime(), fake_arch
+    monkeypatch.setattr(m, 'load_archinstall', lambda: f.api)
+    monkeypatch.setattr(m, 'check_target_mount', lambda p: None)
+    def reject(*args): raise subprocess.CalledProcessError(1, [failure])
+    monkeypatch.setitem(m.snapshot, 'preflight', reject)
+    with pytest.raises(subprocess.CalledProcessError): m.ArchinstallExecutor(f.manifest, f.hook, f.target)
+    assert not f.events
+
+
+def test_snapshot_drift_after_review_stops_before_disk_guard(fake_arch, monkeypatch):
+    m, f = runtime(), fake_arch
+    monkeypatch.setattr(m, 'load_archinstall', lambda: f.api)
+    monkeypatch.setattr(m, 'check_target_mount', lambda p: None)
+    executor = m.ArchinstallExecutor(f.manifest, f.hook, f.target)
+    plan = signed_plan(); plan['plan_id'] = executor.manifest_digest; plan['review_digest'] = m.review_digest(plan)
+    monkeypatch.setitem(m.snapshot, 'read', lambda *a: {'date': 'rolling'})
+    with pytest.raises(m.Refusal, match='snapshot'):
+        executor.execute(plan, 'transient', lambda: pytest.fail('No disk guard after policy rejection'))
+    assert not f.events
+
+
+def test_target_snapshot_is_persisted_and_verified_before_private_provisioning(fake_arch, monkeypatch):
+    import runpy
+    m, f = runtime(), fake_arch
+    monkeypatch.setattr(m, 'load_archinstall', lambda: f.api)
+    monkeypatch.setattr(m, 'check_target_mount', lambda p: None)
+    real = runpy.run_path(str(ROOT / 'runtime/repository-snapshot.py'))
+    def stage(target):
+        f.events.append('snapshot-persist'); return real['stage'](target)
+    def verify(target, receipt):
+        assert real['read'](target)['date'] == '2026-11-01'
+        f.events.append('snapshot-verified')
+    monkeypatch.setitem(m.snapshot, 'stage', stage)
+    monkeypatch.setitem(m.snapshot, 'verify_installed', verify)
+    fallback = f.target / 'boot/EFI/BOOT/BOOTX64.EFI'; fallback.parent.mkdir(parents=True); fallback.write_bytes(b'EFI fixture')
+    def provision(*args, **kwargs):
+        assert 'snapshot-verified' in f.events
+        assert real['read'](f.target)['date'] == '2026-11-01'
+        f.events.append('provision')
+    monkeypatch.setattr(m.subprocess, 'run', provision)
+    executor = m.ArchinstallExecutor(f.manifest, f.hook, f.target)
+    plan = signed_plan(); plan['plan_id'] = executor.manifest_digest; plan['review_digest'] = m.review_digest(plan)
+    executor.execute(plan, 'transient', lambda: None)
+    assert f.events.index('snapshot-persist') < f.events.index('snapshot-verified') < f.events.index('provision')

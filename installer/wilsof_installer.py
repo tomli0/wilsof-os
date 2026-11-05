@@ -18,6 +18,7 @@ from jsonschema import Draft202012Validator
 from installer.accounts import validate_username
 
 ROOT = Path(__file__).resolve().parents[1]
+snapshot = runpy.run_path(str(ROOT / 'runtime/repository-snapshot.py'))
 ARCHINSTALL_VERSION = '4.5'
 LSBLK = ['lsblk', '--json', '--bytes', '--paths', '--output',
          'PATH,KNAME,TYPE,SIZE,MAJ:MIN,RO,WWN,SERIAL,MODEL,PTTYPE,FSTYPE,MOUNTPOINTS']
@@ -183,12 +184,8 @@ class ArchinstallExecutor:
         private = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'runtime/private-hyprland.py'))
         self.private_record = private['embedded'](Path('/usr/share/wilsof'))
         self.packages = private['selection'](self.packages, self.private_record)
-        self.manifest_digest = 'sha256-' + hashlib.sha256(
-            json.dumps(self.packages if self.private_record is None else
-                       {'packages': self.packages, 'private_hyprland': {
-                           k: self.private_record[k] for k in
-                           ('name', 'version', 'architecture', 'sha256', 'binary_sha256')}},
-                       separators=(',', ':'), sort_keys=True).encode()).hexdigest()
+        self.repository_inputs = snapshot['preflight'](Path('/'), self.packages, self.private_record)
+        self.manifest_digest = self.package_review_digest()
         self.provision = Path(provision)
         self.target = Path(target)
         if not self.provision.is_file() or not os.access(self.provision, os.X_OK):
@@ -196,13 +193,24 @@ class ArchinstallExecutor:
         check_target_mount(self.target)
         self.api = load_archinstall()
 
+    def package_review_digest(self):
+        return 'sha256-' + hashlib.sha256(
+            json.dumps({'packages': self.packages,
+                        'repository_inputs': self.repository_inputs,
+                        'private_hyprland': None if self.private_record is None else {
+                            k: self.private_record[k] for k in
+                            ('name', 'version', 'architecture', 'sha256', 'binary_sha256')}},
+                       separators=(',', ':'), sort_keys=True).encode()).hexdigest()
+
     def execute(self, plan, password, guard):
         import asyncio
         private = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'runtime/private-hyprland.py'))
         if private['embedded'](Path('/usr/share/wilsof')) != self.private_record:
             raise Refusal('Private Hyprland policy changed after package review')
+        if snapshot['read'](Path('/')) != self.repository_inputs['snapshot']:
+            raise Refusal('Repository snapshot changed after review')
         validate_plan(plan)
-        if plan.get('plan_id') != self.manifest_digest:
+        if self.package_review_digest() != self.manifest_digest or plan.get('plan_id') != self.manifest_digest:
             raise Refusal('Reviewed package manifest differs from executor')
         check_target_mount(self.target)
         api = self.api
@@ -228,6 +236,8 @@ class ArchinstallExecutor:
         guard()  # Reprobe identity/blankness after all interactive input.
         # The full-disk scan may be lengthy: revalidate the destination last too.
         check_target_mount(self.target)
+        if snapshot['read'](Path('/')) != self.repository_inputs['snapshot']:
+            raise Refusal('Repository snapshot changed before disk operations')
         handler.perform_filesystem_operations()
         with api.Installer(self.target, config, base_packages=list(self.packages),
                            kernels=['linux']) as installation:
@@ -236,6 +246,10 @@ class ArchinstallExecutor:
             # 4.5 minimal_installation discards set_locale's result, and set_locale
             # is not idempotent. Perform one checked locale call after base install.
             installation.minimal_installation(mkinitcpio=False, hostname='wilsof', locale_config=None)
+            # pacstrap consumes the live config; persist it explicitly instead of
+            # inheriting the package's moving-mirror defaults in the fresh target.
+            snapshot['stage'](self.target)
+            snapshot['verify_installed'](self.target, self.repository_inputs)
             installation.set_vconsole(locale)
             if not installation.set_locale(locale):
                 raise Refusal('Target locale generation failed')

@@ -15,25 +15,75 @@ package_tools = runpy.run_path(str(HERE / 'package-preflight.py'))
 command = package_tools['command']
 
 
+def validate_signature_policy(expanded):
+    """Check each effective repository policy, not each serialized list item.
+
+    pacman-conf emits repeated SigLevel lines for one section. Repositories
+    without an override inherit [options]; local-file exceptions are separate
+    and remain constrained by the exact snapshot and pinned-package consumers.
+    """
+    sections = {}
+    section = None
+    for line in expanded.splitlines():
+        header = re.fullmatch(r'\[([^\[\]]+)\]', line.strip())
+        if header:
+            section = header[1]
+            if section in sections:
+                raise ValueError('Duplicate expanded pacman section')
+            sections[section] = []
+        else:
+            directive = re.fullmatch(r'SigLevel\s*=\s*(.*)', line.strip())
+            if directive:
+                if section is None or not directive[1].split():
+                    raise ValueError('Required trusted package signature policy must be retained')
+                sections[section].extend(directive[1].split())
+    def checked(tokens, inherited=()):
+        policy = set(inherited)
+        allowed = {'PackageRequired', 'PackageTrustedOnly', 'DatabaseRequired',
+                   'DatabaseOptional', 'DatabaseTrustedOnly'}
+        for token in tokens:
+            values = ['Package' + token, 'Database' + token] if token in (
+                'Required', 'Optional', 'Never', 'TrustedOnly', 'TrustAll') else [token]
+            if any(value not in allowed for value in values):
+                raise ValueError('Required trusted package signature policy must be retained')
+            policy.update(values)
+        if not {'PackageRequired', 'PackageTrustedOnly'} <= policy:
+            raise ValueError('Required trusted package signature policy must be retained')
+        return policy
+    if 'options' not in sections:
+        raise ValueError('Required trusted package signature policy must be retained')
+    defaults = checked(sections['options'])
+    for name, tokens in sections.items():
+        if name != 'options':
+            checked(tokens, defaults)
+
+
 def freeze(profile, source, epoch, version):
     profile, source = Path(profile).resolve(), Path(source).resolve()
     destination = profile / 'BUILD-INPUTS.json'
     if destination.exists() or destination.is_symlink():
         raise ValueError('Refusing existing reserved provenance path')
     installed = sorted(command(['pacman', '-Q']).splitlines())
-    if not any(re.fullmatch(r'archiso 91-[A-Za-z0-9.]+', p) for p in installed):
-        raise ValueError('Supported build tool is Archiso 91; refuse other versions')
+    tools = [re.fullmatch(r'archiso (91|92)-[A-Za-z0-9.]+', p) for p in installed if p.startswith('archiso ')]
+    if len(tools) != 1 or tools[0] is None:
+        raise ValueError('Supported build tools are Archiso 91/92; refuse other versions')
+    boot = profile / 'BOOT-CONTRACT.json'
+    if boot.is_symlink() or not boot.is_file():
+        raise ValueError('Missing reviewed releng boot contract')
+    contract = json.loads(boot.read_text())
+    if contract != {'archiso_major': int(tools[0][1]), 'early_kms': 'wilsof-explicit'}:
+        raise ValueError('Archiso tool/releng contract mismatch')
     conf = profile / 'pacman.conf'
     # pacman-conf expands Include and effective defaults. Never read mirrors or
     # signature configuration from the build host's default pacman invocation.
     expanded = command(['pacman-conf', '--config', str(conf)])
-    policies = re.findall(r'^SigLevel\s*=\s*(.*)$', expanded, re.M)
-    if (not policies or any(not {'Required', 'PackageRequired'} & set(p.split())
-                           or any(t in p.split() for t in ('Never', 'Optional', 'PackageNever', 'PackageOptional', 'TrustAll', 'PackageTrustAll'))
-                           for p in policies)):
-        raise ValueError('Required trusted package signature policy must be retained')
+    validate_signature_policy(expanded)
     if re.search(r'^(Include|XferCommand)\s*=', expanded, re.M):
         raise ValueError('Unexpanded Include/custom downloader is unsupported')
+    snapshot = runpy.run_path(str(source / 'runtime/repository-snapshot.py'))
+    snapshot_record = snapshot['read'](profile / 'airootfs')
+    if conf.read_text() != snapshot['CONFIG']:
+        raise ValueError('Build repository snapshot differs from live/target policy')
     original_keys = Path(command(['pacman-conf', '--config', str(conf), 'GPGDir']).strip())
     state = profile / '.build-inputs'
     state.mkdir()
@@ -78,6 +128,8 @@ def freeze(profile, source, epoch, version):
                      if not k.startswith('.build-inputs/') and k not in ('pacman.conf', 'BUILD-INPUTS.json')}
     record = {
         'schema': 1,
+        'repository_snapshot': snapshot_record,
+        'boot_contract': contract,
         'source': json.loads((profile / 'BUILD-SOURCE.json').read_text()),
         'configuration': {'source_date_epoch': epoch, 'iso_version': version, 'architecture': 'x86_64'},
         'tools': {'packages': installed, 'kernel': os.uname().release,

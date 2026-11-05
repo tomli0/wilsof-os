@@ -210,7 +210,7 @@ def test_resolved_upstream_dependency_aborts_before_download(tmp_path, monkeypat
     def command(argv):
         calls.append(argv)
         if '-Sp' in argv:
-            return '\t'.join(['hyprland', '1.0-1', 'x86_64', 'hyprland-1.pkg.tar.zst', '0' * 64, 'c2ln', 'extra'])
+            return '\t'.join(['hyprland', '1.0-1', 'x86_64', 'hyprland-1.0-1-x86_64.pkg.tar.zst', '0' * 64, 'c2ln', 'extra'])
         return ''
     monkeypatch.setitem(module['preflight'].__globals__, 'command', command)
     with pytest.raises(ValueError, match='repository fallback'):

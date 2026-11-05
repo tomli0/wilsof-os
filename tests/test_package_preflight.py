@@ -89,6 +89,94 @@ def test_full_image_transaction_is_independent_of_host_installed_packages(transa
     assert len(verified) == 2, 'Target and transitive dependency must both be verified'
 
 
+@pytest.mark.parametrize('failure', [None, 'bad_signature', 'wrong_identity', 'bad_sha256'])
+def test_epoch_filename_reaches_unchanged_hash_signature_and_archive_identity_gates(transaction, monkeypatch, failure):
+    """Native VM112 zlib filename shape; package/signature bytes here are fixtures."""
+    profile, cache, db, keys, calls, state = transaction
+    if failure in ('bad_signature', 'wrong_identity'):
+        state[failure] = True
+    original = subprocess.run
+    filename = 'zlib-1:1.3.2-4-x86_64.pkg.tar.zst'
+    def epoch_package(argv, **kwargs):
+        result = original(argv, **kwargs)
+        if argv[0] == 'pacman' and '-Sp' in argv:
+            lines = result.stdout.splitlines()
+            fields = lines[0].split('\t')
+            fields[:4] = ['zlib', '1:1.3.2-4', 'x86_64', filename]
+            lines[0] = '\t'.join(fields)
+            result.stdout = '\n'.join(lines) + '\n'
+        elif argv[0] == 'pacman' and '-Sw' in argv:
+            (cache/'base-1-1-any.pkg.tar.zst').rename(cache/filename)
+            if failure == 'bad_sha256':
+                (cache/filename).write_bytes(b'corrupt epoch package fixture')
+        elif argv[0] == 'bsdtar' and '-xOf' in argv and filename in str(argv):
+            result.stdout = 'pkgname = ' + ('wrong' if state['wrong_identity'] else 'zlib') + '\npkgver = 1:1.3.2-4\narch = x86_64\n'
+        return result
+    monkeypatch.setattr(subprocess, 'run', epoch_package)
+    if failure:
+        with pytest.raises((ValueError, subprocess.CalledProcessError)):
+            invoke(transaction, monkeypatch)
+        assert any(a[0] == 'pacman' and '-Sw' in a for a in calls), 'Refusal must reach the post-parse integrity gates'
+        return
+    records = invoke(transaction, monkeypatch)
+    zlib = next(p for p in records if p['name'] == 'zlib')
+    assert zlib['filename'] == filename and zlib['version'] == '1:1.3.2-4'
+    assert zlib['signer'] == 'A'*40
+    assert zlib['sha256'] == hashlib.sha256((cache/filename).read_bytes()).hexdigest()
+    assert len([a for a in calls if a[0] == 'gpg']) == 2
+
+
+@pytest.mark.parametrize('version,arch,suffix', [
+    ('1-1', 'any', 'zst'), ('1:1.3.2-4', 'x86_64', 'zst'),
+    ('3:0.8+r3+g68cd5af-2.1', 'x86_64', 'xz'), ('0:2.0-1', 'any', 'gz'),
+])
+def test_resolved_parser_preserves_full_epoch_version_and_filename(version, arch, suffix):
+    parse = runpy.run_path(str(ROOT/'scripts/package-preflight.py'))['parse_resolved_packages']
+    filename = f'example-{version}-{arch}.pkg.tar.{suffix}'
+    row = '\t'.join(('example', version, arch, filename, 'a'*64, 'c2ln', 'core'))
+    result = parse([row])[0]
+    assert result['version'] == version and result['filename'] == filename
+
+
+@pytest.mark.parametrize('field,value', [
+    (0, 'other-name'), (1, '1:1.3.2-5'), (2, 'any'),
+    (3, '../zlib-1:1.3.2-4-x86_64.pkg.tar.zst'),
+    (3, '/zlib-1:1.3.2-4-x86_64.pkg.tar.zst'),
+    (3, 'zlib-1.3.2-4-x86_64.pkg.tar.zst'),
+    (3, 'zlib-2:1.3.2-4-x86_64.pkg.tar.zst'),
+    (3, 'zlib-1::1.3.2-4-x86_64.pkg.tar.zst'),
+    (3, 'zlib-1:1.3.2-4-x86_64.pkg.tar.zst.sig'),
+    (3, 'zlib-1:1.3.2-4-x86_64.pkg.tar.zip'),
+    (4, 'a'*63), (4, 'A'*64), (4, '../'+'a'*61),
+    (6, ''),
+])
+def test_resolved_parser_rejects_inconsistent_or_unsafe_identity(field, value):
+    parse = runpy.run_path(str(ROOT/'scripts/package-preflight.py'))['parse_resolved_packages']
+    row = ['zlib', '1:1.3.2-4', 'x86_64', 'zlib-1:1.3.2-4-x86_64.pkg.tar.zst', 'a'*64, 'c2ln', 'core']
+    row[field] = value
+    with pytest.raises(ValueError, match='Invalid resolved package identity'):
+        parse(['\t'.join(row)])
+
+
+@pytest.mark.parametrize('version', ['x:1.3.2-4', '-1:1.3.2-4', '1::1.3.2-4', '1:1.3.2', '1:../x-1', '1:1.3.2-4/extra'])
+def test_resolved_parser_never_repairs_malformed_epoch_or_version(version):
+    parse = runpy.run_path(str(ROOT/'scripts/package-preflight.py'))['parse_resolved_packages']
+    row = '\t'.join(('zlib',version,'x86_64',f'zlib-{version}-x86_64.pkg.tar.zst','a'*64,'c2ln','core'))
+    with pytest.raises(ValueError, match='Invalid resolved package identity'):
+        parse([row])
+
+
+def test_resolved_parser_retains_duplicate_and_private_fallback_guards():
+    parse = runpy.run_path(str(ROOT/'scripts/package-preflight.py'))['parse_resolved_packages']
+    row = '\t'.join(('zlib','1:1.3.2-4','x86_64','zlib-1:1.3.2-4-x86_64.pkg.tar.zst','a'*64,'c2ln','core'))
+    with pytest.raises(ValueError, match='Duplicate'):
+        parse([row,row])
+    for name in ('hyprland','hyprland-as02-private'):
+        bad = '\t'.join((name,'1-1','x86_64',f'{name}-1-1-x86_64.pkg.tar.zst','a'*64,'c2ln','extra'))
+        with pytest.raises(ValueError, match='fallback'):
+            parse([bad], {'name':'hyprland-as02-private'})
+
+
 def test_unrelated_corrupt_cache_file_is_ignored(transaction, monkeypatch):
     _, cache, _, _, calls, _ = transaction
     (cache / 'unrelated.pkg.tar.zst').write_bytes(b'corrupt')

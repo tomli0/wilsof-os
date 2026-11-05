@@ -129,6 +129,75 @@ def test_freeze_binds_package_closure_databases_policy_and_public_keyring(transa
     assert any(a[0] == 'pacman-conf' for a in calls)
 
 
+def test_freeze_accepts_native_multiline_siglevel_without_changing_private_exception(transaction, monkeypatch):
+    """pacman-conf 7.1 emits one SigLevel directive per expanded value."""
+    profile = transaction[0]
+    (profile / 'BUILD-SOURCE.json').write_text('{}\n')
+    original = subprocess.run
+    def native_expansion(argv, **kwargs):
+        result = original(argv, **kwargs)
+        if argv[0] == 'pacman-conf' and argv[-1] != 'GPGDir':
+            result.stdout = result.stdout.replace(
+                'SigLevel = Required TrustedOnly DatabaseOptional\n',
+                'SigLevel = PackageRequired\nSigLevel = PackageTrustedOnly\n'
+                'SigLevel = DatabaseOptional\nSigLevel = DatabaseTrustedOnly\n')
+            result.stdout = result.stdout.replace('LocalFileSigLevel = Optional\n',
+                'LocalFileSigLevel = PackageOptional\nLocalFileSigLevel = PackageTrustedOnly\n')
+        return result
+    monkeypatch.setattr(subprocess, 'run', native_expansion)
+    record = runpy.run_path(str(ROOT / 'scripts/build-inputs.py'))['freeze'](
+        profile, ROOT, '1767225600', 'fixed')
+    assert len(record['packages']) == 2
+    conf = (profile / 'pacman.conf').read_text()
+    assert 'SigLevel = PackageRequired\nSigLevel = PackageTrustedOnly\n' in conf
+    assert 'LocalFileSigLevel = PackageOptional\nLocalFileSigLevel = PackageTrustedOnly\n' in conf
+    snapshot = runpy.run_path(str(ROOT / 'runtime/repository-snapshot.py'))
+    assert (profile / 'airootfs/etc/pacman.conf').read_text() == snapshot['CONFIG']
+    assert len([a for a in transaction[4] if a[0] == 'gpg']) == 2
+
+
+@pytest.mark.parametrize('bad_policy', [
+    'PackageOptional', 'PackageNever', 'PackageTrustAll', 'Optional', 'Never',
+    'TrustAll', 'Unknown', 'PackageRequired PackageTrustAll',
+])
+def test_freeze_rejects_one_weak_repo_before_any_transaction(transaction, monkeypatch, bad_policy):
+    profile = transaction[0]
+    original = subprocess.run
+    def weak_repo(argv, **kwargs):
+        result = original(argv, **kwargs)
+        if argv[0] == 'pacman-conf' and argv[-1] != 'GPGDir':
+            result.stdout += '\n[weak-repository]\nSigLevel = ' + bad_policy + '\n'
+        return result
+    monkeypatch.setattr(subprocess, 'run', weak_repo)
+    with pytest.raises(ValueError, match='signature policy'):
+        runpy.run_path(str(ROOT / 'scripts/build-inputs.py'))['freeze'](profile, ROOT, '1', 'fixed')
+    assert not (profile / '.build-inputs').exists()
+    assert not (profile / 'BUILD-INPUTS.json').exists()
+    assert not any(a[0] == 'gpg' or (a[0] == 'pacman' and '-Q' not in a) for a in transaction[4])
+
+
+@pytest.mark.parametrize('expanded', [
+    '', '[core]\nSigLevel = Required TrustedOnly\n',
+    '[options]\nSigLevel = PackageRequired\n[core]\nSigLevel = PackageTrustedOnly\n',
+    '[options]\nSigLevel = PackageTrustedOnly\n[core]\nSigLevel = PackageRequired\n',
+    '[options]\nLocalFileSigLevel = Required TrustedOnly\n[core]\n',
+    '[options]\nSigLevel =\n[core]\n',
+    '[options]\nSigLevel = Required TrustedOnly\n[options]\n',
+])
+def test_signature_policy_cannot_borrow_required_flags_from_other_sections(expanded):
+    validate = runpy.run_path(str(ROOT / 'scripts/build-inputs.py'))['validate_signature_policy']
+    with pytest.raises(ValueError):
+        validate(expanded)
+
+
+def test_signature_policy_keeps_database_optional_and_explicit_local_exception_separate():
+    validate = runpy.run_path(str(ROOT / 'scripts/build-inputs.py'))['validate_signature_policy']
+    validate('[options]\nSigLevel = PackageRequired\nSigLevel = PackageTrustedOnly\n'
+             'SigLevel = DatabaseOptional\nSigLevel = DatabaseTrustedOnly\n'
+             'LocalFileSigLevel = PackageOptional\nLocalFileSigLevel = PackageTrustedOnly\n'
+             '[core]\n[extra]\nSigLevel = PackageRequired\nSigLevel = PackageTrustedOnly\n')
+
+
 def test_equivalent_frozen_inputs_have_identical_metadata(transaction):
     import shutil
     profile = transaction[0]

@@ -60,7 +60,8 @@ def transaction(tmp_path, monkeypatch):
             text = f'pkgname = {"wrong" if state["wrong_identity"] else name}\npkgver = 1-1\narch = any\n'
         elif argv[0] == 'gpg':
             code = int(state['bad_signature'])
-            text = '[GNUPG:] VALIDSIG ' + 'A' * 40 + ' 0 0\n[GNUPG:] TRUST_FULLY 0 pgp\n'
+            # Mirrors the fixed pipeline: GPG status is captured as raw bytes.
+            text = b'[GNUPG:] VALIDSIG ' + b'A' * 40 + b' 0 0\n[GNUPG:] TRUST_FULLY 0 pgp\n'
         elif argv[0] == 'zstd':
             code = 1  # Unrelated historical cache file must never be examined.
         if kwargs.get('check') and code:
@@ -175,6 +176,92 @@ def test_resolved_parser_retains_duplicate_and_private_fallback_guards():
         bad = '\t'.join((name,'1-1','x86_64',f'{name}-1-1-x86_64.pkg.tar.zst','a'*64,'c2ln','extra'))
         with pytest.raises(ValueError, match='fallback'):
             parse([bad], {'name':'hyprland-as02-private'})
+
+
+# Native VM112 attempt-3 evidence: trusted packager keys exist with non-UTF-8
+# (latin-1) primary UIDs. GPG converts them for diagnostics only when the
+# locale allows; with LC_ALL=C it echoes the raw bytes into stderr instead.
+BALLO_FPR = b'14E46FE5FD69F2E287E244DB632C3CC0D1C9CAF6'
+BALLO_STATUS = (b'[GNUPG:] NEWSIG\n'
+                b'[GNUPG:] KEY_CONSIDERED ' + BALLO_FPR + b' 0\n'
+                b'[GNUPG:] SIG_ID fixture 2024-09-18 1726670173\n'
+                b'[GNUPG:] GOODSIG 632C3CC0D1C9CAF6 Ball\xf3 Gy\xf6rgy <bgyorgy@archlinux.org>\n'
+                b'[GNUPG:] VALIDSIG ' + BALLO_FPR + b' 2024-09-18 1726670173 0 4 0 1 8 00 ' + BALLO_FPR + b'\n'
+                b'[GNUPG:] TRUST_FULLY 0 pgp\n')
+BALLO_DIAGNOSTICS = (b'gpg: Signature made Wed Sep 18 14:36:13 2024 UTC\n'
+                     b'gpg:                using RSA key ' + BALLO_FPR + b'\n'
+                     b'gpg: Good signature from "Ball\xf3 Gy\xf6rgy <bgyorgy@archlinux.org>" [full]\n')
+
+
+def test_non_utf8_signer_uid_and_diagnostics_verify_without_decoding(transaction, monkeypatch):
+    """Latin-1 UID bytes must not crash or falsify the signature verdict."""
+    original = subprocess.run
+    def latin1_gpg(argv, **kwargs):
+        argv = list(map(str, argv))
+        if argv[0] == 'gpg':
+            assert not kwargs.get('text'), 'GPG must be captured as raw bytes, never as decoded text'
+            return SimpleNamespace(returncode=0, stdout=BALLO_STATUS, stderr=BALLO_DIAGNOSTICS)
+        return original(argv, **kwargs)
+    monkeypatch.setattr(subprocess, 'run', latin1_gpg)
+    records = invoke(transaction, monkeypatch)
+    assert [r['signer'] for r in records] == [BALLO_FPR.decode()] * 2
+    assert all(r['signature_sha256'] for r in records)
+
+
+@pytest.mark.parametrize('status', [
+    b'',
+    b'[GNUPG:] GOODSIG 632C3CC0D1C9CAF6 some signer\n[GNUPG:] TRUST_FULLY 0 pgp\n',
+    BALLO_STATUS.replace(b'[GNUPG:] TRUST_FULLY 0 pgp\n', b''),
+    BALLO_STATUS.replace(b'[GNUPG:] TRUST_FULLY 0 pgp\n', b'[GNUPG:] TRUST_UNDEFINED 0 pgp\n'),
+    BALLO_STATUS + b'[GNUPG:] BADSIG 632C3CC0D1C9CAF6 tampered signer\n',
+    BALLO_STATUS + b'[GNUPG:] ERRSIG ' + BALLO_FPR + b' 1 1 17 0\n',
+    BALLO_STATUS + b'[GNUPG:] EXPKEYSIG ' + BALLO_FPR + b' expired signer\n',
+    BALLO_STATUS + BALLO_STATUS.replace(b'14E46FE5FD69F2E287E244DB632C3CC0D1C9CAF6',
+                                        b'109415E692007609CA7EBFE4001CF4810BE8D911', 2),
+    BALLO_STATUS.replace(b'14E46FE5FD69F2E287E244DB632C3CC0D1C9CAF6 2024',
+                         b'14E46FE5FD69F2E287E244DB632C3CC0D1C9CAF 2024', 1),
+    BALLO_STATUS.replace(b'VALIDSIG', b'VALDSIG', 1),
+])
+def test_malformed_untrusted_or_rejected_gpg_status_fails_closed(transaction, monkeypatch, status):
+    original = subprocess.run
+    def status_gpg(argv, **kwargs):
+        argv = list(map(str, argv))
+        if argv[0] == 'gpg':
+            return SimpleNamespace(returncode=0, stdout=status, stderr=BALLO_DIAGNOSTICS)
+        return original(argv, **kwargs)
+    monkeypatch.setattr(subprocess, 'run', status_gpg)
+    with pytest.raises(ValueError, match='Untrusted or unverifiable signature'):
+        invoke(transaction, monkeypatch)
+
+
+def test_gpg_status_refuses_non_byte_capture(transaction, monkeypatch):
+    original = subprocess.run
+    def str_gpg(argv, **kwargs):
+        argv = list(map(str, argv))
+        if argv[0] == 'gpg':
+            return SimpleNamespace(returncode=0, stdout=BALLO_STATUS.decode('latin-1'), stderr='')
+        return original(argv, **kwargs)
+    monkeypatch.setattr(subprocess, 'run', str_gpg)
+    with pytest.raises(ValueError, match='raw bytes'):
+        invoke(transaction, monkeypatch)
+
+
+def test_undecodable_text_helper_output_is_a_refusal_not_a_success(transaction, monkeypatch):
+    original = subprocess.run
+    def undecodable_solver(argv, **kwargs):
+        argv = list(map(str, argv))
+        if argv[0] == 'pacman' and '-Sp' in argv:
+            stdout = b'zlib\t1:1.3.2-4\tx86_64\tzlib-1:1.3.2-4-x86_64.pkg.tar.zst\t' + \
+                     b'a' * 64 + b'\tc2ln\tBall\xf3 Gy\xf6rgy\n'
+            if kwargs.get('text'):
+                # Mirror real subprocess: strict decode happens inside the runner.
+                stdout.decode(kwargs.get('encoding') or 'utf-8')
+                raise AssertionError('fixture must contain undecodable bytes')
+            return SimpleNamespace(returncode=0, stdout=stdout, stderr=b'')
+        return original(argv, **kwargs)
+    monkeypatch.setattr(subprocess, 'run', undecodable_solver)
+    with pytest.raises(ValueError, match='not valid UTF-8'):
+        invoke(transaction, monkeypatch)
 
 
 def test_unrelated_corrupt_cache_file_is_ignored(transaction, monkeypatch):

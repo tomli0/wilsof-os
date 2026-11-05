@@ -12,7 +12,34 @@ FORMAT = '%n\t%v\t%a\t%f\t%h\t%g\t%r'
 
 
 def command(argv):
-    return subprocess.run(list(map(str, argv)), check=True, capture_output=True, text=True).stdout
+    """Helper output as strictly decoded UTF-8 text.
+
+    Decoding failures are refusals, never successes: a helper whose output
+    cannot be decoded cannot be inspected for the identity this pipeline
+    binds to, so raise instead of returning mangled or lossy text.
+    """
+    try:
+        return subprocess.run(list(map(str, argv)), check=True, capture_output=True,
+                              text=True, encoding='utf-8', errors='strict').stdout
+    except UnicodeDecodeError as error:
+        raise ValueError(f'Helper output is not valid UTF-8: {Path(argv[0]).name}: {error}') from None
+
+
+def gpg_status(argv):
+    """Raw [GNUPG:] status bytes; explicit status tokens decide verification.
+
+    OpenPGP user IDs are byte strings, and real trusted packager keys exist
+    with non-UTF-8 (latin-1) UIDs. GPG echoes those raw bytes into its human
+    diagnostics whenever the active locale cannot convert them, so the GPG
+    streams must never be decoded before the VALIDSIG/TRUST token gates have
+    accepted or rejected the signature: decoding anything earlier would turn
+    a verified signature into an unhandled crash, and silently ignoring decode
+    errors would blur the explicit machine-readable verdict.
+    """
+    result = subprocess.run(list(map(str, argv)), check=True, capture_output=True)
+    if not isinstance(result.stdout, (bytes, bytearray)):
+        raise ValueError('GPG status capture did not return raw bytes')
+    return bytes(result.stdout)
 
 
 def preflight(profile, cache, db, gpgdir):
@@ -84,12 +111,12 @@ def verify_transaction(config, targets, cache, db, gpgdir, private_record=None):
         # Repository signatures are embedded in the same frozen sync database.
         # A missing/invalid signature is fatal even if a profile permits Optional.
         signature.write_bytes(base64.b64decode(package.pop('signature'), validate=True))
-        status = command(['gpg', '--no-options', '--homedir', str(gpgdir), '--batch',
-                          '--no-auto-key-retrieve', '--auto-key-locate', 'clear',
-                          '--status-fd', '1', '--verify', str(signature), str(path)])
-        valid = re.findall(r'^\[GNUPG:\] VALIDSIG ([0-9A-F]{40,64}) ', status, re.M)
-        trusted = re.search(r'^\[GNUPG:\] TRUST_(FULLY|ULTIMATE)\b', status, re.M)
-        rejected = re.search(r'^\[GNUPG:\] (BADSIG|ERRSIG|EXPSIG|EXPKEYSIG|REVKEYSIG|NO_PUBKEY)\b', status, re.M)
+        status = gpg_status(['gpg', '--no-options', '--homedir', str(gpgdir), '--batch',
+                            '--no-auto-key-retrieve', '--auto-key-locate', 'clear',
+                            '--status-fd', '1', '--verify', str(signature), str(path)])
+        valid = re.findall(rb'^\[GNUPG:\] VALIDSIG ([0-9A-F]{40,64}) ', status, re.M)
+        trusted = re.search(rb'^\[GNUPG:\] TRUST_(FULLY|ULTIMATE)\b', status, re.M)
+        rejected = re.search(rb'^\[GNUPG:\] (BADSIG|ERRSIG|EXPSIG|EXPKEYSIG|REVKEYSIG|NO_PUBKEY)\b', status, re.M)
         if len(valid) != 1 or not trusted or rejected:
             raise ValueError(f'Untrusted or unverifiable signature: {path.name}')
         command(['bsdtar', '-tf', str(path)])
@@ -97,6 +124,7 @@ def verify_transaction(config, targets, cache, db, gpgdir, private_record=None):
         for key, expected in [('pkgname', package['name']), ('pkgver', package['version']), ('arch', package['arch'])]:
             if re.findall(r'^' + key + r' = (.+)$', info, re.M) != [expected]:
                 raise ValueError(f'Package metadata mismatch: {path.name}: {key}')
-        package.update(signature_sha256=hashlib.sha256(signature.read_bytes()).hexdigest(), signer=valid[0])
+        package.update(signature_sha256=hashlib.sha256(signature.read_bytes()).hexdigest(),
+                       signer=valid[0].decode('ascii'))
     print(f'build-iso: verified {len(packages)} required repository packages (including dependencies)')
     return sorted(packages, key=lambda p: p['name'])

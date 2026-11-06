@@ -70,6 +70,39 @@ class Refusal(Exception):
     """A boundary check failed; do not continue installation."""
 
 
+def check_live_capacity(directory=Path('/var/tmp'), memory=Path('/proc/meminfo')):
+    """Fail before package preflight/disk input when the live RAM budget is unsafe.
+
+    The frozen closure currently needs about 1283 MiB compressed. Leave at
+    least 509 MiB for the fresh DB, signatures and overlay growth. A larger
+    tmpfs limit alone does not establish that there is actual RAM behind it.
+    """
+    try:
+        values = {}
+        for line in memory.read_text().splitlines():
+            key, _, value = line.partition(':')
+            if key not in ('MemTotal', 'MemAvailable'):
+                continue
+            fields = value.split()
+            if key in values or len(fields) != 2 or fields[1] != 'kB' or not fields[0].isdecimal():
+                raise ValueError('Invalid memory accounting')
+            values[key] = int(fields[0]) * 1024
+        total, available = values['MemTotal'], values['MemAvailable']
+        if not 0 < available <= total:
+            raise ValueError('Invalid memory accounting')
+        space = os.statvfs(directory)
+        free = space.f_bavail * space.f_frsize
+        if free < 1792 * 1024**2:
+            raise Refusal('Insufficient temporary writable capacity: need 1792 MiB free in /var/tmp; '
+                          'use the current live image, without disabling package preflight')
+        # Firmware/kernel reservations mean nominal 4 GiB machines expose less.
+        if total < 3584 * 1024**2 or available < 2304 * 1024**2:
+            raise Refusal('Insufficient RAM for installation: use at least 4 GiB installed RAM '
+                          'and leave 2304 MiB available; close applications before retrying')
+    except (OSError, KeyError, ValueError) as error:
+        raise Refusal('Cannot verify live RAM/writable capacity; no package or disk operation started') from error
+
+
 def review_digest(plan):
     """SHA-256 of sorted, compact ASCII JSON, excluding review_digest itself."""
     payload = {key: value for key, value in plan.items() if key != 'review_digest'}
@@ -343,9 +376,16 @@ def main(argv=None):
         # copytoram unmounts bootmnt; the immutable live root remains mounted.
         if not Path('/run/archiso/airootfs').is_mount():
             raise Refusal('Installation is available only from booted Archiso live media')
-        with warnings.catch_warnings():
-            warnings.simplefilter('error', getpass.GetPassWarning)
-            interactive(ArchinstallExecutor(guest=guest_policy()))
+        check_live_capacity()
+        # Keep target parents traversable regardless of the invoking shell's
+        # umask. Password/key directories retain their explicit private modes.
+        previous_umask = os.umask(0o022)
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter('error', getpass.GetPassWarning)
+                interactive(ArchinstallExecutor(guest=guest_policy()))
+        finally:
+            os.umask(previous_umask)
         return 0
     except (KeyboardInterrupt, EOFError):
         print('Cancelled. If disk operations started, the target may be partially installed.', file=sys.stderr)

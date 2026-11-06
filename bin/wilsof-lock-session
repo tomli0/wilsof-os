@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import re
 import shlex
+import secrets
+import time
 import stat
 import subprocess
 import sys
@@ -66,17 +68,35 @@ def context():
     return runtime, key, session, path
 
 
+def lock_barrier(key):
+    """A consumer generation is closed and native-synchronized before PAM UI."""
+    token = secrets.token_hex(16)
+    base = ['dms', 'ipc', 'call', 'commandCenter']
+    if command(base + ['prepareLock', token]).strip() != 'WILSOF_LOCK_PENDING':
+        raise ValueError('owning consumer unavailable')
+    deadline = time.monotonic() + 8
+    while time.monotonic() < deadline:
+        status = json.loads(command(base + ['lockStatus', token]))
+        if not isinstance(status, dict):
+            raise ValueError('invalid consumer reply')
+        if status.get('ready') is True:
+            if (status.get('generation') != token or status.get('key') != key
+                    or not re.fullmatch('[a-f0-9]{32}', status.get('epoch', ''))
+                    or status.get('closed') is not True or status.get('known') is not True
+                    or status.get('nativeLocked') is not False):
+                raise ValueError('consumer identity/state mismatch')
+            return
+        time.sleep(0.1)
+    raise ValueError('consumer did not acknowledge secure handoff')
+
+
 def main(args):
     if len(args) != 1 or args[0] not in ('lock', 'idle'):
         return 64
     action = args[0]
     runtime, key, session, path = context()
-    # No asynchronous unlock bridge is enabled: without a generation-bound
-    # compositor observer, delayed notifications can clear a newer lifecycle.
-    # Keep shell lockdown fail-closed; normal unlock-state resynchronization
-    # remains explicitly pending. Process completion is not PAM proof.
-    # Request shell lockdown before starting the password surface. The request
-    # is not proof that the compositor is secured. Never undo it on process exit.
+    # The owning consumer observes the compositor itself. This path only
+    # requests admission lockdown; neither a child exit nor IPC can unlock it.
     guard = runtime / ('wilsof-lock-' + key + '.lock')
     fd = os.open(guard, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
     info = os.fstat(fd)
@@ -92,7 +112,12 @@ def main(args):
         return 75
     # Never unlink this inode: stale unlocked files are harmless; unlinking would
     # allow a second guard while a surviving locker still holds the original.
-    command(['loginctl', 'lock-session', session])
+    try:
+        lock_barrier(key)
+        command(['loginctl', 'lock-session', session])
+    except BaseException:
+        os.close(fd)
+        raise
     argv = ['hyprlock']
     if action == 'idle':
         config = Path.home() / '.config/hypr/hyprlock-idle.conf'

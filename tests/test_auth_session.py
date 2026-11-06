@@ -74,6 +74,13 @@ elif name == 'busctl':
     elif 'get-property' in sys.argv: print('s "' + cfg['session'] + '"')
 elif name == 'loginctl' and 'show-session' in sys.argv:
     print('Id=' + cfg['session'] + '\nUser=' + str(cfg['user']) + '\nType=' + cfg['type'] + '\nClass=user\nState=active')
+elif name == 'dms':
+    import hashlib
+    if cfg.get('barrier_missing'): print('Target not found.')
+    elif 'prepareLock' in sys.argv: print('WILSOF_LOCK_PENDING')
+    elif 'lockStatus' in sys.argv:
+        key=hashlib.sha256((cfg['session']+':instance-one').encode()).hexdigest()
+        print(json.dumps({'generation':sys.argv[-1], 'key':key, 'epoch':'a'*32, 'ready':True, 'closed':True, 'known':True, 'nativeLocked':False}))
 elif name == 'hyprlock':
     if cfg.get('hold'):
         pathlib.Path(os.environ['STARTED']).write_text(str(os.getpid()))
@@ -81,7 +88,7 @@ elif name == 'hyprlock':
     if cfg.get('signal'): os.kill(os.getpid(), cfg['signal'])
     sys.exit(cfg['exit'])
 """
-    for name in ('hyprlock', 'pgrep', 'loginctl', 'hyprctl', 'busctl'):
+    for name in ('hyprlock', 'pgrep', 'loginctl', 'hyprctl', 'busctl', 'dms'):
         p = bindir / name
         p.write_text(fake)
         p.chmod(0o755)
@@ -245,3 +252,11 @@ def test_repeated_completed_or_failed_invocation_never_clears_state(lock_env, co
         assert p.returncode == code
     assert len([c for c in events(log) if c[0] == 'hyprlock']) == 2
     assert not any('unlock-session' in c for c in events(log))
+
+
+def test_missing_consumer_barrier_refuses_before_password_surface(lock_env):
+    env, config, log = lock_env
+    configure(config, barrier_missing=True)
+    result = subprocess.run([str(ROOT / 'bin/wilsof-lock')], env=env, capture_output=True, text=True, timeout=10)
+    assert result.returncode != 0
+    assert not any(c[0] == 'hyprlock' for c in events(log))

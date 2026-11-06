@@ -47,7 +47,7 @@ def test_native_dms_modal_distribution_and_safe_launcher_fallback():
     for contract in ['DModal {', 'AppSearchService.searchApplications', 'AppSearchService.getBuiltInLauncherItems', 'SessionService.launchDesktopEntry', 'SessionService.launchDesktopAction', 'PopoutService.openPowerMenu', 'Model.selection', 'Model.move', 'onStreamFinished', 'wilsof-file-search', 'Model.accept', 'function status()', 'Theme.surface', 'forceActiveFocus']:
         assert contract in qml, contract
     manifest = (ROOT / 'runtime/image-files.txt').read_text().splitlines()
-    for name in ['plugin.json', 'CommandCenter.qml', 'Model.js']:
+    for name in ['plugin.json', 'CommandCenter.qml', 'Model.js', 'NativeLock.js']:
         assert 'config/dms/plugins/wilsofCommandCenter/' + name in manifest
     runtime = (ROOT / 'runtime/desktop.py').read_text()
     assert 'wilsofCommandCenter' in runtime
@@ -61,7 +61,7 @@ def test_command_center_never_keeps_keyboard_focus_over_an_active_lock_screen():
     # must close on session lock and refuse to reopen while locked.
     qml = (MODEL.parent / 'CommandCenter.qml').read_text()
     for contract in [
-        'SessionService.locked',
+        'NativeLock.allowed(nativeState)',
         'onSessionLocked',
         'WILSOF_COMMAND_CENTER_LOCKED',
         'function lockdown()',
@@ -70,7 +70,11 @@ def test_command_center_never_keeps_keyboard_focus_over_an_active_lock_screen():
     # The lock handler must clear the wanted-open state and close the modal.
     assert 'root.wantedOpen = false' in qml
     # Both IPC entry points must consult the lock state before opening.
-    assert qml.count('SessionService.locked') >= 3
+    assert qml.count('!root.admission()') >= 3
+    assert 'function prepareLock(token: string)' in qml
+    assert 'obj._held || obj.wanted || obj.active' in qml
+    assert 'center.instantClose()' in qml
+    assert 'SessionService.locked' not in qml
 
 
 def test_file_results_are_accepted_while_modal_is_still_mapping():

@@ -6,6 +6,7 @@ import qs.Services
 import qs.Modals.Common
 import qs.DCommon.Widgets
 import "Model.js" as Model
+import "NativeLock.js" as NativeLock
 import "."
 
 // A resident DMS plugin Item, not a separate shell, service or search daemon.
@@ -25,6 +26,73 @@ Item {
     property int fileGeneration: 0
     property var activeFileProcess: null
     readonly property string bin: Quickshell.env("HOME") + "/.local/bin/"
+
+
+    // Request hints from logind are not native lock/unlock state. The owning
+    // child talks directly to the validated compositor; IPC only requests locks.
+    property var nativeState: NativeLock.fresh()
+    property string observerEpoch: ""
+    property string pendingModal: ""
+    function nonce() {
+        let s = "";
+        for (let i = 0; i < 32; i++) s += Math.floor(Math.random() * 16).toString(16);
+        return s;
+    }
+    function admission() { return NativeLock.allowed(nativeState); }
+    onNativeStateChanged: if (!admission()) lockdown()
+    Component.onCompleted: observerRestart.start()
+    Timer {
+        id: observerRestart
+        interval: 1000
+        onTriggered: {
+            root.nativeState = NativeLock.fresh();
+            root.observerEpoch = root.nonce();
+            nativeObserver.running = true;
+        }
+    }
+    Timer {
+        id: observerLease
+        interval: 2500
+        onTriggered: { root.nativeState = NativeLock.fresh(); nativeObserver.running = false; }
+    }
+    Process {
+        id: nativeObserver
+        command: [root.bin + "wilsof-lock-observer", root.observerEpoch]
+        stdinEnabled: true
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: line => {
+                try {
+                    const m = JSON.parse(line);
+                    root.nativeState = NativeLock.receive(root.nativeState, m, root.observerEpoch);
+                    if (root.nativeState.fault) {
+                        nativeObserver.running = false;
+                        return;
+                    }
+                    observerLease.restart();
+                } catch (e) { root.nativeState = NativeLock.fresh(); nativeObserver.running = false; }
+            }
+        }
+        onExited: {
+            observerLease.stop();
+            root.nativeState = NativeLock.fresh();
+            observerRestart.restart();
+        }
+    }
+    function modalClosed(modal) {
+        if (!modal) return true;
+        if (modal.shouldBeVisible || modal.shouldHaveFocus || modal.isClosing || (modal.contentWindow && modal.contentWindow.visible)) return false;
+        let found = false;
+        // Dux 2 DModal owns a DFocusGrab resource; its 50-ms release is not
+        // synchronous with close(). Require the actual resource to release.
+        for (const obj of modal.data) {
+            if (obj && obj._held !== undefined && obj.wanted !== undefined && obj.active !== undefined) {
+                found = true;
+                if (obj._held || obj.wanted || obj.active) return false;
+            }
+        }
+        return !modal.useHyprlandFocusGrab || found;
+    }
 
     function publish(items, preserve) {
         const id = preserve && selected >= 0 && selected < rows.length ? rows[selected].id : "";
@@ -77,11 +145,14 @@ Item {
         // keyboard from the moment the session locks (same discipline as F1).
         if (shortcutsLoader.item)
             shortcutsLoader.item.close();
-        center.close();
+        pendingModal = "";
+        if (aboutLoader.item) aboutLoader.item.instantClose();
+        if (shortcutsLoader.item) shortcutsLoader.item.instantClose();
+        center.instantClose();
     }
 
     function open() {
-        if (SessionService.locked)
+        if (!root.admission())
             return;
         wantedOpen = true;
         query = "";
@@ -92,6 +163,7 @@ Item {
     }
 
     function activate(index) {
+        if (!root.admission()) { root.lockdown(); return; }
         // Enter and mouse both snapshot the exact currently highlighted row.
         if (index < 0 || index >= rows.length)
             return;
@@ -134,12 +206,14 @@ Item {
                 PopoutService.openSettings();
             break;
         case "about":
+            root.pendingModal = "about";
             if (aboutLoader.item)
                 aboutLoader.item.open();
             else
                 aboutLoader.active = true;
             break;
         case "shortcuts":
+            root.pendingModal = "shortcuts";
             if (shortcutsLoader.item)
                 shortcutsLoader.item.open();
             else
@@ -203,8 +277,23 @@ Item {
 
     IpcHandler {
         target: "commandCenter"
+        function prepareLock(token: string): string {
+            if (!/^[a-f0-9]{32}$/.test(token) || !nativeObserver.running || !root.nativeState.known)
+                return "WILSOF_LOCK_UNAVAILABLE";
+            root.nativeState = NativeLock.prepare(root.nativeState, token);
+            root.lockdown();
+            nativeObserver.write(JSON.stringify({prepare:token}) + "\n");
+            return "WILSOF_LOCK_PENDING";
+        }
+        function lockStatus(token: string): string {
+            const s = root.nativeState;
+            const closed = root.modalClosed(center) && root.modalClosed(aboutLoader.item) && root.modalClosed(shortcutsLoader.item);
+            return JSON.stringify({generation:s.pending, key:s.key || "", epoch:s.epoch,
+                ready:s.known && !s.fault && !s.locked && s.ready && s.pending === token && closed,
+                closed:closed, known:s.known, nativeLocked:s.locked});
+        }
         function toggle(): string {
-            if (SessionService.locked) {
+            if (!root.admission()) {
                 root.lockdown();
                 return "WILSOF_COMMAND_CENTER_LOCKED";
             }
@@ -213,7 +302,7 @@ Item {
         }
         function close(): string { root.wantedOpen = false; center.close(); return "closed"; }
         function search(text: string): string {
-            if (SessionService.locked) {
+            if (!root.admission()) {
                 root.lockdown();
                 return "WILSOF_COMMAND_CENTER_LOCKED";
             }
@@ -241,14 +330,14 @@ Item {
         id: aboutLoader
         active: false
         source: Qt.resolvedUrl("About.qml")
-        onLoaded: item.open()
+        onLoaded: if (root.admission() && root.pendingModal === "about") item.open()
     }
 
     Loader {
         id: shortcutsLoader
         active: false
         source: Qt.resolvedUrl("Shortcuts.qml")
-        onLoaded: item.open()
+        onLoaded: if (root.admission() && root.pendingModal === "shortcuts") item.open()
     }
 
     DModal {

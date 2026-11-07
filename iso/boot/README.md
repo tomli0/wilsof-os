@@ -19,6 +19,45 @@ from the explicitly supported Archiso 91/92 releng templates, retaining `%INSTAL
   a recommendation for a 2 GiB VM. Insufficient RAM can cause startup failure.
 - The upstream Memtest86+ EFI entry is retained for memory diagnostics.
 
+## Writable overlay and installation RAM
+
+All four Linux entries explicitly use `cow_spacesize=75%`. Archiso passes this
+through to the upstream tmpfs mount: it is an upper limit, not a reservation or
+preallocation of 75% of RAM. Normal live boot still uses `copytoram=n`; the
+speech, diagnostics and opt-in RAM-copy entries retain their other options.
+Memtest is unchanged. The generated `efiboot` entries are the input used by
+mkarchiso for both the ISO tree and its embedded EFI FAT image; both copies
+must still be checked on each actual final ISO, not inferred from unit tests.
+
+The previous image did not select a Wilsof-specific 256 MiB budget. The boot
+configurator omitted `cow_spacesize`, so mkinitcpio-archiso 73's runtime hook
+selected its upstream `256M` fallback. That is insufficient for the later-added
+signed target-closure preflight (about 1283 MiB with the frozen package inputs).
+The installer still downloads, hashes and verifies that entire closure before
+any destructive operation; no package or signature check is removed.
+
+Use at least **4 GiB installed RAM** for the full default installation. Before
+package preflight or disk prompts, the installer requires at least 3584 MiB
+usable `MemTotal` (allowing firmware/kernel reservations), 2304 MiB actually
+`MemAvailable`, and 1792 MiB writable space available in `/var/tmp`. Missing or
+invalid accounting fails closed. Close memory-heavy applications first. These
+are conservative checks for the existing frozen dependency closure, not a
+promise that arbitrary concurrent workloads cannot exhaust RAM. If package
+inputs change, remeasure the closure and reassess these budgets.
+
+The percentage cap avoids imposing a fixed 2 GiB allocation on smaller live
+machines. Lower-memory live evaluation is not prevented by an installer-only
+RAM check, but **installation below 4 GiB is unsupported by this candidate**;
+it is not claimed tested. Copy-to-RAM needs the compressed rootfs in addition
+to these budgets and is not the low-memory choice. No swap, persistence disk,
+remount or host disk is created automatically.
+
+Installation also scopes its process umask to `022` and restores the caller's
+umask on success, refusal, cancellation or backend failure. This prevents a
+private QA supervisor's `077` from creating untraversable target parents, and
+prevents `000` from creating world-writable parents. Explicit private key and
+password-directory modes remain private. Schema-only `--validate` is unchanged.
+
 ## Splash and honest progress
 
 The supported Plymouth `script` plugin shows the existing, unchanged Wilsof

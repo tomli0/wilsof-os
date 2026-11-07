@@ -14,8 +14,10 @@ def _entry(template, title, order, flags):
     # presentation/RAM policy so each entry has exactly one explicit choice.
     def policy_options(match):
         options = [arg for arg in match[1].split() if arg not in {'quiet', 'splash'}
-                   and not arg.startswith(('copytoram=', 'plymouth.enable=', 'rd.plymouth=', 'systemd.show_status=', 'loglevel='))]
-        return 'options  ' + ' '.join(options) + ' ' + flags
+                   and not arg.startswith(('cow_spacesize=', 'copytoram=', 'plymouth.enable=', 'rd.plymouth=', 'systemd.show_status=', 'loglevel='))]
+        # tmpfs size is a ceiling, not an allocation. Scale to RAM rather
+        # than reserving a fixed buffer; the installer checks actual headroom.
+        return 'options  ' + ' '.join(options) + ' cow_spacesize=75% ' + flags
     return re.sub(r'^options\s+(.*)$', policy_options, text, flags=re.M)
 
 

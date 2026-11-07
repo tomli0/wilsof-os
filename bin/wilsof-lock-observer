@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+"""Read-only Hyprland lock-notify client for one owning QML child pipe.
+
+Uses libwayland-client for all protocol framing/dispatch. No unlock operation,
+logind write, public socket, status file or credential input exists here.
+Protocol: hyprland-lock-notify-v1, version 1 (hyprland-protocols).
+"""
+import ctypes as C
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import runpy
+import select
+import socket
+import stat
+import struct
+import sys
+import time
+
+
+def parse_request(line):
+    if len(line) > 256:
+        raise ValueError('request too long')
+    try:
+        obj = json.loads(line)
+    except (ValueError, TypeError) as error:
+        raise ValueError('invalid request') from error
+    if (not isinstance(obj, dict) or set(obj) != {'prepare'}
+            or not isinstance(obj['prepare'], str)
+            or not re.fullmatch('[a-f0-9]{32}', obj['prepare'])):
+        raise ValueError('only prepare barriers are accepted')
+    return obj['prepare']
+
+
+def open_guard(path):
+    fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+    info = os.fstat(fd)
+    if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
+            or stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1):
+        os.close(fd)
+        raise ValueError('unsafe guard')
+    return fd
+
+
+def guard_busy(path):
+    fd = open_guard(path)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        return False
+    finally:
+        os.close(fd)
+
+
+def recover_quiescent(observer, path):
+    """Resynchronize a restarted consumer without racing a new lock request."""
+    fd = open_guard(path)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return False
+        observer.roundtrip()
+        if observer.locked:
+            return False
+        observer.send('quiescent')
+        return True
+    finally:
+        os.close(fd)
+
+
+class Interface(C.Structure):
+    pass
+
+
+class Message(C.Structure):
+    _fields_ = [('name', C.c_char_p), ('signature', C.c_char_p),
+                ('types', C.POINTER(C.POINTER(Interface)))]
+
+
+Interface._fields_ = [('name', C.c_char_p), ('version', C.c_int),
+                     ('method_count', C.c_int), ('methods', C.POINTER(Message)),
+                     ('event_count', C.c_int), ('events', C.POINTER(Message))]
+
+
+class Observer:
+    def __init__(self, fd, epoch, emit):
+        self.epoch, self.emit = epoch, emit
+        self.locked, self.seq, self.initializing, self.error = False, 0, True, False
+        self.lib = C.CDLL('libwayland-client.so.0', use_errno=True)
+        lib = self.lib
+        for name, args, result in [
+            ('wl_display_connect_to_fd', [C.c_int], C.c_void_p),
+            ('wl_display_disconnect', [C.c_void_p], None),
+            ('wl_display_roundtrip', [C.c_void_p], C.c_int),
+            ('wl_display_dispatch', [C.c_void_p], C.c_int),
+            ('wl_display_dispatch_pending', [C.c_void_p], C.c_int),
+            ('wl_display_flush', [C.c_void_p], C.c_int),
+            ('wl_display_get_fd', [C.c_void_p], C.c_int),
+            ('wl_proxy_add_listener', [C.c_void_p, C.POINTER(C.c_void_p), C.c_void_p], C.c_int),
+        ]:
+            fn = getattr(lib, name); fn.argtypes, fn.restype = args, result
+        lib.wl_proxy_marshal_flags.argtypes = [C.c_void_p, C.c_uint, C.POINTER(Interface), C.c_uint, C.c_uint]
+        lib.wl_proxy_marshal_flags.restype = C.c_void_p
+        self.display = lib.wl_display_connect_to_fd(fd)
+        if not self.display:
+            os.close(fd)
+            raise RuntimeError('Wayland connection failed')
+        # Interface metadata matches the generated v1 client-header contract.
+        self.notify_events = (Message * 2)(Message(b'locked', b'', None), Message(b'unlocked', b'', None))
+        self.destroy = (Message * 1)(Message(b'destroy', b'', None))
+        self.notify_iface = Interface(b'hyprland_lock_notification_v1', 1, 1, self.destroy, 2, self.notify_events)
+        self.new_types = (C.POINTER(Interface) * 1)(C.pointer(self.notify_iface))
+        self.manager_methods = (Message * 2)(Message(b'destroy', b'', None), Message(b'get_lock_notification', b'n', self.new_types))
+        self.manager_iface = Interface(b'hyprland_lock_notifier_v1', 1, 2, self.manager_methods, 0, None)
+        self.registry_iface = Interface.in_dll(lib, 'wl_registry_interface')
+        self.manager = None
+        global_cb = C.CFUNCTYPE(None, C.c_void_p, C.c_void_p, C.c_uint, C.c_char_p, C.c_uint)
+        remove_cb = C.CFUNCTYPE(None, C.c_void_p, C.c_void_p, C.c_uint)
+        self.global_cb = global_cb(self.global_added)
+        self.remove_cb = remove_cb(lambda _d, _r, name: self.global_removed(name))
+        self.registry_listener = (C.c_void_p * 2)(C.cast(self.global_cb,C.c_void_p), C.cast(self.remove_cb,C.c_void_p))
+        self.registry = lib.wl_proxy_marshal_flags(self.display, 1, C.byref(self.registry_iface), 1, 0, None)
+        if not self.registry or lib.wl_proxy_add_listener(self.registry, self.registry_listener, None) != 0:
+            raise RuntimeError('registry listener failed')
+        self.roundtrip()
+        if not self.manager:
+            raise RuntimeError('native lock notifier unavailable')
+        self.notification = lib.wl_proxy_marshal_flags(self.manager, 1, C.byref(self.notify_iface), 1, 0, None)
+        event_cb = C.CFUNCTYPE(None, C.c_void_p, C.c_void_p)
+        self.lock_cb = event_cb(lambda _d, _p: self.transition(True))
+        self.unlock_cb = event_cb(lambda _d, _p: self.transition(False))
+        self.listener = (C.c_void_p * 2)(C.cast(self.lock_cb,C.c_void_p), C.cast(self.unlock_cb,C.c_void_p))
+        if not self.notification or lib.wl_proxy_add_listener(self.notification, self.listener, None) != 0:
+            raise RuntimeError('notification listener failed')
+        # The protocol sends locked immediately if already locked. A sync roundtrip
+        # supplies the initial unlocked snapshot without inventing an unlock event.
+        self.roundtrip()
+        self.initializing = False
+
+    def global_added(self, _data, registry, name, interface, version):
+        if interface != b'hyprland_lock_notifier_v1':
+            return
+        if self.manager or version < 1:
+            self.error = True
+            return
+        self.global_name = name
+        self.manager = self.lib.wl_proxy_marshal_flags(registry, 0, C.byref(self.manager_iface), 1, 0,
+            C.c_uint(name), C.c_char_p(self.manager_iface.name), C.c_uint(1), None)
+
+    def global_removed(self, name):
+        if name == getattr(self, 'global_name', None):
+            self.error = True
+
+    def transition(self, locked):
+        if locked == self.locked:
+            self.error = True
+            return
+        self.locked = locked
+        self.seq += 1
+        if not self.initializing:
+            self.send('locked' if locked else 'unlocked')
+
+    def send(self, kind, **extra):
+        if self.error:
+            raise RuntimeError('invalid native event sequence')
+        self.emit(dict(kind=kind, epoch=self.epoch, seq=self.seq, **extra))
+
+    def roundtrip(self):
+        if self.lib.wl_display_roundtrip(self.display) < 0 or self.error:
+            raise RuntimeError('native observer disconnected')
+
+    def close(self):
+        self.lib.wl_display_disconnect(self.display)
+
+
+def main(epoch):
+    if not re.fullmatch('[a-f0-9]{32}', epoch):
+        raise ValueError('invalid epoch')
+    helper = runpy.run_path(str(Path(__file__).with_name('wilsof-lock-session')))
+    runtime, key, _session, _path = helper['context']()
+    instances = json.loads(helper['command'](['hyprctl', '-j', 'instances']))
+    peers = [i for i in instances if i['wl_socket'] == os.environ['WAYLAND_DISPLAY']]
+    if len(peers) != 1:
+        raise ValueError('ambiguous compositor')
+    sock = socket.socket(socket.AF_UNIX)
+    sock.connect(str(runtime / os.environ['WAYLAND_DISPLAY']))
+    pid, uid, _gid = struct.unpack('3i', sock.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize('3i')))
+    if pid != peers[0]['pid'] or uid != os.getuid():
+        sock.close()
+        raise ValueError('native peer identity mismatch')
+    guard = runtime / ('wilsof-lock-' + key + '.lock')
+    observer = Observer(sock.detach(), epoch, lambda obj: print(json.dumps(obj, separators=(',', ':')), flush=True))
+    try:
+        recovery = guard_busy(guard)
+        observer.send('snapshot', locked=observer.locked, guardBusy=recovery, key=key)
+        poller = select.poll()
+        native = observer.lib.wl_display_get_fd(observer.display)
+        poller.register(native, select.POLLIN)
+        poller.register(0, select.POLLIN)
+        buffer = b''
+        last = time.monotonic()
+        while True:
+            observer.lib.wl_display_flush(observer.display)
+            for fd, flags in poller.poll(250):
+                if flags & (select.POLLHUP | select.POLLERR | select.POLLNVAL):
+                    raise RuntimeError('owning pipe/native connection ended')
+                if fd == native:
+                    if observer.lib.wl_display_dispatch(observer.display) < 0 or observer.error:
+                        raise RuntimeError('native dispatch failed')
+                else:
+                    data = os.read(0, 4096)
+                    if not data:
+                        return
+                    buffer += data
+                    if len(buffer) > 8192:
+                        raise ValueError('oversized input')
+                    while b'\n' in buffer:
+                        line, buffer = buffer.split(b'\n', 1)
+                        token = parse_request(line)
+                        # FIFO native callbacks are drained before acknowledging a
+                        # new consumer generation; an old unlock cannot release it.
+                        observer.roundtrip()
+                        observer.send('barrier', token=token, locked=observer.locked)
+            if time.monotonic() - last >= 1:
+                if recovery and recover_quiescent(observer, guard):
+                    recovery = False
+                observer.roundtrip()
+                observer.send('pulse')
+                last = time.monotonic()
+    finally:
+        observer.close()
+
+
+if __name__ == '__main__':
+    try:
+        if len(sys.argv) != 2:
+            raise ValueError('one owning epoch required')
+        main(sys.argv[1])
+    except (OSError, ValueError, RuntimeError, KeyError):
+        print('wilsof-lock-observer: native state unavailable; admission stays closed', file=sys.stderr)
+        raise SystemExit(1)

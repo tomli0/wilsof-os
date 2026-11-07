@@ -2,6 +2,7 @@ bin/wilsof-search
 bin/wilsof-lock
 bin/wilsof-idle
 bin/wilsof-lock-session
+bin/wilsof-lock-observer
 bin/wilsof-help
 bin/wilsof-help-view
 bin/wilsof-doctor
@@ -48,6 +49,7 @@ config/dms/plugins/wilsofProfiles/qmldir
 bin/wilsof-file-search
 config/dms/plugins/wilsofCommandCenter/plugin.json
 config/dms/plugins/wilsofCommandCenter/Model.js
+config/dms/plugins/wilsofCommandCenter/NativeLock.js
 config/dms/plugins/wilsofCommandCenter/CommandCenter.qml
 config/ghostty/config
 bin/wilsof-about-info

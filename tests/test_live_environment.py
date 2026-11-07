@@ -32,6 +32,9 @@ def test_installer_ram_boot_guard_preserves_live_only_boundary(monkeypatch, live
     monkeypatch.setattr(m, 'check_firmware', lambda: None)
     monkeypatch.setattr(Path, 'is_mount', lambda p: live_root and str(p) == '/run/archiso/airootfs')
     monkeypatch.setattr(m, 'guest_policy', lambda: ([], False))
+    # Capacity has its own deterministic regression suite; this test isolates
+    # Archiso live-root admission rather than depending on the CI host's RAM.
+    monkeypatch.setattr(m, 'check_live_capacity', lambda: None)
     monkeypatch.setattr(m, 'ArchinstallExecutor', lambda **kw: object())
     reached = []
     monkeypatch.setattr(m, 'interactive', lambda executor: reached.append(True))

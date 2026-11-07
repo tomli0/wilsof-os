@@ -64,7 +64,7 @@ def install_user(source, home, *, live=False):
     for relative in ('.local', '.local/state', '.local/state/wilsof-os'):
         confined(relative).mkdir(mode=0o700, exist_ok=True)
 
-    for name in ('wilsof-about-info', 'wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-idle', 'wilsof-lock-session', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui', 'wilsof-shortcuts', 'wilsof-appearance'):
+    for name in ('wilsof-about-info', 'wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-idle', 'wilsof-lock-session', 'wilsof-lock-observer', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui', 'wilsof-shortcuts', 'wilsof-appearance'):
         write(f'.local/bin/{name}', (source / 'bin' / name).read_bytes(), 0o755)
     for name in ('wilsof.lua', 'wilsof.conf', 'hypridle.conf', 'hyprlock.conf', 'hyprlock-idle.conf'):
         write(f'.config/hypr/{name}', (source / 'config/hypr' / name).read_bytes())

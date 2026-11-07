@@ -54,7 +54,7 @@ def test_list_shows_defaults_and_supports_filtering(tmp_path):
     result = run_cli(tmp_path, "list")
     assert result.returncode == 0, result.stderr
     assert "SUPER + L" in result.stdout
-    result = run_cli(tmp_path, "list", "--filter", "lås")
+    result = run_cli(tmp_path, "list", "--filter", "lock")
     assert result.returncode == 0
     assert "lock" in result.stdout
     assert "SUPER + space" not in result.stdout
@@ -103,17 +103,38 @@ def test_set_rejects_unknown_actions_and_invalid_keys(tmp_path):
     assert not (tmp_path / ".local/state/wilsof-os/user-shortcuts.json").exists()
 
 
+def test_private3_required_defaults_are_owned_and_do_not_call_an_overlay():
+    table = defaults_table()['actions']
+    assert table['terminal']['keys'] == 'SUPER + RETURN'
+    assert table['window-next']['keys'] == 'SUPER + TAB'
+    assert table['window-previous']['keys'] == 'SUPER + SHIFT + TAB'
+    assert table['screenshot']['keys'] == 'Print'
+    assert table['settings']['exec'] == '$BINwilsof-search configure'
+    lua = LUA.read_text()
+    for token in ['hl.dsp.window.cycle_next({ next = true })', 'hl.dsp.window.cycle_next({ next = false })', '"Wilsof:command-center"', '"Wilsof:terminal"', '"Wilsof:screenshot"', 'wilsof-search configure']:
+        assert token in lua, token
+    assert 'windowSwitcher' not in lua
+    assert '"ALT + space"' in lua, 'Remove the generated alternative launcher binding'
+    guide = json.loads((ROOT/'config/wilsof-shortcuts.json').read_text())['standard']
+    by_key = {r['keys']:r['action'] for r in guide}
+    assert by_key['Super+Space'] == 'Open Wilsof Menu'
+    assert by_key['Super+Enter'] == 'Open Terminal'
+    assert by_key['Super+Tab'] == 'Next window'
+    assert by_key['Super+Shift+Tab'] == 'Previous window'
+    assert by_key['Print Screen'] == 'Screenshot'
+
+
 def test_reset_restores_defaults_and_preserves_other_overrides(tmp_path):
     assert run_cli(tmp_path, "set", "lock", "Ctrl+Alt+K").returncode == 0
-    assert run_cli(tmp_path, "set", "help", "Ctrl+Alt+F2").returncode == 0
+    assert run_cli(tmp_path, "set", "help", "Ctrl+Shift+F2").returncode == 0
     result = run_cli(tmp_path, "reset", "lock")
     assert result.returncode == 0, result.stderr
     state = read_state(tmp_path)
     assert "lock" not in state["overrides"]
-    assert state["overrides"]["help"]["keys"] == "CTRL + ALT + F2"
+    assert state["overrides"]["help"]["keys"] == "CTRL + SHIFT + F2"
     lua = (tmp_path / ".config/hypr/wilsof-user-shortcuts.lua").read_text(encoding="utf-8")
     assert "SUPER + L" not in lua
-    assert "CTRL + ALT + F2" in lua
+    assert "CTRL + SHIFT + F2" in lua
     all_reset = run_cli(tmp_path, "reset")
     assert all_reset.returncode == 0, all_reset.stderr
     assert read_state(tmp_path)["overrides"] == {}

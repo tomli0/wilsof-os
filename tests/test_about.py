@@ -24,7 +24,7 @@ def test_about_reports_exact_installed_source_and_unknown_version_honestly(tmp_p
     info = module().collect(tmp_path)
     assert info['sourceCommit'] == 'a' * 40
     assert info['version'] == 'Development snapshot'
-    assert info['dedication'] == 'Dedicated to William and Sofie.'
+    assert info['dedication'] == 'Dedicated to William & Sofie'
     assert info['github'] == 'https://github.com/tomli0/wilsof-os'
     assert info['website'] == ''  # The repository does not declare an official website.
     assert 'No project-wide license' in info['license']
@@ -36,7 +36,7 @@ def test_about_is_a_real_native_modal_and_is_distributed():
     plugin = ROOT / 'config/dms/plugins/wilsofCommandCenter'
     assert (plugin / 'About.qml').exists(), 'About modal missing'
     text = (plugin / 'About.qml').read_text()
-    for value in ['DModal {', 'wilsof-about-info', 'Dedicated to William and Sofie.', 'System', 'Upstream', 'License', 'GitHub']:
+    for value in ['DModal {', 'wilsof-about-info', 'Dedicated to William & Sofie', 'System', 'Upstream', 'licenses', 'GitHub']:
         assert value in text
-    assert 'aboutLoader.item.open()' in (plugin / 'CommandCenter.qml').read_text()
+    assert 'openDialog(row.kind)' in (plugin / 'CommandCenter.qml').read_text()
     assert 'About.qml' in (ROOT / 'runtime/image-files.txt').read_text()

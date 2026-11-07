@@ -1,8 +1,11 @@
 {
   "schema": 1,
   "standard": [
-    {"keys": "Super+Space", "action": "Open Command Center"},
-    {"keys": "Super+Enter", "action": "Open Ghostty (DMS default)"},
+    {"keys": "Super+Space", "action": "Open Wilsof Menu"},
+    {"keys": "Super+Enter", "action": "Open Terminal"},
+    {"keys": "Super+Tab", "action": "Next window"},
+    {"keys": "Super+Shift+Tab", "action": "Previous window"},
+    {"keys": "Print Screen", "action": "Screenshot"},
     {"keys": "Super+B", "action": "Open Firefox"},
     {"keys": "Super+E", "action": "Open Nautilus"},
     {"keys": "Super+L", "action": "Lås økten"},

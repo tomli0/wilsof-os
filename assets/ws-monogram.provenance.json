@@ -1,0 +1,10 @@
+{
+  "source": "Wilsof OS-logo med geometrisk WS-monogram.png",
+  "source_sha256": "b1f8e0a18ea5b559834ae450f080d01609561cded36035f99cf5685e48c553e2",
+  "output": "ws-monogram.png",
+  "output_sha256": "b450b3083aa465a5ea6d76cbfee3e1f7b9595726456a6d65c5ddaa9c79d27037",
+  "operation": "Lossless pixel crop of the existing Wilsof-owned logo; no redraw or distribution asset",
+  "crop": {"x": 80, "y": 190, "width": 720, "height": 340},
+  "command": "ffmpeg -i source.png -vf crop=720:340:80:190 -frames:v 1 ws-monogram.png",
+  "ascii": "config/terminal/ws-ascii.txt is an original hand-written approximation of this same WS emblem, not an upstream distribution logo."
+}

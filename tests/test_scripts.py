@@ -30,8 +30,8 @@ def test_search_delegates_to_the_single_dms_launcher_api(tmp_path):
     dms.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" > {log}\n", encoding="utf-8")
     dms.chmod(0o755)
     result = run(SEARCH, "toggle", env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
-    assert result.returncode == 0, result.stderr
-    assert log.read_text(encoding="utf-8").strip() == "ipc call spotlight toggle"
+    assert result.returncode == 69, result.stderr
+    assert log.read_text(encoding="utf-8").strip() == "ipc call commandCenter toggle"
 
 
 def test_search_uses_command_center_marker_without_double_toggling(tmp_path):
@@ -231,8 +231,8 @@ def test_installer_seeds_static_dms_theme_only_once():
 def test_static_theme_defines_the_approved_base_and_accent():
     theme = (ROOT / "config" / "dms" / "wilsof-theme.json").read_text(encoding="utf-8")
     assert '"primary": "#86B9CE"' in theme
-    assert '"surface": "#121820"' in theme
-    assert '"background": "#121820"' in theme
+    assert '"surface": "#14181E"' in theme
+    assert '"background": "#14181E"' in theme
 
 
 def test_vm_test_binding_wrapper_is_opt_in_and_reversible(tmp_path):
@@ -406,8 +406,8 @@ def test_search_uses_dms_spotlight_all_mode_and_rejects_other_actions(tmp_path):
     dms.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$*\" > {log}\n", encoding="utf-8")
     dms.chmod(0o755)
     result = run(SEARCH, "toggle", env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
-    assert result.returncode == 0, result.stderr
-    assert log.read_text(encoding="utf-8").strip() == "ipc call spotlight toggle"
+    assert result.returncode == 69, result.stderr
+    assert log.read_text(encoding="utf-8").strip() == "ipc call commandCenter toggle"
     assert run(SEARCH, "files", env={"PATH": f"{fake_bin}:{os.environ['PATH']}"}).returncode == 64
 
 

@@ -1,22 +1,16 @@
 #!/bin/sh
-# Open DMS Spotlight: apps by default, supported local provider categories on demand.
+# Both WS click and Super+Space address one resident Wilsof Menu.
 set -eu
-
-if [ "${1:-}" != "toggle" ] || [ "$#" -ne 1 ]; then
-  printf '%s\n' "Usage: wilsof-search toggle" >&2
+if [ "$#" -ne 1 ]; then
+  printf '%s\n' 'Usage: wilsof-search toggle|configure' >&2
   exit 64
 fi
-
-if ! command -v dms >/dev/null 2>&1; then
-  printf '%s\n' "wilsof-search: DankMaterialShell (dms) is not available." >&2
-  exit 69
-fi
-
-# DMS can return exit 0 even when an IPC target is absent. Require our marker;
-# keep the working upstream launcher available when the plugin is disabled/broken.
-reply=$(dms ipc call commandCenter toggle 2>/dev/null) || reply=''
+case "$1" in
+  toggle) reply=$(dms ipc call commandCenter toggle) ;;
+  configure) reply=$(dms ipc call commandCenter configure) ;;
+  *) printf '%s\n' 'Usage: wilsof-search toggle|configure' >&2; exit 64 ;;
+esac
 case "$reply" in
   *WILSOF_COMMAND_CENTER_OK*|*WILSOF_COMMAND_CENTER_LOCKED*) exit 0 ;;
+  *) printf '%s\n' 'Wilsof Menu is unavailable. Check dms.service and the Wilsof Menu plugin.' >&2; exit 69 ;;
 esac
-# The plugin is disabled or broken: keep the upstream launcher available.
-exec dms ipc call spotlight toggle

@@ -22,6 +22,24 @@ pipewire-pulse
 wireplumber
 # Generic Sound Open Firmware: releng live includes this; installed targets must too.
 sof-firmware
+# Screenshots, recording and the lightweight base applications.
+file-roller
+gnome-calculator
+gnome-system-monitor
+fastfetch
+grim
+slurp
+wf-recorder
+wl-clipboard
+xdg-user-dirs
+noto-fonts-emoji
+# Explicit wireless closure; do not assume the owner's chipset.
+linux-firmware
+wpa_supplicant
+iw
+wireless-regdb
+pciutils
+usbutils
 polkit-gnome
 noto-fonts
 inter-font

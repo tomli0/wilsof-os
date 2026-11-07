@@ -7,9 +7,8 @@ import qs.Modals.Common
 import qs.DCommon.Widgets
 import "Model.js" as Model
 import "NativeLock.js" as NativeLock
-import "."
 
-// A resident DMS plugin Item, not a separate shell, service or search daemon.
+// The WS bar button and Super+Space address this one resident component.
 Item {
     id: root
     property var pluginService: null
@@ -17,22 +16,21 @@ Item {
     property bool wantedOpen: false
     property string category: ""
     property var rows: []
-    property var localRows: []
-    property var fileRows: []
     property int selected: -1
-    property string searchNote: "Local search · names only"
-    property double queryStarted: 0
+    property var history: []
+    property var searchItem: null
+    property var listItem: null
+    property var capabilities: ({screenshot:false, recording:false, install:false, remove:false, update:false, system:false, guide:false, emoji:false, "window-visuals":false})
+    property var confirmation: null
     property int usefulResultsMs: 0
-    property int fileGeneration: 0
-    property var activeFileProcess: null
     readonly property string bin: Quickshell.env("HOME") + "/.local/bin/"
+    readonly property string logo: "file://" + Quickshell.env("HOME") + "/.local/share/wilsof-os/assets/ws-monogram.png"
 
-
-    // Request hints from logind are not native lock/unlock state. The owning
-    // child talks directly to the validated compositor; IPC only requests locks.
+    // Preserve Private2's authoritative native lock observer and fail-closed gate.
     property var nativeState: NativeLock.fresh()
     property string observerEpoch: ""
     property string pendingModal: ""
+    property var dialogSnapshot: null
     function nonce() {
         let s = "";
         for (let i = 0; i < 32; i++) s += Math.floor(Math.random() * 16).toString(16);
@@ -40,7 +38,7 @@ Item {
     }
     function admission() { return NativeLock.allowed(nativeState); }
     onNativeStateChanged: if (!admission()) lockdown()
-    Component.onCompleted: observerRestart.start()
+    Component.onCompleted: { observerRestart.start(); capabilityProbe.running = true; }
     Timer {
         id: observerRestart
         interval: 1000
@@ -65,26 +63,19 @@ Item {
                 try {
                     const m = JSON.parse(line);
                     root.nativeState = NativeLock.receive(root.nativeState, m, root.observerEpoch);
-                    if (root.nativeState.fault) {
-                        nativeObserver.running = false;
-                        return;
-                    }
+                    if (root.nativeState.fault) { nativeObserver.running = false; return; }
                     observerLease.restart();
                 } catch (e) { root.nativeState = NativeLock.fresh(); nativeObserver.running = false; }
             }
         }
         onExited: {
-            observerLease.stop();
-            root.nativeState = NativeLock.fresh();
-            observerRestart.restart();
+            observerLease.stop(); root.nativeState = NativeLock.fresh(); observerRestart.restart();
         }
     }
     function modalClosed(modal) {
         if (!modal) return true;
         if (modal.shouldBeVisible || modal.shouldHaveFocus || modal.isClosing || (modal.contentWindow && modal.contentWindow.visible)) return false;
         let found = false;
-        // Dux 2 DModal owns a DFocusGrab resource; its 50-ms release is not
-        // synchronous with close(). Require the actual resource to release.
         for (const obj of modal.data) {
             if (obj && obj._held !== undefined && obj.wanted !== undefined && obj.active !== undefined) {
                 found = true;
@@ -93,197 +84,164 @@ Item {
         }
         return !modal.useHyprlandFocusGrab || found;
     }
-
+    Process {
+        id: capabilityProbe
+        command: [root.bin + "wilsof-action", "capabilities"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.capabilities = JSON.parse(text); root.refresh(true); }
+                catch (e) { ToastService.showError("Wilsof Menu", "Tool availability could not be checked"); }
+            }
+        }
+    }
+    function desktopEntry(kind) {
+        const ids = {firefox:"firefox", ghostty:"com.mitchellh.ghostty", nautilus:"org.gnome.Nautilus"};
+        return DesktopEntries.heuristicLookup(ids[kind]);
+    }
+    function available(row) {
+        if (!Model.available(row, capabilities)) return false;
+        return row.kind !== "shortcut" || !!desktopEntry(row.data);
+    }
     function publish(items, preserve) {
         const id = preserve && selected >= 0 && selected < rows.length ? rows[selected].id : "";
-        rows = items;
+        rows = items.filter(available);
         selected = Model.selection(rows, id);
     }
-
-    function refresh() {
-        queryStarted = Date.now();
-        fileGeneration++;
-        if (activeFileProcess) {
-            activeFileProcess.running = false;
-            activeFileProcess = null;
-        }
-        fileTimer.stop();
-        fileRows = [];
-        searchNote = "Local search · names only";
-        if (!query.trim() && !category) {
-            localRows = Model.defaults();
-        } else {
-            let result = category ? [] : Model.commands(query);
-            if (category !== "files") {
-                const apps = AppSearchService.searchApplications(query);
-                for (const app of apps.slice(0, 30)) {
-                    result.push(Model.row("app:" + (app.id || app.name) + (app.isAction ? ":" + app.name : ""), app.name, app.comment || "Application", "apps", "app", app));
-                }
-                if (!category) {
-                    const settings = AppSearchService.getBuiltInLauncherItems("dms_settings_search", query);
-                    for (const setting of settings.slice(0, 8))
-                        result.push(Model.row("setting:" + setting.action, setting.name, setting.comment, "settings", "setting", setting));
-                }
-            }
-            localRows = result;
-            if (category !== "applications")
-                fileTimer.restart();
-        }
-        publish(localRows, false);
-        usefulResultsMs = rows.length ? Date.now() - queryStarted : -1;
+    function refresh(preserve) {
+        const started = Date.now();
+        let result = [];
+        if (query.trim() || category === "applications") {
+            const apps = AppSearchService.searchApplications(query).map(app =>
+                Model.row("app:" + (app.id || app.name) + (app.isAction ? ":" + app.name : ""), app.name, app.comment || "Application", "apps", "app", app));
+            result = category === "applications" && !query.trim() ? apps : Model.search(query, apps, capabilities);
+        } else result = Model.page(category);
+        if (category === "emoji") result = Model.emojis(query);
+        publish(result, preserve);
+        usefulResultsMs = Date.now() - started;
     }
-
+    function snapshot() {
+        return {category:category, query:query, selectedId:selected >= 0 && selected < rows.length ? rows[selected].id : "", scrollY:listItem ? listItem.contentY : 0, stack:history};
+    }
+    function apply(state) {
+        category = state.category; query = state.query; history = state.stack;
+        refresh(false); selected = Model.selection(rows, state.selectedId);
+        Qt.callLater(() => {
+            if (listItem) listItem.contentY = state.scrollY;
+            if (searchItem) searchItem.forceActiveFocus();
+        });
+    }
+    function goRoot() { confirmation = null; apply({category:"",query:"",selectedId:"",scrollY:0,stack:[]}); }
+    function goBack() {
+        if (confirmation) { confirmation = null; return; }
+        const state = Model.back(snapshot());
+        if (state) apply(state);
+        else { wantedOpen = false; center.close(); }
+    }
     function lockdown() {
-        // A locked session must never leave a keyboard-grabbing modal under the
-        // locker: lock-screen keystrokes would land in the search field (F1).
-        wantedOpen = false;
-        fileGeneration++;
-        fileTimer.stop();
-        if (activeFileProcess)
-            activeFileProcess.running = false;
-        // The shortcut editor keeps a text field; the lock screen must own the
-        // keyboard from the moment the session locks (same discipline as F1).
-        if (shortcutsLoader.item)
-            shortcutsLoader.item.close();
-        pendingModal = "";
+        wantedOpen = false; pendingModal = ""; confirmation = null; dialogWait.stop();
         if (aboutLoader.item) aboutLoader.item.instantClose();
         if (shortcutsLoader.item) shortcutsLoader.item.instantClose();
         center.instantClose();
     }
-
     function open() {
-        if (!root.admission())
-            return;
-        wantedOpen = true;
-        query = "";
-        category = "";
-        refresh();
-        center.targetScreen = CompositorService.getFocusedScreen();
-        center.open();
+        if (!root.admission()) return;
+        wantedOpen = true; pendingModal = ""; goRoot();
+        center.targetScreen = CompositorService.getFocusedScreen(); center.open();
+        capabilityProbe.running = true;
     }
-
+    function openDialog(kind) {
+        dialogSnapshot = snapshot(); pendingModal = kind; center.close(); dialogWait.restart();
+    }
+    Timer {
+        id: dialogWait
+        interval: 20
+        repeat: true
+        onTriggered: {
+            if (!root.admission() || !root.pendingModal) { stop(); return; }
+            if (!root.modalClosed(center)) return;
+            const loader = root.pendingModal === "about" ? aboutLoader : shortcutsLoader;
+            loader.active = true;
+            if (loader.item) { loader.item.targetScreen = center.targetScreen; loader.item.open(); stop(); }
+        }
+    }
+    function returnFromDialog() {
+        if (!pendingModal || !root.admission()) return;
+        pendingModal = ""; wantedOpen = true;
+        center.open();
+        if (dialogSnapshot) apply(dialogSnapshot);
+        Qt.callLater(() => { if (searchItem) searchItem.forceActiveFocus(); });
+    }
+    function launch(argv) {
+        Quickshell.execDetached(["systemd-run", "--user", "--collect", "--quiet", "--"].concat(argv));
+    }
+    function confirmPower() {
+        if (!confirmation || !root.admission()) return;
+        const action = confirmation.data;
+        confirmation = null; wantedOpen = false; center.close();
+        if (action === "logout") SessionService.logout();
+        else if (action === "reboot") SessionService.reboot();
+        else if (action === "poweroff") SessionService.poweroff();
+    }
     function activate(index) {
         if (!root.admission()) { root.lockdown(); return; }
-        // Enter and mouse both snapshot the exact currently highlighted row.
-        if (index < 0 || index >= rows.length)
-            return;
+        if (index < 0 || index >= rows.length) return;
         selected = index;
         const row = rows[index];
-        if (row.kind === "category") {
-            category = row.data;
-            query = "";
-            refresh();
-            return;
+        if (row.kind === "category" || row.kind === "emoji") {
+            apply(Model.enter(snapshot(), row.kind === "emoji" ? "emoji" : row.data)); return;
         }
-        root.wantedOpen = false;
-        center.close();
+        if (row.kind === "power") { confirmation = row; return; }
+        if (row.kind === "about" || row.kind === "shortcuts") { openDialog(row.kind); return; }
+        wantedOpen = false; center.close();
         switch (row.kind) {
         case "shortcut": {
-            const desktopIds = {firefox: "firefox", ghostty: "com.mitchellh.ghostty", nautilus: "org.gnome.Nautilus"};
-            const entry = DesktopEntries.heuristicLookup(desktopIds[row.data]);
-            if (entry)
-                SessionService.launchDesktopEntry(entry);
-            else
-                ToastService.showError("Application unavailable", row.comment);
+            const entry = desktopEntry(row.data);
+            if (entry) SessionService.launchDesktopEntry(entry);
+            else ToastService.showError("Application unavailable", row.comment);
             break;
         }
         case "app":
-            if (row.data.isAction)
-                SessionService.launchDesktopAction(row.data.parentApp, row.data.actionData);
-            else
-                SessionService.launchDesktopEntry(row.data);
+            if (row.data.isAction) SessionService.launchDesktopAction(row.data.parentApp, row.data.actionData);
+            else SessionService.launchDesktopEntry(row.data);
             break;
-        case "file":
-            Quickshell.execDetached(["systemd-run", "--user", "--collect", "--quiet", "--", "xdg-open", "file://" + row.data.split("/").map(encodeURIComponent).join("/")]);
-            break;
-        case "setting":
-            AppSearchService.executeBuiltInLauncherItem(row.data);
-            break;
-        case "settings":
-            if (row.data)
-                PopoutService.openSettingsWithTab(row.data);
-            else
-                PopoutService.openSettings();
-            break;
-        case "about":
-            root.pendingModal = "about";
-            if (aboutLoader.item)
-                aboutLoader.item.open();
-            else
-                aboutLoader.active = true;
-            break;
-        case "shortcuts":
-            root.pendingModal = "shortcuts";
-            if (shortcutsLoader.item)
-                shortcutsLoader.item.open();
-            else
-                shortcutsLoader.active = true;
-            break;
-        case "power":
-            // Never invoke destructive actions directly; retain DMS confirmation.
-            PopoutService.openPowerMenu();
-            break;
+        case "settings": PopoutService.openSettingsWithTab(row.data); break;
+        case "control": launch(["dms", "ipc", "call", "control-center", "openWith", row.data]); break;
+        case "url": Qt.openUrlExternally(row.data); break;
+        case "action": launch([root.bin + "wilsof-action", row.data]); break;
+        case "clipboard": PopoutService.openClipboardHistory(); break;
+        case "copy": launch(["wl-copy", "--foreground", "--", row.data]); break;
         case "lock":
             Quickshell.execDetached(["systemd-run", "--user", "--collect", "--quiet", "--", root.bin + "wilsof-lock"]);
             break;
         }
     }
-
-    Timer {
-        id: fileTimer
-        interval: 35
-        onTriggered: {
-            const process = fileSearch.createObject(root, {pendingQuery: root.query, generation: root.fileGeneration});
-            root.activeFileProcess = process;
-            process.running = true;
-        }
+    function handleKey(event, editing) {
+        const names = {};
+        names[Qt.Key_Down]="Down"; names[Qt.Key_Up]="Up"; names[Qt.Key_Left]="Left";
+        names[Qt.Key_Right]="Right"; names[Qt.Key_Backspace]="Backspace";
+        names[Qt.Key_Return]="Return"; names[Qt.Key_Enter]="Enter"; names[Qt.Key_Escape]="Escape";
+        const action = Model.keyAction(names[event.key] || "", editing,
+            !!(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier | Qt.ShiftModifier)));
+        if (confirmation) {
+            if (action === "escape") confirmation = null;
+            else if (action === "activate") confirmPower();
+            else return;
+        } else if (action === "next" || action === "previous") {
+            selected = Model.move(selected, action === "next" ? 1 : -1, rows.length);
+            if (listItem) listItem.positionViewAtIndex(selected, ListView.Contain);
+        } else if (action === "activate") activate(selected);
+        else if (action === "forward") {
+            if (selected >= 0 && (rows[selected].kind === "category" || rows[selected].kind === "emoji")) activate(selected);
+        } else if (action === "back" || action === "escape") goBack();
+        else return;
+        event.accepted = true;
     }
-
-    Component {
-        id: fileSearch
-        Process {
-            id: worker
-            property string pendingQuery
-            property int generation
-            command: [root.bin + "wilsof-file-search", "--query", pendingQuery]
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    if (!Model.accept(worker.generation, root.fileGeneration, worker.pendingQuery, root.query, root.wantedOpen))
-                        return;
-                    try {
-                        const data = JSON.parse(text);
-                        root.fileRows = data.items.map(f => Model.row("file:" + f.path, f.name, f.path.replace(Quickshell.env("HOME"), "~"), f.directory ? "folder" : "description", "file", f.path));
-                        root.publish(root.localRows.concat(root.fileRows), true);
-                        if (root.usefulResultsMs < 0 && root.rows.length)
-                            root.usefulResultsMs = Date.now() - root.queryStarted;
-                        root.searchNote = data.truncated ? "Bounded home search · refine your query" : "Home names only · no content index";
-                        if (data.unreadable)
-                            root.searchNote += " · some folders unavailable";
-                    } catch (e) {
-                        root.searchNote = "File search unavailable · applications and settings still work";
-                    }
-                }
-            }
-            onExited: code => {
-                if (root.activeFileProcess === worker) {
-                    root.activeFileProcess = null;
-                    if (code !== 0 && generation === root.fileGeneration)
-                        root.searchNote = "File search unavailable · applications and settings still work";
-                }
-                destroy();
-            }
-        }
-    }
-
     IpcHandler {
         target: "commandCenter"
         function prepareLock(token: string): string {
-            if (!/^[a-f0-9]{32}$/.test(token) || !nativeObserver.running || !root.nativeState.known)
-                return "WILSOF_LOCK_UNAVAILABLE";
-            root.nativeState = NativeLock.prepare(root.nativeState, token);
-            root.lockdown();
-            nativeObserver.write(JSON.stringify({prepare:token}) + "\n");
-            return "WILSOF_LOCK_PENDING";
+            if (!/^[a-f0-9]{32}$/.test(token) || !nativeObserver.running || !root.nativeState.known) return "WILSOF_LOCK_UNAVAILABLE";
+            root.nativeState = NativeLock.prepare(root.nativeState, token); root.lockdown();
+            nativeObserver.write(JSON.stringify({prepare:token}) + "\n"); return "WILSOF_LOCK_PENDING";
         }
         function lockStatus(token: string): string {
             const s = root.nativeState;
@@ -293,158 +251,136 @@ Item {
                 closed:closed, known:s.known, nativeLocked:s.locked});
         }
         function toggle(): string {
-            if (!root.admission()) {
-                root.lockdown();
-                return "WILSOF_COMMAND_CENTER_LOCKED";
-            }
-            if (root.wantedOpen) { root.wantedOpen = false; center.close(); } else root.open();
+            if (!root.admission()) { root.lockdown(); return "WILSOF_COMMAND_CENTER_LOCKED"; }
+            if (root.wantedOpen) root.lockdown(); else root.open();
             return "WILSOF_COMMAND_CENTER_OK";
         }
-        function close(): string { root.wantedOpen = false; center.close(); return "closed"; }
-        function search(text: string): string {
-            if (!root.admission()) {
-                root.lockdown();
-                return "WILSOF_COMMAND_CENTER_LOCKED";
-            }
+        function configure(): string {
+            if (!root.admission()) return "WILSOF_COMMAND_CENTER_LOCKED";
             if (!root.wantedOpen) root.open();
-            root.query = text;
-            root.category = "";
-            root.refresh();
-            return "search requested";
+            root.apply(Model.enter(root.snapshot(), "configure"));
+            return "WILSOF_COMMAND_CENTER_OK";
+        }
+        function close(): string { root.lockdown(); return "closed"; }
+        function search(text: string): string {
+            if (!root.admission()) { root.lockdown(); return "WILSOF_COMMAND_CENTER_LOCKED"; }
+            if (!root.wantedOpen) root.open();
+            root.query = text; root.refresh(false); return "search requested";
         }
         function status(): string {
-            return JSON.stringify({visible: center.shouldBeVisible, query: root.query, category: root.category, count: root.rows.length, selected: root.selected, selectedId: root.selected >= 0 ? root.rows[root.selected].id : "", usefulResultsMs: root.usefulResultsMs, filesRunning: root.activeFileProcess !== null, note: root.searchNote});
+            return JSON.stringify({visible:center.shouldBeVisible, query:root.query, category:root.category,
+                count:root.rows.length, selected:root.selected, selectedId:root.selected >= 0 ? root.rows[root.selected].id : "",
+                rows:root.rows.map(r=>({id:r.id,name:r.name,kind:r.kind})), depth:root.history.length,
+                focused:!!root.searchItem && root.searchItem.activeFocus, scrollY:root.listItem ? root.listItem.contentY : 0,
+                dialog:root.pendingModal, confirmation:!!root.confirmation, usefulResultsMs:root.usefulResultsMs});
         }
     }
-
-    // The lock screen must own the keyboard from the moment the session locks;
-    // an open modal keeps a focus grab that would swallow unlock keystrokes.
-    Connections {
-        target: SessionService
-        function onSessionLocked() { root.lockdown(); }
-    }
-
-    // Explicit lazy URL also supports adding this file to a running DMS engine
-    // whose implicit directory type inventory predates the plugin update.
-    Loader {
-        id: aboutLoader
-        active: false
-        source: Qt.resolvedUrl("About.qml")
-        onLoaded: if (root.admission() && root.pendingModal === "about") item.open()
-    }
-
-    Loader {
-        id: shortcutsLoader
-        active: false
-        source: Qt.resolvedUrl("Shortcuts.qml")
-        onLoaded: if (root.admission() && root.pendingModal === "shortcuts") item.open()
-    }
-
+    Connections { target: SessionService; function onSessionLocked() { root.lockdown(); } }
+    Loader { id: aboutLoader; active: false; source: Qt.resolvedUrl("About.qml") }
+    Loader { id: shortcutsLoader; active: false; source: Qt.resolvedUrl("Shortcuts.qml") }
+    Connections { target: aboutLoader.item; function onDialogClosed() { root.returnFromDialog(); } }
+    Connections { target: shortcutsLoader.item; function onDialogClosed() { root.returnFromDialog(); } }
     DModal {
         id: center
         layerNamespace: "wilsof:command-center"
-        modalWidth: Math.min(560, screenWidth - 32)
-        modalHeight: Math.min(650, screenHeight * 0.8)
-        backgroundColor: Theme.surface
-        borderColor: Theme.outline
+        modalWidth: Math.min(460, screenWidth - 24)
+        modalHeight: Math.min(580, screenHeight - 48)
+        backgroundColor: "#14181E"
+        borderColor: "#3a424b"
         borderWidth: 1
         cornerRadius: 6
         enableShadow: false
-        animationDuration: SettingsData.reduceMotion ? 0 : 100
-        onDialogClosed: {
-            root.wantedOpen = false;
-            root.fileGeneration++;
-            fileTimer.stop();
-            if (root.activeFileProcess)
-                root.activeFileProcess.running = false;
-        }
+        animationDuration: 0
+        closeOnEscapeKey: false
+        onDialogClosed: if (!root.pendingModal) root.wantedOpen = false
         content: Component {
             Item {
                 anchors.fill: parent
-                anchors.margins: 16
+                anchors.margins: 14
+                Keys.onPressed: event => root.handleKey(event, false)
                 Column {
                     id: heading
                     width: parent.width
-                    spacing: 12
+                    spacing: 10
                     Row {
                         width: parent.width
-                        Text { width: parent.width - 48; text: "WILSOF  /  COMMAND CENTER"; color: Theme.primary; font.pixelSize: 13; font.letterSpacing: 1 }
-                        Text { text: "ESC"; color: Theme.surfaceVariantText; font.pixelSize: 12 }
-                    }
-                    Rectangle {
-                        width: parent.width
-                        height: 48
-                        radius: 6
-                        color: Theme.surfaceContainer
-                        border.color: Theme.primary
-                        border.width: search.activeFocus ? 1 : 0
-                        TextInput {
-                            id: search
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            text: root.query
-                            color: Theme.surfaceText
-                            font.pixelSize: 16
-                            clip: true
-                            selectByMouse: true
-                            onTextEdited: { root.query = text; root.refresh(); }
-                            Component.onCompleted: forceActiveFocus()
-                            Connections { target: center; function onOpened() { search.forceActiveFocus(); } }
-                            Keys.onPressed: event => {
-                                if (event.key === Qt.Key_Down || event.key === Qt.Key_Up) {
-                                    root.selected = Model.move(root.selected, event.key === Qt.Key_Down ? 1 : -1, root.rows.length);
-                                    results.positionViewAtIndex(root.selected, ListView.Contain);
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                    root.activate(root.selected);
-                                    event.accepted = true;
-                                } else if (event.key === Qt.Key_Escape) {
-                                    center.close(); event.accepted = true;
-                                } else if (event.key === Qt.Key_Backspace && text === "" && root.category) {
-                                    root.category = ""; root.refresh(); event.accepted = true;
-                                }
-                            }
-                            Text { visible: !search.text; text: "Search apps, files and settings"; color: Theme.surfaceVariantText; font: search.font }
+                        spacing: 10
+                        Image {
+                            width: 36; height: 28; fillMode: Image.PreserveAspectFit; source: root.logo
+                            Accessible.role: Accessible.Button; Accessible.name: "Wilsof Menu home"
+                            activeFocusOnTab: true
+                            Keys.onReturnPressed: root.goRoot()
+                            MouseArea { anchors.fill: parent; onClicked: root.goRoot() }
+                        }
+                        Text { text: "Wilsof Menu"; color: "#E7EEF2"; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 112 }
+                        Text {
+                            text: "← Back"; color: "#86B9CE"; font.pixelSize: 13
+                            visible: root.history.length > 0 || !!root.confirmation
+                            activeFocusOnTab: visible
+                            Accessible.role: Accessible.Button; Accessible.name: "Back"
+                            Keys.onReturnPressed: root.goBack()
+                            MouseArea { anchors.fill: parent; onClicked: root.goBack() }
                         }
                     }
-                    Text { text: root.category ? (root.category === "files" ? "FILES & FOLDERS  /  Backspace to go back" : "APPLICATIONS  /  Backspace to go back") : "Everything you need. Nothing you don't."; color: Theme.surfaceVariantText; font.pixelSize: 12 }
+                    Rectangle {
+                        width: parent.width; height: 42; radius: 5; color: "#202830"
+                        border.color: "#86B9CE"; border.width: search.activeFocus ? 1 : 0
+                        TextInput {
+                            id: search
+                            objectName: "wilsofMenuSearch"
+                            anchors.fill: parent; anchors.margins: 10
+                            text: root.query; color: "#E7EEF2"; font.pixelSize: 15
+                            clip: true; selectByMouse: true; activeFocusOnTab: true
+                            Accessible.name: "Search applications, actions and settings"
+                            onTextEdited: { root.query = text; root.confirmation = null; root.refresh(false); }
+                            Component.onCompleted: { root.searchItem = search; forceActiveFocus(); }
+                            Component.onDestruction: if (root.searchItem === search) root.searchItem = null
+                            Connections { target: center; function onOpened() { search.forceActiveFocus(); } }
+                            Keys.onPressed: event => root.handleKey(event, text.length > 0 || inputMethodComposing)
+                            Text { visible: !search.text; text: "Search apps, actions and settings"; color: "#AAB6C0"; font: search.font }
+                        }
+                    }
+                    Text { text: root.history.length ? root.category.charAt(0).toUpperCase() + root.category.slice(1) : "Everything you need. Nothing you don't."; color: "#AAB6C0"; font.pixelSize: 12 }
                 }
                 ListView {
                     id: results
-                    anchors.top: heading.bottom
-                    anchors.topMargin: 12
-                    anchors.bottom: footer.top
-                    anchors.bottomMargin: 8
-                    width: parent.width
-                    clip: true
-                    spacing: 4
-                    model: root.rows
-                    currentIndex: root.selected
+                    objectName: "wilsofMenuResults"
+                    anchors.top: heading.bottom; anchors.topMargin: 10
+                    anchors.bottom: footer.top; anchors.bottomMargin: 8
+                    width: parent.width; clip: true; spacing: 3
+                    visible: !root.confirmation
+                    model: root.rows; currentIndex: root.selected
                     boundsBehavior: Flickable.StopAtBounds
+                    Component.onCompleted: root.listItem = results
+                    Component.onDestruction: if (root.listItem === results) root.listItem = null
                     delegate: Rectangle {
                         required property int index
                         required property var modelData
-                        width: results.width
-                        height: modelData.kind === "shortcut" ? 50 : 38
-                        radius: 6
-                        color: index === root.selected ? Theme.primaryContainer : (modelData.kind === "shortcut" ? Theme.surfaceContainer : "transparent")
-                        border.width: index === root.selected ? 1 : 0
-                        border.color: Theme.primary
-                        DIcon { x: 12; anchors.verticalCenter: parent.verticalCenter; name: modelData.icon; size: 22; color: index === root.selected ? Theme.primary : Theme.surfaceVariantText }
+                        width: results.width; height: 46; radius: 5
+                        color: index === root.selected ? "#263B47" : "transparent"
+                        border.width: index === root.selected ? 1 : 0; border.color: "#86B9CE"
+                        Accessible.role: Accessible.MenuItem; Accessible.name: modelData.name
+                        DIcon { x: 10; anchors.verticalCenter: parent.verticalCenter; name: modelData.icon; size: 19; color: "#86B9CE" }
                         Column {
-                            x: 48; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 64
-                            Text { width: parent.width; text: modelData.name; color: Theme.surfaceText; font.pixelSize: 15; elide: Text.ElideRight }
-                            Text { width: parent.width; text: modelData.comment; color: Theme.surfaceVariantText; font.pixelSize: 12; elide: Text.ElideMiddle }
+                            x: 40; anchors.verticalCenter: parent.verticalCenter; width: parent.width - 58
+                            Text { width: parent.width; text: modelData.name; color: "#E7EEF2"; font.pixelSize: 14; elide: Text.ElideRight }
+                            Text { width: parent.width; text: modelData.comment; color: "#AAB6C0"; font.pixelSize: 11; elide: Text.ElideRight }
                         }
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: { search.forceActiveFocus(); root.activate(index); }
-                        }
+                        MouseArea { anchors.fill: parent; onClicked: root.activate(index) }
                     }
-                    Text { anchors.centerIn: parent; visible: root.rows.length === 0; text: root.activeFileProcess || fileTimer.running ? "Searching home names…" : "No results. Try another name."; color: Theme.surfaceVariantText; font.pixelSize: 14 }
+                    Text { anchors.centerIn: parent; visible: root.rows.length === 0; text: "No results. Try another name."; color: "#AAB6C0"; font.pixelSize: 14 }
                 }
-                Text { id: footer; anchors.bottom: parent.bottom; width: parent.width; text: root.searchNote + "    ↑↓  Select    ↵  Open"; color: Theme.surfaceVariantText; font.pixelSize: 11; elide: Text.ElideRight }
+                Column {
+                    anchors.centerIn: results; width: parent.width; spacing: 18; visible: !!root.confirmation
+                    Text { width: parent.width; text: root.confirmation ? root.confirmation.name + "?" : ""; color: "#E7EEF2"; font.pixelSize: 22 }
+                    Text { width: parent.width; text: "Save your work first. Enter confirms; Escape cancels."; wrapMode: Text.WordWrap; color: "#AAB6C0"; font.pixelSize: 14 }
+                    Row {
+                        spacing: 30
+                        Text { text: "Confirm"; color: "#86B9CE"; activeFocusOnTab: true; Keys.onReturnPressed: root.confirmPower(); MouseArea { anchors.fill: parent; onClicked: root.confirmPower() } }
+                        Text { text: "Cancel"; color: "#86B9CE"; activeFocusOnTab: true; Keys.onReturnPressed: root.confirmation = null; MouseArea { anchors.fill: parent; onClicked: root.confirmation = null } }
+                    }
+                }
+                Text { id: footer; anchors.bottom: parent.bottom; width: parent.width; text: "↑↓ Select   Enter Open   ← Back   Esc Close"; color: "#AAB6C0"; font.pixelSize: 11; elide: Text.ElideRight }
             }
         }
     }

@@ -68,3 +68,24 @@ def test_kernel_probe_does_not_misreport_denied_journal_as_clean():
 def test_installed_desktop_explicitly_carries_standard_sof_firmware():
     packages = (ROOT / 'runtime/desktop-packages.txt').read_text().splitlines()
     assert 'sof-firmware' in packages, 'Live ISO includes SOF, installed target must not silently omit it'
+
+
+def test_cached_wifi_summary_is_read_only_and_never_exposes_network_identity():
+    m=load()
+    assert m['wifi_scan_summary']('42:WPA2\n80:WPA2 WPA3\n') == {'cache_only':True,'network_count':2,'strongest_signal_percent':80}
+    assert m['wifi_scan_summary']('') == {'cache_only':True,'network_count':0,'strongest_signal_percent':None}
+    source=SCRIPT.read_text()
+    assert "'--rescan', 'no'" in source
+    assert "'SSID'" not in source and "'BSSID'" not in source
+
+
+def test_numeric_pci_identity_includes_unknown_wireless_and_graphics_without_guessing(tmp_path):
+    m=load()
+    for name,cls,vendor,device in [('0000:01:00.0','0x028000','0x14e4','0x4331'),('0000:02:00.0','0x030000','0x8086','0x1234')]:
+        p=tmp_path/'bus/pci/devices'/name;p.mkdir(parents=True)
+        for f,value in [('class',cls),('vendor',vendor),('device',device)]: (p/f).write_text(value)
+    ids=m['hardware_ids'](tmp_path)
+    assert len(ids['pci'])==2
+    assert ids['pci'][0]['vendor']=='0x14e4' and ids['pci'][0]['driver'] is None
+    assert ids['pci'][1]['class']=='0x030000'
+    assert not any('wl'==row['driver'] for row in ids['pci'])

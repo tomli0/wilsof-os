@@ -1,11 +1,12 @@
 {
   "id": "wilsofCommandCenter",
-  "name": "Wilsof Command Center",
+  "name": "Wilsof Menu",
   "description": "Compact local launcher using DMS search, settings and modal infrastructure.",
   "version": "0.1.0",
   "author": "Wilsof OS",
   "type": "composite",
   "requires_dms": ">=2.0.0",
-  "components": {"daemon": "CommandCenter.qml"},
+  "capabilities": ["daemon", "dankbar-widget"],
+  "components": {"daemon": "CommandCenter.qml", "widget": "Bar.qml"},
   "permissions": ["process"]
 }

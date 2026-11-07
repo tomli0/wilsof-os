@@ -15,7 +15,7 @@ import subprocess
 
 
 PACKAGES = ('linux', 'linux-firmware', 'sof-firmware', 'alsa-ucm-conf',
-            'alsa-utils', 'networkmanager', 'wpa_supplicant', 'pipewire',
+            'alsa-utils', 'networkmanager', 'wpa_supplicant', 'iw', 'wireless-regdb', 'pipewire',
             'pipewire-audio', 'pipewire-pulse', 'wireplumber', 'bluez',
             'hyprland', 'hyprtoolkit', 'hyprland-guiutils', 'dux-shell', 'quickshell')
 
@@ -66,16 +66,16 @@ def audio_summary(devices, default):
     return out
 
 
-def hardware_ids():
+def hardware_ids(sys_root=Path("/sys")):
     pci, usb, radios = [], [], []
     def read(path):
         try:
             return path.read_text().strip()
         except OSError:
             return ''
-    for p in sorted(Path('/sys/bus/pci/devices').glob('*')):
+    for p in sorted((sys_root / 'bus/pci/devices').glob('*')):
         cls = read(p / 'class')
-        if not re.fullmatch(r'0x(?:02|04)[0-9a-fA-F]{4}', cls):
+        if not re.fullmatch(r'0x(?:02|03|04)[0-9a-fA-F]{4}', cls):
             continue
         row = {'class': cls}
         for field in ('vendor', 'device', 'subsystem_vendor', 'subsystem_device'):
@@ -86,15 +86,28 @@ def hardware_ids():
         row['driver'] = driver if re.fullmatch(r'[a-zA-Z0-9_-]{1,64}', driver) else None
         pci.append(row)
     # Numeric USB IDs only; never serials, product/manufacturer strings or names.
-    for p in sorted(Path('/sys/bus/usb/devices').glob('*')):
+    for p in sorted((sys_root / 'bus/usb/devices').glob('*')):
         vendor, product = read(p / 'idVendor'), read(p / 'idProduct')
         if re.fullmatch(r'[0-9a-fA-F]{4}', vendor) and re.fullmatch(r'[0-9a-fA-F]{4}', product):
             usb.append({'vendor': vendor, 'product': product})
-    for p in sorted(Path('/sys/class/rfkill').glob('rfkill*')):
+    for p in sorted((sys_root / 'class/rfkill').glob('rfkill*')):
         kind = read(p / 'type')
         radios.append({'type': kind if kind in ('wlan', 'bluetooth', 'wwan') else 'other',
                        'soft': read(p / 'soft') == '1', 'hard': read(p / 'hard') == '1'})
     return {'pci': pci, 'usb': usb, 'rfkill': radios}
+
+
+def wifi_scan_summary(text):
+    signals = []
+    for line in text.splitlines():
+        if not line:
+            continue
+        signal, sep, _security = line.partition(':')
+        if not sep or not signal.isdigit() or not 0 <= int(signal) <= 100:
+            raise ValueError('unrecognized cached wireless data')
+        signals.append(int(signal))
+    return {'cache_only': True, 'network_count': len(signals),
+            'strongest_signal_percent': max(signals) if signals else None}
 
 
 def collect():
@@ -116,7 +129,7 @@ def collect():
         p = probe(['pacman', '-Q', package])
         parts = p['data'].split()
         result['packages'][package] = parts[1] if len(parts) == 2 and parts[0] == package and re.fullmatch(r'[a-zA-Z0-9:+_.-]+', parts[1]) else None
-    units = ('NetworkManager.service', 'bluetooth.service')
+    units = ('NetworkManager.service', 'bluetooth.service', 'power-profiles-daemon.service')
     user_units = ('pipewire.service', 'pipewire-pulse.service', 'wireplumber.service', 'dms.service')
     for unit in (*units, *user_units):
         argv = ['systemctl', *(['--user'] if unit in user_units else []), 'show', unit,
@@ -126,6 +139,7 @@ def collect():
     save('network_devices', ['nmcli', '-t', '-f', 'TYPE,STATE', 'device', 'status'],
          lambda text: [line for line in text.splitlines() if re.fullmatch(r'[a-z-]+:(?:connected|disconnected|unavailable|unmanaged|connecting|connecting \(getting IP configuration\)|connecting \(need authentication\)|connected \(externally\))', line)])
     save('wifi_radio', ['nmcli', 'radio', 'wifi'], lambda text: text.strip() if text.strip() in ('enabled', 'disabled') else 'unknown')
+    save('cached_wifi_networks', ['nmcli', '-t', '-f', 'SIGNAL,SECURITY', 'device', 'wifi', 'list', '--rescan', 'no'], wifi_scan_summary)
     save('kernel_errors', ['journalctl', '-k', '-b', '-o', 'cat', '--no-pager', '-n', '3000'], kernel_summary)
     for kind in ('sink', 'source'):
         default = probe(['pactl', 'get-default-' + kind])['data'].strip()

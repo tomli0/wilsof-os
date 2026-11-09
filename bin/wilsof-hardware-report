@@ -8,6 +8,7 @@ explicitly unavailable; this is evidence collection, not hardware acceptance.
 import argparse
 from datetime import datetime, timezone
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -92,9 +93,80 @@ def hardware_ids(sys_root=Path("/sys")):
             usb.append({'vendor': vendor, 'product': product})
     for p in sorted((sys_root / 'class/rfkill').glob('rfkill*')):
         kind = read(p / 'type')
+        def blocked(field):
+            value = read(p / field)
+            return value == '1' if value in ('0', '1') else None
         radios.append({'type': kind if kind in ('wlan', 'bluetooth', 'wwan') else 'other',
-                       'soft': read(p / 'soft') == '1', 'hard': read(p / 'hard') == '1'})
+                       'soft': blocked('soft'), 'hard': blocked('hard')})
     return {'pci': pci, 'usb': usb, 'rfkill': radios}
+
+
+def display_summary(monitors):
+    out = []
+    for m in monitors:
+        if not isinstance(m, dict):
+            continue
+        if not all(type(m.get(k)) is int and 0 < m[k] <= 32768 for k in ('width', 'height')):
+            continue
+        if not all(type(m.get(k)) in (int, float) and math.isfinite(m[k])
+                   and 0 < m[k] <= limit for k, limit in (('scale', 8), ('refreshRate', 1000))):
+            continue
+        out.append({'width': m['width'], 'height': m['height'], 'scale': m['scale'],
+                    'refresh_hz': m['refreshRate'], 'disabled': m.get('disabled') if type(m.get('disabled')) is bool else None})
+    return out
+
+
+def device_state(sys_root=Path('/sys')):
+    def read(path):
+        try:
+            return path.read_text().strip()[:4096]
+        except (OSError, UnicodeError):
+            return ''
+    def module(path):
+        link = path / 'device/driver/module'
+        name = link.resolve().name if link.is_symlink() else ''
+        return name if re.fullmatch(r'[a-zA-Z0-9_-]{1,64}', name) else None
+    wireless, bluetooth, supplies = [], [], []
+    for p in sorted((sys_root / 'class/net').glob('*')):
+        if not ((p / 'wireless').is_dir() or (p / 'phy80211').exists()):
+            continue
+        if not re.fullmatch(r'[a-zA-Z0-9_.-]{1,32}', p.name):
+            continue
+        mod = module(p)
+        state = read(p / 'operstate')
+        wireless.append({'interface':p.name,
+                         'state':state if state in ('unknown','notpresent','down','lowerlayerdown','testing','dormant','up') else None,
+                         'module':mod, 'module_loaded':(sys_root / 'module' / mod).is_dir() if mod else None})
+    for p in sorted((sys_root / 'class/bluetooth').glob('hci*')):
+        if re.fullmatch(r'hci[0-9]+', p.name):
+            mod = module(p)
+            bluetooth.append({'controller':p.name, 'module':mod,
+                              'module_loaded':(sys_root / 'module' / mod).is_dir() if mod else None})
+    for p in sorted((sys_root / 'class/power_supply').glob('*')):
+        kind, status, capacity = read(p / 'type'), read(p / 'status'), read(p / 'capacity')
+        supplies.append({'type':kind if kind in ('Battery','Mains','USB','USB_C','USB_PD') else 'other',
+                         'status':status if status in ('Unknown','Charging','Discharging','Not charging','Full') else None,
+                         'capacity_percent':int(capacity) if capacity.isascii() and capacity.isdigit() and 0 <= int(capacity) <= 100 else None})
+    sleep = read(sys_root / 'power/mem_sleep').split()
+    allowed = ('s2idle','shallow','deep')
+    selected = [s[1:-1] for s in sleep if s.startswith('[') and s.endswith(']') and s[1:-1] in allowed]
+    return {'wireless':wireless, 'bluetooth':bluetooth,
+            'sleep_states':[s for s in read(sys_root / 'power/state').split() if s in ('freeze','standby','mem','disk')],
+            'mem_sleep':{'available':[s.strip('[]') for s in sleep if s.strip('[]') in allowed],
+                         'selected':selected[0] if len(selected) == 1 else None},
+            'power_supplies':supplies}
+
+
+def firmware_summary(text, firmware_root=Path('/usr/lib/firmware')):
+    patterns = list(dict.fromkeys(line for line in map(str.strip, text.splitlines())
+                    if re.fullmatch(r'[a-zA-Z0-9_./*?-]{1,160}', line)
+                    and not line.startswith('/') and '..' not in Path(line).parts
+                    and '**' not in line))
+    return {'declared_candidates_not_all_required':True,
+            'files':[{'pattern':pattern, 'present':any(
+                any(p.is_file() for p in firmware_root.glob(pattern + suffix))
+                for suffix in ('', '.xz', '.zst'))} for pattern in patterns[:256]],
+            'truncated':len(patterns) > 256}
 
 
 def wifi_scan_summary(text):
@@ -113,7 +185,7 @@ def wifi_scan_summary(text):
 def collect():
     result = {'schema_version': 1, 'at_utc': datetime.now(timezone.utc).isoformat(),
               'kernel': os.uname().release, 'physical_approval': 'PENDING',
-              'hardware': hardware_ids(), 'probes': {}}
+              'hardware': hardware_ids(), 'device_state': device_state(), 'probes': {}}
     def save(name, argv, transform):
         p = probe(argv)
         value = {'status': p['status']}
@@ -141,6 +213,11 @@ def collect():
     save('wifi_radio', ['nmcli', 'radio', 'wifi'], lambda text: text.strip() if text.strip() in ('enabled', 'disabled') else 'unknown')
     save('cached_wifi_networks', ['nmcli', '-t', '-f', 'SIGNAL,SECURITY', 'device', 'wifi', 'list', '--rescan', 'no'], wifi_scan_summary)
     save('kernel_errors', ['journalctl', '-k', '-b', '-o', 'cat', '--no-pager', '-n', '3000'], kernel_summary)
+    save('displays', ['hyprctl', '-j', 'monitors'], lambda text: display_summary(json.loads(text)))
+    modules = sorted({row['module'] for kind in ('wireless', 'bluetooth')
+                      for row in result['device_state'][kind] if row['module']})
+    for module in modules:
+        save('firmware:' + module, ['modinfo', '-F', 'firmware', module], firmware_summary)
     for kind in ('sink', 'source'):
         default = probe(['pactl', 'get-default-' + kind])['data'].strip()
         save('audio_' + kind + 's', ['pactl', '--format=json', 'list', kind + 's'],

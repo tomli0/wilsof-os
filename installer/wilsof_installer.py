@@ -22,7 +22,7 @@ snapshot = runpy.run_path(str(ROOT / 'runtime/repository-snapshot.py'))
 wireless = runpy.run_path(str(ROOT / 'runtime/broadcom-wl.py'))
 ARCHINSTALL_VERSION = '4.5'
 LSBLK = ['lsblk', '--json', '--bytes', '--paths', '--output',
-         'PATH,KNAME,TYPE,SIZE,MAJ:MIN,RO,WWN,SERIAL,MODEL,PTTYPE,FSTYPE,MOUNTPOINTS']
+         'PATH,KNAME,TYPE,SIZE,MAJ:MIN,RO,WWN,SERIAL,MODEL,VENDOR,TRAN,RM,PTTYPE,FSTYPE,MOUNTPOINTS']
 
 
 def read_json(argv):
@@ -440,4 +440,12 @@ def assess_inventory(path, inventory):
     return {
         'path': path, 'size_bytes': int(node['size']), 'expected_empty': True,
         'identity': 'sha256-' + hashlib.sha256(json.dumps(identity).encode()).hexdigest(),
+        # Public review labels are separate from the private stable identifier.
+        # They also participate in the final probe equality and plan digest.
+        'display': {
+            'manufacturer': node.get('vendor') or 'not reported',
+            'model': node.get('model') or 'not reported',
+            'transport': node.get('tran') or 'not reported',
+            'removable': node.get('rm'),
+        },
     }

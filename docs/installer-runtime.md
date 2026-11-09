@@ -55,7 +55,15 @@ need disposable-VM verification.
 
 The user enters a canonical whole-disk `/dev/NAME` path with no default, a username,
 and matching hidden passwords. Review displays packages, unencrypted layout, the
-entire non-secret canonical plan, and a whole-disk data-loss warning. Only the exact
+entire non-secret canonical plan, and a whole-disk data-loss warning. Current
+source also includes the device-reported manufacturer, model, transport and
+removable flag alongside exact byte capacity in that review. Missing labels are
+explicitly `not reported` (or null for the removable flag); transport/removability
+are not proof of physical location. JSON escapes terminal control characters;
+serial/WWN remain behind the private identity hash. These labels are bound into
+the plan digest and compared again before disk operations. This review improvement
+postdates the frozen Private3 ISO source `7c3771b` and requires a separately
+authorized new build before image inclusion can be claimed. Only the exact
 text `ERASE /dev/NAME` permits continuation. There is no unattended execution or
 execute-saved-plan option, automatic retry, SSH setup or automatic reboot.
 

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -29,6 +30,13 @@ def install_user(source, home, *, live=False):
                 raise RuntimeError(f'Refusing managed symlink: {relative}')
         return current
 
+    version_relative = '.local/state/wilsof-os/config-version.json'
+    version_path = confined(version_relative)
+    if version_path.exists():
+        version = json.loads(version_path.read_text())
+        if (not isinstance(version, dict) or type(version.get('schema_version')) is not int
+                or version['schema_version'] != 1):
+            raise ValueError('Unsupported Wilsof configuration schema; files preserved')
     live = live or confined('.local/state/wilsof-os/live-session').is_file()
 
     def write(relative, data, mode=0o644):
@@ -64,7 +72,7 @@ def install_user(source, home, *, live=False):
     for relative in ('.local', '.local/state', '.local/state/wilsof-os'):
         confined(relative).mkdir(mode=0o700, exist_ok=True)
 
-    for name in ('wilsof-about-info', 'wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-idle', 'wilsof-lock-session', 'wilsof-lock-observer', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-action', 'wilsof-shortcuts', 'wilsof-appearance'):
+    for name in ('wilsof', 'wilsof-about-info', 'wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-idle', 'wilsof-lock-session', 'wilsof-lock-observer', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-action', 'wilsof-shortcuts', 'wilsof-appearance'):
         write(f'.local/bin/{name}', (source / 'bin' / name).read_bytes(), 0o755)
     for name in ('wilsof.lua', 'wilsof.conf', 'hypridle.conf', 'hyprlock.conf', 'hyprlock-idle.conf'):
         write(f'.config/hypr/{name}', (source / 'config/hypr' / name).read_bytes())
@@ -201,6 +209,12 @@ def install_user(source, home, *, live=False):
     if live:
         # A password-locked evaluation account cannot unlock PAM. Never claim it is locked.
         write('.local/bin/wilsof-lock', b'#!/bin/sh\nprintf "%s\\n" "Live evaluation is unlocked. Shut down when finished; do not enter private data."\n', 0o755)
+    # The legacy-to-v1 migration is the existing owned-file deployment above.
+    # Mark completion only after success; backups are not atomic rollback.
+    commit_path = source / 'SOURCE_COMMIT'
+    commit = commit_path.read_text().strip() if commit_path.is_file() else ''
+    record = {'schema_version':1, 'configuration_source_commit':commit if re.fullmatch(r'[0-9a-f]{40}', commit) else None}
+    write(version_relative, (json.dumps(record, sort_keys=True) + '\n').encode(), 0o600)
     return backup
 
 

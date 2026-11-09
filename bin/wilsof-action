@@ -21,11 +21,14 @@ UNIT = 'wilsof-screen-recording.service'
 
 
 def capabilities(*, which=shutil.which):
-    return {key:all(which(c) for c in commands) for key,commands in DEPENDENCIES.items()} | {'window-visuals':False}
+    result = {key:all(which(c) for c in commands) for key,commands in DEPENDENCIES.items()}
+    update = Path(software_command('update')[0])
+    result['update'] = result['update'] and update.is_file() and os.access(update, os.X_OK)
+    return result | {'window-visuals':False}
 
 
 def software_command(action, package=''):
-    if action == 'update': return ['sudo','pacman','-Syu']
+    if action == 'update': return [str(Path(__file__).resolve().with_name('wilsof')),'update']
     if action not in ('install','remove'): raise ValueError('unknown software action')
     if not re.fullmatch(r'[a-z0-9][a-z0-9@._+-]{0,127}',package): raise ValueError('enter one valid repository package name')
     if action == 'remove' and package in PROTECTED: raise ValueError('essential system components cannot be removed from this application interface')

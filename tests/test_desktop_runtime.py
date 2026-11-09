@@ -15,6 +15,33 @@ def load_runtime():
     return module
 
 
+def test_versioned_migration_refuses_future_schema_before_any_writes(tmp_path):
+    import pytest
+    desktop = load_runtime()
+    marker = tmp_path / '.local/state/wilsof-os/config-version.json'
+    marker.parent.mkdir(parents=True)
+    marker.write_text('{"schema_version":999}\n')
+    entry = tmp_path / '.config/hypr/hyprland.lua'; entry.parent.mkdir(parents=True)
+    entry.write_text('-- personal generated base\n')
+    with pytest.raises(ValueError, match='schema'):
+        desktop.install_user(ROOT, tmp_path)
+    assert not (tmp_path / '.local/bin').exists()
+    assert marker.read_text() == '{"schema_version":999}\n'
+
+
+def test_legacy_config_migration_records_version_only_after_success(tmp_path):
+    desktop = load_runtime()
+    entry = tmp_path / '.config/hypr/hyprland.lua'; entry.parent.mkdir(parents=True)
+    entry.write_text('-- personal generated base\n')
+    desktop.install_user(ROOT, tmp_path)
+    marker = tmp_path / '.local/state/wilsof-os/config-version.json'
+    first = marker.read_bytes()
+    assert json.loads(first)['schema_version'] == 1
+    assert (tmp_path / '.local/bin/wilsof').read_bytes() == (ROOT / 'bin/wilsof').read_bytes()
+    desktop.install_user(ROOT, tmp_path)
+    assert marker.read_bytes() == first
+
+
 def test_provision_target_rejects_root_and_symlink_writes_before_mutation(tmp_path):
     import runpy
     import pytest

@@ -1,4 +1,5 @@
 bin/wilsof-search
+bin/wilsof
 bin/wilsof-lock
 bin/wilsof-idle
 bin/wilsof-lock-session

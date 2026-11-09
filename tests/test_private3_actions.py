@@ -26,6 +26,20 @@ def test_capabilities_require_actual_dependencies():
     assert caps['window-visuals'] is False
 
 
+def test_update_capability_uses_the_actual_sibling_without_local_bin_in_path(monkeypatch):
+    m = module()
+    calls = []
+    def system_path_only(name):
+        calls.append(name)
+        return None if name == 'wilsof' else '/usr/bin/' + name
+    assert m.capabilities(which=system_path_only)['update'] is True
+    assert 'wilsof' not in calls
+    sibling = Path(m.software_command('update')[0])
+    assert sibling == ROOT / 'bin/wilsof'
+    monkeypatch.setattr(m.os, 'access', lambda path, mode: False if Path(path) == sibling else True)
+    assert m.capabilities(which=system_path_only)['update'] is False
+
+
 @pytest.mark.parametrize('name',['--overwrite','firefox;reboot','../../etc/passwd','a b','$(id)',''])
 def test_package_names_cannot_be_options_or_shell_payloads(name):
     with pytest.raises(ValueError): module().software_command('install',name)
@@ -35,7 +49,7 @@ def test_software_transactions_keep_signature_policy_and_user_confirmation():
     m=module()
     assert m.software_command('install','firefox')==['sudo','pacman','-Syu','--','firefox']
     assert m.software_command('remove','vlc')==['sudo','pacman','-Rns','--','vlc']
-    assert m.software_command('update')==['sudo','pacman','-Syu']
+    assert m.software_command('update')==[str(ROOT/'bin/wilsof'),'update']
     with pytest.raises(ValueError):m.software_command('remove','hyprland')
     with pytest.raises(ValueError):m.software_command('not-an-action','firefox')
 

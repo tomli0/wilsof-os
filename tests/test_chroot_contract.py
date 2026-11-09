@@ -93,6 +93,7 @@ def read_snapshot(*args):
     if os.environ['SNAPSHOT_FAILS'] == '1': raise ValueError('repository snapshot rejected')
 def load(path, *args, **kwargs):
     if str(path).endswith('repository-snapshot.py'): return {'read': read_snapshot}
+    if str(path).endswith('broadcom-wl.py'): return {'verify': lambda: record('wl'), 'discard_image_signing_key': lambda: record('seal')}
     return {'verify_arch_chroot_support': lambda: record('gate'),
             'install_package': lambda *a: record('install')}
 runpy.run_path = load
@@ -101,7 +102,7 @@ runpy.run_path = load
            'PYTHONPATH': str(tmp_path), 'CALL_LOG': str(log), 'GATE_FAILS': str(int(gate_fails)), 'SNAPSHOT_FAILS': str(int(snapshot_fails))}
     result = subprocess.run(['sh', str(output / 'airootfs/root/customize_airootfs.sh')], env=env, capture_output=True, text=True)
     assert bool(result.returncode) == (gate_fails or snapshot_fails)
-    assert [json.loads(line) for line in log.read_text().splitlines()] == ['gate'] + ([] if gate_fails else ['snapshot']) + (['install'] if with_package and not gate_fails and not snapshot_fails else [])
+    assert [json.loads(line) for line in log.read_text().splitlines()] == ['gate'] + ([] if gate_fails else ['snapshot']) + ([] if gate_fails or snapshot_fails else ['wl']) + (['install'] if with_package and not gate_fails and not snapshot_fails else []) + ([] if gate_fails or snapshot_fails else ['seal'])
 
 
 def provision_transaction(tmp_path, monkeypatch, effect='intact', exit_code=0):

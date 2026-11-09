@@ -35,6 +35,10 @@ xdg-user-dirs
 noto-fonts-emoji
 # Explicit wireless closure; do not assume the owner's chipset.
 linux-firmware
+# Confirmed owner BCM4360; matching headers and compiler closure via official DKMS.
+# Internal candidate only: see docs/broadcom-wl.md before redistributing an image.
+linux-headers
+broadcom-wl-dkms
 wpa_supplicant
 iw
 wireless-regdb

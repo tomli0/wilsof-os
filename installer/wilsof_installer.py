@@ -19,6 +19,7 @@ from installer.accounts import validate_username
 
 ROOT = Path(__file__).resolve().parents[1]
 snapshot = runpy.run_path(str(ROOT / 'runtime/repository-snapshot.py'))
+wireless = runpy.run_path(str(ROOT / 'runtime/broadcom-wl.py'))
 ARCHINSTALL_VERSION = '4.5'
 LSBLK = ['lsblk', '--json', '--bytes', '--paths', '--output',
          'PATH,KNAME,TYPE,SIZE,MAJ:MIN,RO,WWN,SERIAL,MODEL,PTTYPE,FSTYPE,MOUNTPOINTS']
@@ -283,6 +284,10 @@ class ArchinstallExecutor:
             # inheriting the package's moving-mirror defaults in the fresh target.
             snapshot['stage'](self.target)
             snapshot['verify_installed'](self.target, self.repository_inputs)
+            # Pacman's DKMS hook failure need not fail the package transaction.
+            # Require the installed module and policy before the final initramfs.
+            wireless['stage'](self.target)
+            wireless['verify'](self.target)
             installation.set_vconsole(locale)
             if not installation.set_locale(locale):
                 raise Refusal('Target locale generation failed')

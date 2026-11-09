@@ -174,6 +174,10 @@ def fake_arch(tmp_path, monkeypatch):
     from types import SimpleNamespace as NS
     from unittest.mock import Mock
     events = []
+    monkeypatch.setattr(runtime(), 'wireless', {
+        'stage': lambda *a: events.append('wl-stage'),
+        'verify': lambda *a: events.append('wl-verify'),
+    }, raising=False)
     # External live-root/package boundary. Real policy behavior has separate tests.
     policy = {'date': '2026-11-01'}
     monkeypatch.setattr(runtime(), 'snapshot', {
@@ -192,6 +196,7 @@ def fake_arch(tmp_path, monkeypatch):
     session.__enter__ = Mock(return_value=session)
     session.__exit__ = Mock(return_value=False)
     session.mkinitcpio.return_value = True
+
     locale_generated = False
     def generate_locale(locale):
         nonlocal locale_generated
@@ -290,7 +295,7 @@ def test_arch_executor_orders_guard_and_propagates_failures(fake_arch, monkeypat
         fallback.parent.mkdir(parents=True)
         fallback.write_bytes(b'fixture')
         executor.execute(plan, 'transient-only', guard)
-        assert f.events == ['guard', 'format', 'user', 'provision']
+        assert f.events == ['guard', 'format', 'wl-stage', 'wl-verify', 'user', 'provision']
         f.session.add_bootloader.assert_called_once_with('systemd')
         f.session.enable_service.assert_called_once_with(['NetworkManager', 'greetd'])
         f.session.genfstab.assert_called_once()

@@ -65,6 +65,7 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     root = output / 'airootfs'
     snapshot = runpy.run_path(str(source / 'runtime/repository-snapshot.py'))
     snapshot['stage'](root)
+    runpy.run_path(str(source / 'runtime/broadcom-wl.py'))['stage'](root)
     (output / 'pacman.conf').write_text(snapshot['CONFIG'])
     (root / 'mnt/wilsof').mkdir(parents=True, exist_ok=True)
     for relative in ('root', 'etc/ssh', 'etc/systemd/network',
@@ -108,6 +109,7 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     (payload / 'FILES.sha256.json').write_text(json.dumps(sums, indent=2, sort_keys=True) + '\n')
     # Gate the installed image dependency even when preparing without a local package.
     customization = "import runpy; pin=runpy.run_path('/usr/share/wilsof/source/runtime/pinned-package.py'); pin['verify_arch_chroot_support'](); snapshot=runpy.run_path('/usr/share/wilsof/source/runtime/repository-snapshot.py'); snapshot['read']()"
+    customization += "; wl=runpy.run_path('/usr/share/wilsof/source/runtime/broadcom-wl.py'); wl['verify']()"
     if package is not None:
         packages_dir = root / 'usr/share/wilsof/packages'
         packages_dir.mkdir(parents=True)
@@ -116,6 +118,7 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     if private_record is not None:
         private['stage'](private_record, root / 'usr/share/wilsof')
         customization += "; private=runpy.run_path('/usr/share/wilsof/source/runtime/private-hyprland.py'); private['install']('/', '/usr/share/wilsof', required=True)"
+    customization += "; wl['discard_image_signing_key']()"
     # Supported by pinned Archiso 91; removed from the image after execution.
     write('root/customize_airootfs.sh', '#!/bin/sh\nset -eu\npython3 -c "' + customization + '"\n', 0o755)
     lib = root / 'usr/local/lib/wilsof'

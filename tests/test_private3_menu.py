@@ -57,6 +57,12 @@ def test_ranked_case_insensitive_search_hides_unavailable_actions():
     assert evaluate('m.search("firefox",[m.row("app:firefox","Firefox","Web browser","apps","app",{id:"firefox"})],null).map(r=>r.id)') == ['browser']
 
 
+def test_action_ids_are_searchable_even_when_display_names_contain_spaces():
+    assert evaluate('m.search("shutdown",[],null).map(r=>r.id)') == ['shutdown']
+    assert evaluate('m.search("logout",[],null).map(r=>r.id)') == ['logout']
+    assert evaluate('m.search("shutdown",[],{shutdown:false}).length') == 0
+
+
 def test_native_menu_is_one_resident_component_with_focus_and_navigation_wiring():
     plugin = MODEL.parent
     qml = (plugin / 'CommandCenter.qml').read_text()

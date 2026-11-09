@@ -85,7 +85,7 @@ function commands(query) {
             if (!seen[item.id]) { seen[item.id] = true; all.push(item); }
         }
     }
-    return all.filter(r => (r.name + " " + r.comment + " " + r.keywords + " " + r.data).toLowerCase().includes(q));
+    return all.filter(r => (r.id + " " + r.name + " " + r.comment + " " + r.keywords + " " + r.data).toLowerCase().includes(q));
 }
 function emojis(query) {
     const items = [["😀","Grinning face"],["🙂","Slightly smiling face"],["😊","Smiling face"],["😂","Face with tears of joy"],["😍","Heart eyes"],["🥰","Smiling face with hearts"],["😎","Cool sunglasses"],["🤔","Thinking face"],["😴","Sleeping face"],["😢","Crying face"],["😭","Loudly crying face"],["😡","Angry face"],["👍","Thumbs up"],["👎","Thumbs down"],["👏","Clapping hands"],["🙌","Raised hands"],["🙏","Folded hands thanks"],["👋","Waving hand"],["❤️","Red heart"],["💙","Blue heart"],["💚","Green heart"],["💜","Purple heart"],["✨","Sparkles"],["⭐","Star"],["🔥","Fire"],["🎉","Party popper celebration"],["🎂","Birthday cake"],["🎁","Gift"],["☕","Coffee"],["🍕","Pizza"],["🌍","Earth globe"],["🌞","Sun"],["🌙","Moon"],["🌈","Rainbow"],["🌻","Sunflower"],["🐱","Cat"],["🐶","Dog"],["💻","Laptop computer"],["🚀","Rocket"],["✅","Check mark"],["❌","Cross mark"],["⚠️","Warning"]];

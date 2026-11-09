@@ -53,7 +53,7 @@ DModal {
     function save(args) {
         if (writer.running) return;
         capturing = false; captureAction = ""; confirmReset = false; errors = "";
-        arguments = [helper].concat(args).concat(["--apply"]);
+        editor.arguments = [helper].concat(args).concat(["--apply"]);
         message = "Checking conflicts and applying…";
         writer.running = true;
     }

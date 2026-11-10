@@ -99,12 +99,25 @@ if len(sys.argv) > 4:
 PY
 : "${WILSOF_ARTIFACT_CATALOG:?Pre-existing private host-wide retention catalog required}"
 : "${WILSOF_WORKFLOW_ID:?Unique owner workflow identifier required}"
-python3 "$root/scripts/artifact-lifecycle.py" build-begin \
-    --catalog "$WILSOF_ARTIFACT_CATALOG" --workflow "$WILSOF_WORKFLOW_ID" \
-    --source "$WILSOF_SOURCE_COMMIT" --work "$WILSOF_ISO_WORKDIR" --out "$WILSOF_ISO_OUTDIR"
+if [ -n "${WILSOF_HOST_BUILD_ADMISSION:-}" ]; then
+    python3 - "$root" "$WILSOF_HOST_BUILD_ADMISSION" <<'PY'
+import os, runpy, sys
+runpy.run_path(sys.argv[1] + '/scripts/artifact-lifecycle.py')['validate_build_admission'](
+    os.environ['WILSOF_ARTIFACT_CATALOG'], sys.argv[2], os.environ['WILSOF_WORKFLOW_ID'],
+    os.environ['WILSOF_SOURCE_COMMIT'], os.environ['WILSOF_ISO_WORKDIR'], os.environ['WILSOF_ISO_OUTDIR'])
+PY
+else
+    python3 "$root/scripts/artifact-lifecycle.py" build-begin \
+        --catalog "$WILSOF_ARTIFACT_CATALOG" --workflow "$WILSOF_WORKFLOW_ID" \
+        --source "$WILSOF_SOURCE_COMMIT" --work "$WILSOF_ISO_WORKDIR" --out "$WILSOF_ISO_OUTDIR"
+fi
 finish_storage() {
     result=$?
     trap - 0
+    if [ -n "${WILSOF_HOST_BUILD_ADMISSION:-}" ]; then
+        printf '%s\n' 'Host-admitted build exited; full host catalog finalization is REQUIRED by the owning supervisor.' >&2
+        exit "$result"
+    fi
     python3 "$root/scripts/artifact-lifecycle.py" complete \
         --catalog "$WILSOF_ARTIFACT_CATALOG" --workflow "$WILSOF_WORKFLOW_ID" --exit-code "$result" || result=1
     python3 "$root/scripts/artifact-lifecycle.py" check --catalog "$WILSOF_ARTIFACT_CATALOG" || result=1

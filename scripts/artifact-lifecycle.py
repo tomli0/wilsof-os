@@ -5,6 +5,7 @@ import contextlib
 import collections
 import stat
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -223,6 +224,34 @@ def register(catalog, spec):
         state['workflows'].append(record)
         save(path, state)
         return record
+
+
+def validate_build_admission(catalog, receipt, workflow, source, work, out):
+    """Read-only handoff from a host supervisor that holds the real project lock.
+
+    The isolated root cannot inspect hidden historical host artifacts. Admission
+    and finalization therefore occur on the host; never re-inventory an empty
+    sandbox or mark its incomplete view as a completed host catalog.
+    """
+    receipt=canonical(receipt)
+    info=receipt.stat()
+    if not stat.S_ISREG(info.st_mode) or info.st_uid!=0 or stat.S_IMODE(info.st_mode)!=0o400 or info.st_nlink!=1 or info.st_size>4096:
+        raise ValueError('root-owned immutable host admission receipt required')
+    data=json.loads(receipt.read_text())
+    raw=canonical(catalog).read_bytes()
+    expected=dict(schema=1,scope='host-admitted-isolated-build',catalog_sha256=hashlib.sha256(raw).hexdigest(),workflow=workflow,source_commit=source,work=work,out=out)
+    if data!=expected:raise ValueError('host admission identity/catalog changed')
+    state=json.loads(raw)
+    matches=[w for w in state.get('workflows',[]) if w['workflow']==workflow]
+    if state.get('inventory_complete') is not True or len(matches)!=1:
+        raise ValueError('existing inventoried host admission required')
+    record=matches[0]
+    expected_paths=[(work,'build-workspace','DISPOSABLE'),(work+'-profile','cache','DISPOSABLE'),(out,'iso','PROTECTED')]
+    if (record['state']!='ACTIVE' or record['budget_bytes']!=MAX_BUDGET or
+            record['purpose']!='Sequential isolated ISO build from '+source or
+            [(a['path'],a['kind'],a['classification']) for a in record['artifacts']]!=expected_paths):
+        raise ValueError('host build reservation changed')
+    return record
 
 
 if __name__ == '__main__':

@@ -43,6 +43,15 @@ its occupied workspace blocks another build. After verified cleanup, call
 This is a cooperating-owner workflow, not protection against hostile root or
 catalog tampering. It grants neither build authorization nor artifact acceptance.
 
+For a root-isolated builder that cannot see historical host artifacts, the owning
+host supervisor must perform real `build-begin` admission while holding the
+existing project lock. `WILSOF_HOST_BUILD_ADMISSION` may then name a root-owned,
+mode-0400 receipt binding the exact catalog SHA256, active reservation, source,
+workflow and work/output paths. The build wrapper validates it without a second
+allocation or an incomplete sandbox inventory. The supervisor must finalize and
+check the actual host catalog after the finite build service exits, including
+failure/cancellation; the in-sandbox wrapper never claims host finalization.
+
 ## Ownership and lifecycle
 
 Hermes owns the end-of-session storage lifecycle:

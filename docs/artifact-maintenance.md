@@ -75,7 +75,10 @@ The version-1 policy is a private JSON object with these fields:
   Do not manufacture this trust assertion from an unverified container's own view.
 - `locks`: the existing project/QA locks and any owning workflow lock. All writers
   must cooperate with those same locks. Do not invent a new lock instead of the
-  established one.
+  established one. Before administrative apply, verify/precreate required workflow
+  locks under their correct workflow owner; do not leave a new root-owned lock in
+  an ordinary user's QA workflow. Never replace or change the identity/permissions
+  of a pre-existing lock as a shortcut.
 - `artifacts`: objects containing unique `id`, exact `path`, `classification`,
   expected `sha256`, `workflow`, and a reconstruction `proof`.
 

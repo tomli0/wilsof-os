@@ -24,7 +24,82 @@ is not sufficient to enforce signature presence. The portal consumer therefore
 requires an adjacent signature and owner signer pin, verifies OpenPGP validity and
 full trust against the target's already-enrolled pacman keyring, and only then
 calls pacman under its unchanged policy. Neither check replaces the other.
-It never imports a key or falls back to the public portal on failure.
+The production consumer never imports a key or falls back to the public portal
+on failure. The separately opted-in nonproduction path below can enroll only a
+hash/fingerprint-bound public certificate in its isolated test root.
+
+## Explicit isolated TEST ONLY candidates (not production approval)
+
+An authorized disposable candidate may use a dedicated test signer while
+production identity approval remains pending. This is a separate schema and
+mode, **never** an automatically generated `owner-approved` record. It does not
+authorize production enrollment, a build, or installation on an owner disk.
+
+Keep signing secrets outside the exported source/profile/image. Detached-sign
+the existing portal, pinned Hypridle and private compositor archives without
+changing their bytes; all existing package/ELF pins remain enforced. Supply:
+
+- Portal archive plus its bounded binary `.sig`.
+- Adjacent `<portal-package>.test-only.asc`: ASCII-armored **public** certificate.
+- Adjacent `<portal-package>.test-only.json`, with exactly these fields:
+
+      {
+        "schema": 1,
+        "mode": "test-only",
+        "production_trust": "pending",
+        "build_version": "candidate-test-only",
+        "package_sha256": "d3d2dba441324ed467574ea27f5d2432f7f10cf851e1cc46aaf73bed2d8e7fd0",
+        "primary_fingerprint": "<40 uppercase hex characters; intentionally invalid placeholder>",
+        "certificate_sha256": "<64 lowercase hex characters; intentionally invalid placeholder>"
+      }
+
+- Hypridle and private compositor archives each retain an adjacent `.sig` through
+  both image and fresh-target staging. Missing signatures in test mode fail closed.
+  The independent private-compositor opt-in/contract is still required.
+
+Set **both** `WILSOF_PORTAL_TEST_ONLY=1` and
+`WILSOF_ISO_VERSION=candidate-test-only` on the normal authorized build wrapper.
+The version must match the manifest exactly and end in `-test-only`. The opt-in
+is independent of the compositor experiment. Other opt-in values, production
+versions, mixed approval/test inputs, missing manifests/markers, certificate hash
+or primary-fingerprint mismatches are refusals, not production fallbacks.
+The equivalent materializer parameters are `--portal-test-only --build-version
+candidate-test-only` in addition to its normal inputs; they do not start a build.
+
+The materializer persists the public certificate, manifest and separate
+`/usr/share/wilsof/portal-test-only.json` candidate marker. It pins the ISO name
+to `wilsof-test-only`, its version to the manifest, sets root-owned public-input
+permissions and labels the installer launcher, `/etc/issue` and `/etc/motd`
+**TEST ONLY — production signing trust pending**. Fresh installed targets inherit
+the marker/certificate and console warnings, not production approval.
+
+Before **any** of these three private-package installations, image customization
+and fresh-target provisioning call `prepare_test_trust`. This validates the
+unchanged repository policy and complete portal input, then uses only
+`target_command` to run target-local `pacman-key --gpgdir /etc/pacman.d/gnupg`
+with `--init`, `--populate archlinux`, `--add` the persisted certificate and
+`--lsign-key` the exact primary fingerprint. Official Arch trust and all signature
+policy settings remain unchanged. Portal installation still requires the same
+fully trusted GnuPG status, pinned primary and libalpm verification as production.
+
+A fresh target must be mounted and canonical. Native `/` operation requires the
+matching prebuilt root-owned, non-group/world-writable marker **at the built-in
+path** and uses only that root's persisted inputs, never an external staging
+folder. These checks bound a cooperating isolated build/live workflow; a marker
+is not proof of namespace isolation against hostile root. The authenticated
+builder must still establish isolation. Host keyrings are never enrollment targets.
+
+At the end of test image customization, `seal_test_image` stops only the image
+pacman GPG agent and removes its generated local master secret/revocation files;
+public trust and the candidate certificate persist. No signer secret is ever
+staged. The live overlay and fresh target independently initialize their own
+local pacman master when enrolling. This sealing hook is image-only, not an
+installed-system/update cleanup operation.
+
+`tests/test_portal_test_only.py` exercises real validation, staging, materializer,
+wrapper and fresh-target entrypoint logic with synthetic inputs and substituted
+native archive/GPG/chroot/package boundaries. It generates no keys and establishes
+orchestration/refusal behavior, not native cryptographic or ISO acceptance.
 
 ## One owner decision
 

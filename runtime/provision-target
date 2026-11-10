@@ -63,8 +63,14 @@ def main():
     if not live and not target.is_mount():
         raise SystemExit('Installed target must be a mounted root filesystem')
     source = Path('/usr/share/wilsof/source')
+    portal = runpy.run_path(str(source / 'runtime/portal-package.py'))
+    portal_mode = portal['test_context'](Path('/usr/share/wilsof'))
+    # Refuse missing/damaged persistent nonproduction inputs before any writes.
+    portal['embedded'](Path('/usr/share/wilsof'), **portal_mode)
     snapshot = runpy.run_path(str(source / 'runtime/repository-snapshot.py'))
     snapshot['read'](target)
+    if portal_mode:
+        portal['prepare_test_trust'](target, Path('/usr/share/wilsof'), build_version=portal_mode['build_version'])
     runpy.run_path(str(source / 'runtime/notices.py'))['stage'](source, target)
     private = runpy.run_path(str(source / 'runtime/private-hyprland.py'))
     private_record = private['embedded'](Path('/usr/share/wilsof'))
@@ -72,12 +78,13 @@ def main():
         if live:
             private['verify'](target, private_record)
         else:
-            private['install'](target, Path('/usr/share/wilsof'), required=True)
+            private['install'](target, Path('/usr/share/wilsof'), required=True,
+                               **({'require_signature': True} if portal_mode else {}))
     pin = runpy.run_path(str(source / 'runtime/pinned-package.py'))
     if not live:
-        pin['install_package'](target, '/usr/share/wilsof/packages')
-    portal = runpy.run_path(str(source / 'runtime/portal-package.py'))
-    portal['install'](target, Path('/usr/share/wilsof'))
+        pin['install_package'](target, '/usr/share/wilsof/packages',
+                               **({'require_signature': True} if portal_mode else {}))
+    portal['install'](target, Path('/usr/share/wilsof'), **portal_mode)
     destination = target / 'usr/share/wilsof/source'
     if source.resolve() != destination.resolve():
         if destination.exists():

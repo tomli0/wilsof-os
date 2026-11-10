@@ -24,11 +24,16 @@ def inventory(directory):
     return result
 
 
-def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_package=None):
+def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_package=None,
+            portal_test_only=False, build_version=None):
     private = runpy.run_path(str(source / 'runtime/private-hyprland.py'))
     private_record = private['load']()
     portal = runpy.run_path(str(source / 'runtime/portal-package.py'))
-    portal_record = None if portal_package is None else portal['artifact'](portal_package)
+    if portal_test_only and portal_package is None:
+        raise ValueError('TEST ONLY mode requires the explicit portal package/manifest')
+    portal_mode = {'test_only': True, 'build_version': build_version} if portal_test_only else {}
+    portal_record = None if portal_package is None else portal['artifact'](portal_package, **(
+        portal_mode if portal_test_only else {'build_version': build_version}))
     if not re.fullmatch(r'[0-9a-f]{40}', commit):
         raise ValueError('An exact source commit is required')
     if output.exists() or output.is_symlink():
@@ -44,11 +49,16 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_p
         if (upstream / name).is_symlink():
             raise ValueError('Refusing releng input symlink')
     package = None
+    hypridle_signature = None
     if hypridle_package is not None:
         pin = runpy.run_path(str(source / 'runtime/pinned-package.py'))
         package = pin['verified_package'](hypridle_package.parent)
         if package != hypridle_package:
             raise ValueError('Exact verified Hypridle package filename required')
+        hypridle_signature = pin['detached_signature'](package, required=portal_test_only)
+    if portal_test_only and private_record is not None:
+        runpy.run_path(str(source / 'runtime/pinned-package.py'))['detached_signature'](
+            private_record['package'], required=True)
     if any((upstream / name).exists() or (upstream / name).is_symlink()
            for name in ('BUILD-SOURCE.json', 'BUILD-INPUTS.json', 'BOOT-CONTRACT.json', '.build-inputs', '.wilsof-boot-upstream')):
         raise ValueError('Refusing inherited reserved provenance path')
@@ -113,18 +123,27 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_p
     # Gate the installed image dependency even when preparing without a local package.
     customization = "import runpy; pin=runpy.run_path('/usr/share/wilsof/source/runtime/pinned-package.py'); pin['verify_arch_chroot_support'](); snapshot=runpy.run_path('/usr/share/wilsof/source/runtime/repository-snapshot.py'); snapshot['read']()"
     customization += "; wl=runpy.run_path('/usr/share/wilsof/source/runtime/broadcom-wl.py'); wl['verify']()"
+    if portal_test_only:
+        customization += "; portal=runpy.run_path('/usr/share/wilsof/source/runtime/portal-package.py'); portal['prepare_test_trust']('/', '/usr/share/wilsof', build_version=" + repr(build_version) + ')'
     if package is not None:
         packages_dir = root / 'usr/share/wilsof/packages'
         packages_dir.mkdir(parents=True)
         shutil.copyfile(package, packages_dir / package.name)
-        customization += "; pin['install_package']('/', '/usr/share/wilsof/packages')"
+        if hypridle_signature is not None:
+            shutil.copyfile(hypridle_signature, packages_dir / (package.name + '.sig'))
+        customization += "; pin['install_package']('/', '/usr/share/wilsof/packages'" + (', require_signature=True' if portal_test_only else '') + ')'
     if private_record is not None:
-        private['stage'](private_record, root / 'usr/share/wilsof')
-        customization += "; private=runpy.run_path('/usr/share/wilsof/source/runtime/private-hyprland.py'); private['install']('/', '/usr/share/wilsof', required=True)"
+        private['stage'](private_record, root / 'usr/share/wilsof', require_signature=portal_test_only)
+        customization += "; private=runpy.run_path('/usr/share/wilsof/source/runtime/private-hyprland.py'); private['install']('/', '/usr/share/wilsof', required=True" + (', require_signature=True' if portal_test_only else '') + ')'
     if portal_record is not None:
         portal['stage'](portal_record, root / 'usr/share/wilsof')
-        customization += "; portal=runpy.run_path('/usr/share/wilsof/source/runtime/portal-package.py'); portal['install']('/', '/usr/share/wilsof')"
+        customization += "; portal=runpy.run_path('/usr/share/wilsof/source/runtime/portal-package.py'); portal['install']('/', '/usr/share/wilsof'"
+        if portal_test_only:
+            customization += ', test_only=True, build_version=' + repr(build_version)
+        customization += ')'
     customization += "; wl['discard_image_signing_key']()"
+    if portal_test_only:
+        customization += "; portal['seal_test_image'](build_version=" + repr(build_version) + ')'
     # Supported by pinned Archiso 91; removed from the image after execution.
     write('root/customize_airootfs.sh', '#!/bin/sh\nset -eu\npython3 -c "' + customization + '"\n', 0o755)
     lib = root / 'usr/local/lib/wilsof'
@@ -172,6 +191,18 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_p
         link.symlink_to('/usr/lib/systemd/system/bluetooth.service')
     write('usr/share/applications/wilsof-install.desktop', '[Desktop Entry]\nType=Application\nName=Install Wilsof\nComment=Erase an explicitly selected empty test disk\nExec=ghostty -e sudo /usr/local/bin/wilsof-install\nIcon=system-software-install\nTerminal=false\nCategories=System;\n')
     write('etc/motd', 'Wilsof internal test image. Live evaluation is unlocked; do not enter private data. Install Wilsof from the launcher.\n')
+    if portal_test_only:
+        portal['label_test_root'](root)
+        launcher = root / 'usr/share/applications/wilsof-install.desktop'
+        launcher.write_text(launcher.read_text().replace('Name=Install Wilsof\n', 'Name=Install Wilsof TEST ONLY\n'))
+        # The prepared profile, not a later environment override, owns this
+        # nonproduction identity. mkarchiso must make the persistent opt-in root-owned.
+        with (output / 'profiledef.sh').open('a') as profile:
+            profile.write('\niso_name="wilsof-test-only"\niso_application="Wilsof TEST ONLY - production signing trust pending"\n'
+                          'iso_version="' + build_version + '"\n')
+            for path in (root / 'usr/share/wilsof').rglob('*'):
+                if path.is_file() and 'source' not in path.relative_to(root / 'usr/share/wilsof').parts:
+                    profile.write('file_permissions["/' + str(path.relative_to(root)) + '"]="0:0:644"\n')
 
 
 def main():
@@ -181,8 +212,11 @@ def main():
     parser.add_argument('--commit', required=True)
     parser.add_argument('--hypridle-package', type=Path)
     parser.add_argument('--portal-package', type=Path)
+    parser.add_argument('--portal-test-only', action='store_true')
+    parser.add_argument('--build-version')
     args = parser.parse_args()
-    prepare(args.upstream, args.output, args.source, args.commit, hypridle_package=args.hypridle_package, portal_package=args.portal_package)
+    prepare(args.upstream, args.output, args.source, args.commit, hypridle_package=args.hypridle_package,
+            portal_package=args.portal_package, portal_test_only=args.portal_test_only, build_version=args.build_version)
 
 
 if __name__ == '__main__':

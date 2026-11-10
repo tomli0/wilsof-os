@@ -42,15 +42,29 @@ def verified_package(directory):
     return package
 
 
-def install_package(target, directory):
+def detached_signature(package, *, required=False):
+    signature = Path(str(package) + '.sig')
+    if not signature.exists() and not signature.is_symlink() and not required:
+        return None
+    if (any(p.is_symlink() for p in (signature, *signature.parents)) or not signature.is_file()
+            or not 0 < signature.stat().st_size <= 65536):
+        raise ValueError('Canonical bounded detached package signature required')
+    return signature
+
+
+def install_package(target, directory, *, require_signature=False):
     package = verified_package(directory)
+    signature = detached_signature(package, required=require_signature)
     target = Path(target)
     destination = target / 'usr/share/wilsof/packages' / PACKAGE_NAME
-    if any(p.is_symlink() for p in (destination, *destination.parents)):
+    if any(p.is_symlink() for p in (destination, Path(str(destination) + '.sig'), *destination.parents)):
         raise ValueError('Refusing target package symlink')
     destination.parent.mkdir(parents=True, exist_ok=True)
     if package != destination:
         shutil.copyfile(package, destination)
+        if signature is not None:
+            shutil.copyfile(signature, str(destination) + '.sig')
+            Path(str(destination) + '.sig').chmod(0o644)
     destination.chmod(0o644)
     inside = '/usr/share/wilsof/packages/' + PACKAGE_NAME
     subprocess.run(target_command(target, 'pacman', '-U', '--noconfirm', '--needed', inside), check=True)

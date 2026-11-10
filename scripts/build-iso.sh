@@ -81,8 +81,15 @@ if len(sys.argv) > 4:
     if len(sys.argv) > 7:
         portal_package = Path(sys.argv[7])
         portal = run_path(str(source / 'runtime/portal-package.py'))
-        record = portal['artifact'](portal_package)
-        portal_inputs = (portal_package, Path(str(portal_package) + '.sig'))
+        if 'WILSOF_PORTAL_TEST_ONLY' in os.environ and os.environ['WILSOF_PORTAL_TEST_ONLY'] != '1':
+            raise SystemExit('WILSOF_PORTAL_TEST_ONLY must be the explicit value 1 or absent')
+        test_only = os.environ.get('WILSOF_PORTAL_TEST_ONLY') == '1'
+        version = os.environ['WILSOF_ISO_VERSION']
+        if version.endswith('-test-only') and not test_only:
+            raise SystemExit('TEST ONLY version requires explicit test-only mode')
+        record = portal['artifact'](portal_package, test_only=True, build_version=version) if test_only else portal['artifact'](portal_package)
+        suffixes = ('.sig', '.test-only.json', '.test-only.asc') if test_only else ('.sig', '.approval.json')
+        portal_inputs = (portal_package, *(Path(str(portal_package) + suffix) for suffix in suffixes))
         if any(overlaps(p, i.resolve()) for p in paths for i in portal_inputs) or any(overlaps(source.resolve(), i.resolve()) for i in portal_inputs):
             raise SystemExit('Portal artifacts must remain outside source and output trees')
     if not re.fullmatch(r'[0-9]{1,12}', os.environ['SOURCE_DATE_EPOCH']) or int(os.environ['SOURCE_DATE_EPOCH']) > 253402300799:
@@ -105,9 +112,14 @@ finish_storage() {
 }
 trap finish_storage 0
 mkdir -p "$WILSOF_ISO_OUTDIR"
-python3 "$root/scripts/prepare-iso.py" --upstream "$upstream" \
+set -- --upstream "$upstream" \
     --output "${WILSOF_ISO_WORKDIR}-profile" --source "$root" --commit "$WILSOF_SOURCE_COMMIT" \
-    --hypridle-package "$WILSOF_HYPRIDLE_PACKAGE" --portal-package "$WILSOF_PORTAL_PACKAGE"
+    --hypridle-package "$WILSOF_HYPRIDLE_PACKAGE" --portal-package "$WILSOF_PORTAL_PACKAGE" \
+    --build-version "$WILSOF_ISO_VERSION"
+if [ "${WILSOF_PORTAL_TEST_ONLY:-}" = 1 ]; then
+    set -- "$@" --portal-test-only
+fi
+python3 "$root/scripts/prepare-iso.py" "$@"
 python3 - "$root" "${WILSOF_ISO_WORKDIR}-profile" <<'PY'
 from pathlib import Path
 from runpy import run_path

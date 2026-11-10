@@ -1,5 +1,150 @@
 # Wilsof OS — maintenance and consolidation, 10 November 2026
 
+## Current autonomous continuation — 12:34 UTC
+
+**Verified source/maintenance delivery; Daily Driver RC remains BLOCKED. Keep Omarchy.**
+This continuation starts from the exact previous delivery
+`6eedb073c0e423cf8324d0a2766f39a0468e7249` on the unchanged authorized branch.
+Implementation `e885c81585b62399d6d334c8b19cb68c5c58ab35` is pushed; all five
+changed remote blobs were independently byte-read back. No main merge, branch
+retirement, public ISO release, physical write or new privileged ISO build.
+
+### Newly executed storage work
+
+- Seven previously deferred generated intermediates were independently matched
+  against members of three hash-pinned retained historical ISOs. Exact reviewed
+  paths/inodes, single links, no-symlink ancestors, successful build provenance,
+  backing catalogs, active-process/mount checks, trusted initial-host identity,
+  existing locks and an exclusive write-ahead audit preceded file-only unlink.
+- Actual historical allocation unlinked: **3,508,752,384 bytes / 7 files**.
+  Actual available-space increase across that apply: **3,508,719,616 bytes**.
+  No recursive deletion, backing/installed disk, credential, signing material,
+  source/WIP, current candidate, ISO or unresolved failure evidence was removed.
+- Independent root read-back finds START/7 INTENT/7 REMOVED/COMPLETE;
+  **587,178 original non-target Wilsof paths have zero unexpected metadata/removal
+  changes**. All **22 non-pytest local ISO paths** match their initial hashes.
+  Pytest independently pruned six earlier tiny scratch fixture ISOs; this is not
+  product-ISO cleanup or evidence that protected images were deleted.
+- Full Hermes-home inventory: **1,042,619 paths**, 47 extension-candidate images
+  (including intentionally invalid test disks and unrelated raw text) and 28 ISO
+  paths including fixtures. Actual retained Wilsof backing catalog is 31 QCOW
+  entries plus two standalone evidence raw files. All remain preserved.
+- Fresh accessible builder inventory: **66,454 paths**, 20 disk/raw entries and
+  15 hashed ISO exports. Root-only build storage remains UNKNOWN, not absent.
+  All existing historical/backing/acceptance disks stay retained; none is made
+  disposable merely because its test once passed.
+- **VM112 bytes reclaimed: 0.** All 2,180 earlier duplicate-cache target identities
+  still match; 4,447,215,616 allocated bytes remain candidates, NOT reclaimed space.
+  A newly frozen owner helper passes actual read-only checks, embedded compilation
+  and wrong-source-hash refusal. Normal owner sudo and complete authenticated
+  catalog/process preflight remain unexecuted. It authorizes no build or resize.
+- At **12:34:23 UTC**, Hermes has **22,060,797,952 available bytes**. At
+  **12:22:40 UTC**, builder has **12,891,496,448 available bytes**: short by
+  **13,952,049,152 bytes** of the unchanged 25-GiB floor and **19,320,758,272 bytes**
+  of the preferred 30-GiB margin. Even optimistic cache recovery alone leaves
+  9,504,833,536 / 14,873,542,656 bytes short. No capacity change is executed.
+
+### Engineering, source tests and assessment
+
+The new host-only `scripts/qa-retention.py` registers private explicit manifests
+before allocation, retains failure/timeout/pending outputs, binds passed checks to
+retained evidence and input pins, then produces bounded read-only maintenance plans.
+Only declared disposable outputs of the exact run are eligible. The helper never
+applies, manufactures approval or auto-retires installed reference disks. The
+normal producer integration is in [artifact maintenance](../artifact-maintenance.md).
+
+A real host-only lifecycle fixture used actual CLI registration/finalization and
+normal authenticated exact-plan apply to remove one newly created **2,097,152-byte
+raw file**, preserving its independent seed and evidence. Its root COMPLETE audit
+was read back. This small newly generated fixture is separate from historical
+storage recovery, not QEMU/installer/ISO acceptance. Its successful native path
+predates the final cancellation-only correction; final source has actual CLI and
+process-control regression evidence, not a newly claimed full native guest run.
+
+Three concrete safety findings were reproduced before correction:
+
+1. A cached proof could follow a substituted symlink ancestor despite matching inode
+   and bytes. Cached proofs now traverse parents through no-follow directory FDs.
+2. Normal TERM/HUP could bypass the separate planner group's cleanup. Real CLI RED
+   demonstrated live descendants. An initial InterruptedError handler was swallowed
+   by selectors; the same selector seam in the existing maintenance engine also
+   reproduced unsafe continuation. SystemExit now unwinds cancellation/audit paths.
+3. Planner pipe completion did not prove a redirected TERM-resistant proof reader
+   exited. A real redirected-stdio RED reproduced the survivor. Cleanup now escalates
+   and independently verifies the owned process group, including that case.
+
+Receipts now fsync file and parent; JSON is size-checked before reading through the
+same safely opened descriptor. Repeated cancellation signals cannot interrupt the
+bounded stop, and original handlers are restored. SIGKILL/host loss remains an
+explicit reconciliation boundary, not an unconditional cleanup guarantee.
+
+Final local regression: **920 PASS / 3 explicit native opt-in SKIP**.
+Focused lifecycle: **57 PASS**, included in that total, not additive. Exact
+implementation [CI 42816600030](https://github.com/tomli0/wilsof-os/actions/runs/42816600030)
+**SUCCESS / 920 PASS / 3 SKIP**, exact checkout and logs independently read back.
+Python 3.12 grammar, both separately recorded ShellCheck groups, CI JSON,
+whitespace/security scan and strict Git fsck pass. One intermediate full run
+exposed an ESRCH race in a process-exit test oracle; its failure is retained and
+its corrected exited-process handling passes. No product result was fabricated.
+
+Three bounded separate-context AI assessments/two correction cycles were used.
+The final targeted lifetime re-verification passes exact final diff SHA256
+`6cf01fca69c291205d6ff2017a69cb04eb611d2db1479bfa0a0defb13dba7db4`.
+Earlier reviewed boundaries remain scoped accordingly. This is not human independent
+security certification. The normal-exit/redirected-survivor branch was source-inspected
+but has no separately claimed direct positive test. No alternate paid route or
+scheduler was activated; actual billed child model/cost is not independently known.
+
+### Portal trust and release gates
+
+The retained real portal archive and ELF match their independent expected hashes.
+Offline inspection verifies 21 unique safe members, eight MTREE file hashes,
+15 declared dependencies present in its retained BUILDINFO environment, four
+provenance files and no install script. ELF NEEDED entries are recorded; this is
+not a future-closure loader/runtime pass. Current portal trust regressions pass.
+A canonical-filename unsigned signing input is privately staged and rehashed.
+
+The inspected builder public keyring contains 183 primary identities and no Wilsof
+UID; the inspected owner key stores have no public/secret objects. **No independently
+approved production signer was established**; inaccessible owner workstations are
+not assessed. No test identity signs the real portal, no production key is generated
+or enrolled, and signature/approval remain absent. Exact custodian/fingerprint and
+public enrollment scope are requested, never self-authorized.
+
+Source export `e885c81585b62399d6d334c8b19cb68c5c58ab35` has 355 regular files,
+14,612,480 bytes, SHA256
+`224cd669d87f13596f732d6544557ec0e85548f0eddc6ea9c619b60a447f613c`;
+independent Git archive bytes match. **This is source, not an ISO.** Shipped runtime,
+installer, configuration and packaging remain unchanged from `fc0f60e`.
+
+No new production signed-package consumer or five signed-package cycles pass;
+no compatible coherent future OS progression is accepted. The frozen baseline and
+existing incompatibility evidence remain, rather than a partial upgrade. No new ISO
+exists and all 18 exact-new-image gates remain NOT RUN. The preserved historical
+Private3 ISO remains 2,813,849,600 bytes / SHA256
+`111c06b70cf6d909b3e815975f69bfa18f299af9dcfe9bbbfd5e197992c53a59`,
+with the original portal crash; its 18 historical basic passes do not accept a new RC.
+
+No additional PR/issue closures or branch deletions were performed. The seven open
+PRs, 18 unresolved issues and 46 retained branches are preserved; #16 remains the
+canonical status, #60 acceptance, #61 OPEN/DRAFT with retained Private2 base.
+The existing [MacBook handoff](../omarchy-transition.md) remains non-destructive:
+all physical hardware, independent backup/restore and physical replacement gates
+are NOT RUN. Complete RC SOURCE READY is not declared; SIGNED PACKAGE ACCEPTED,
+ISO BUILT/VERIFIED, VIRTUAL ACCEPTED, READY FOR PHYSICAL TEST and READY TO REPLACE
+OMARCHY are **not achieved**.
+
+Private checkpoint group: `wilsof-rc-completion-20261110T1142Z` contains classifications,
+original inventories, exact policies/plans, root audits, verification, source/CI,
+capacity and narrow signing requests, and one consolidated OWNER_ACTION. The normal
+owner action covers one storage sudo phase and independent production signing
+approval; capacity and a fresh exact build authorization remain subsequent gates.
+No honest new ISO command is supplied while those inputs are missing. Never reuse
+the consumed old-image helper. Root-only originals and lack of an authorized
+archive destination are disclosed, not bypassed.
+
+## Historical first maintenance milestone — unchanged scope below
+
 Status: maintenance implementation delivered; verified local cleanup complete.
 Daily Driver remains BLOCKED. No new ISO, production trust approval, physical
 installation, infrastructure change, merge or release.

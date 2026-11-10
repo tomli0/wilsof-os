@@ -15,7 +15,9 @@ def layout(tmp_path):
     upstream.mkdir()
     tools.mkdir()
     (source / 'SOURCE_COMMIT').write_text('a' * 40 + '\n')
+    (tmp_path / 'catalog.json').write_text(json.dumps({'schema': 1, 'inventory_complete': True, 'workflows': []}))
     shutil.copy2(ROOT / 'scripts/build-iso.sh', source / 'scripts/build-iso.sh')
+    shutil.copy2(ROOT / 'scripts/artifact-lifecycle.py', source / 'scripts/artifact-lifecycle.py')
     (source / 'runtime/pinned-package.py').write_text('def verified_package(directory):\n    return directory / "internal.pkg.tar.zst"\n')
     (source / 'scripts/prepare-iso.py').write_text('import pathlib,sys\np=pathlib.Path(sys.argv[sys.argv.index("--output")+1]); p.mkdir()\n(p/"packages.x86_64").write_text("base\\n")\n')
     (source / 'scripts/boot-profile.py').write_text('def configure_boot(profile,source):\n    pass\n')
@@ -43,6 +45,7 @@ def layout(tmp_path):
         'WILSOF_SOURCE_COMMIT': 'a' * 40, 'SOURCE_DATE_EPOCH': '1767225600',
         'WILSOF_ISO_VERSION': 'fixture', 'WILSOF_ARCHISO_RELENG': str(upstream),
         'WILSOF_ISO_WORKDIR': str(tmp_path / 'work'), 'WILSOF_ISO_OUTDIR': str(tmp_path / 'out'),
+        'WILSOF_ARTIFACT_CATALOG': str(tmp_path / 'catalog.json'), 'WILSOF_WORKFLOW_ID': 'build-fixture',
         'WILSOF_HYPRIDLE_PACKAGE': str(package), 'WILSOF_PORTAL_PACKAGE': str(portal), 'CAPTURE': str(tmp_path / 'mkarchiso.json'),
     }
     return source, upstream, package, env

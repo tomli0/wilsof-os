@@ -253,24 +253,50 @@ def finish(run_root, result_path, policy_path=None, seconds=120):
     return completed
 
 
+def lifecycle_command(*args):
+    command = [sys.executable, '-I', str(Path(__file__).with_name('artifact-lifecycle.py')), *args]
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+    if result.returncode:
+        raise ValueError('storage lifecycle refused: ' + (result.stderr or result.stdout).strip())
+    return json.loads(result.stdout)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=('begin', 'finish'))
     parser.add_argument('--run-root', required=True)
     parser.add_argument('--spec')
+    parser.add_argument('--catalog')
     parser.add_argument('--result')
     parser.add_argument('--policy')
     parser.add_argument('--seconds', type=int, default=120)
     args = parser.parse_args()
     try:
         if args.mode == 'begin':
-            if not args.spec:
-                parser.error('begin requires --spec')
-            result = begin(args.run_root, read_json(args.spec, maintenance()))
+            if not args.spec or not args.catalog:
+                parser.error('begin requires --spec and the existing host-wide --catalog')
+            m = maintenance()
+            spec = read_json(args.spec, m)
+            lifecycle_command('check', '--catalog', args.catalog)
+            catalog = read_json(args.catalog, m)
+            matches = [w for w in catalog['workflows'] if w['workflow'] == spec['run_id'] and w['state'] == 'ACTIVE']
+            if len(matches) != 1:
+                raise m.Refusal('QA must first reserve its exact artifacts and capacity')
+            allowed = {a['path']: a['classification'] for a in matches[0]['artifacts']}
+            declared = outputs(spec, m.canonical(args.run_root), m)
+            if any(allowed.get(path) != kind for path, kind in declared.items()):
+                raise m.Refusal('QA output not registered with exact retention classification')
+            spec.update(storage_catalog=args.catalog, owner=matches[0]['owner'],
+                        purpose=matches[0]['purpose'])
+            result = begin(args.run_root, spec)
         else:
             if not args.result:
                 parser.error('finish requires --result')
             result = finish(args.run_root, args.result, args.policy, args.seconds)
+            started = read_json(str(Path(args.run_root) / 'retention-start.json'), maintenance())
+            if started.get('storage_catalog'):
+                lifecycle_command('complete', '--catalog', started['storage_catalog'], '--workflow', started['run_id'],
+                                  '--exit-code', '0' if result['state'] == 'CLEANUP_REVIEW_REQUIRED' else '1')
         print(json.dumps(result, sort_keys=True))
         return 0
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:

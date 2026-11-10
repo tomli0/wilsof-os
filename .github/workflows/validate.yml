@@ -2,9 +2,9 @@ name: Validate
 
 on:
   push:
-    branches: [arch-install, integration/internal3-20261030, stabilization/internal4-20261030, fix/internal4-completion, feat/command-center-20261031, feat/modern-terminal-20261031, integration/private3-20261107]
+    branches: [main, arch-install, integration/private3-20261107, issue-10-ws-screensaver-prototype, issue-16-project-sync]
   pull_request:
-    branches: [main, integration/internal-iso-20261026, integration/internal3-20261030, stabilization/internal4-20261030, fix/internal4-completion, feat/command-center-20261031, feat/modern-terminal-20261031, integration/integration3-main-20261103]
+    branches: [main, arch-install, integration/private2-20261107, integration/private3-20261107]
 
 permissions:
   contents: read

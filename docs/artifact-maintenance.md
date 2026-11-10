@@ -1,5 +1,48 @@
 # Wilsof artifact maintenance
 
+## Default limits and storage admission
+
+| Resource | Default |
+| --- | --- |
+| Active ISO images | Two: accepted reference and current candidate |
+| Disposable QA disks | Two simultaneously; sequential QA preferred |
+| Active ISO workspace | One, including its derived profile |
+| Regenerable cache | 6 GiB per host-wide catalog |
+| Ordinary logs | Seven days, unless pinned to an unresolved issue |
+| Failure diagnostic bundle | 256 MiB per failure; larger unique evidence needs a documented exception |
+| ISO incremental allocation budget | 25 GiB: 16 GiB work, 6 GiB cache, 3 GiB output |
+| Emergency free-space reserve | 5 GiB in addition to the declared peak budget |
+| Source-check / two-disk QA budget | 1 GiB / up to 16 GiB by default; record the actual estimate |
+
+Default ISO admission needs 30 GiB currently available; budgets are preflight
+reservations and close-out checks, not filesystem quotas. Measure allocated bytes
+and peak concurrent requirements, not virtual disk capacity. Never expand storage
+to bypass cleanup. Historical protected exceptions need individual purpose,
+dependencies and retirement conditions; numeric limits do not authorize removal.
+
+Use one existing inventoried private catalog per host, never an empty replacement
+to hide existing resources. Normal CLI commands require an existing schema-1 catalog
+with `inventory_complete: true`, recorded only after real inventory/import; they
+never initialize it implicitly. Before allocation, register schema 1 with `owner`,
+`workflow`, `purpose`, `budget_bytes`, and `artifacts`. Every artifact has exact
+`path`, `kind` (`iso`, `qa-disk`, `build-workspace`, `cache`, `log`, `evidence`),
+`classification`, `dependencies`, and `cleanup_condition`. Creation time is
+recorded automatically; small files inherit workflow custody. Only individually
+justified PROTECTED/ARCHIVE historical artifacts use `exception_reason`.
+
+    python3 scripts/artifact-lifecycle.py register --catalog /private/catalog.json --spec /private/workflow-spec.json
+    python3 scripts/artifact-lifecycle.py check --catalog /private/catalog.json
+
+Admission serializes writes, checks capacity plus concurrent reservations, and
+refuses excess slots or unresolved cache/log/evidence violations without deleting
+anything. The normal build wrapper requires `WILSOF_ARTIFACT_CATALOG` and unique
+`WILSOF_WORKFLOW_ID`, registers before materialization and seals on exit. Successful
+work with disposable output remaining is CLEANUP_PENDING, not a clean lifecycle;
+its occupied workspace blocks another build. After verified cleanup, call
+`complete --catalog ... --workflow ... --exit-code 0` and `check`.
+This is a cooperating-owner workflow, not protection against hostile root or
+catalog tampering. It grants neither build authorization nor artifact acceptance.
+
 ## Ownership and lifecycle
 
 Hermes owns the end-of-session storage lifecycle:
@@ -155,9 +198,9 @@ never use the retained DB as evidence that pruned files still exist.
 New QA producers must register retention before allocating a disk. Use the host-only
 helper (not an image payload or an unattended cleaner):
 
-    python3 scripts/qa-retention.py begin --run-root /private/new-qa-run --spec /private/run-spec.json
+    python3 scripts/qa-retention.py begin --run-root /private/new-qa-run --spec /private/run-spec.json --catalog /private/catalog.json
 
-The schema-1 spec contains a unique `run_id`, exact 40-character `source_commit`,
+First reserve every exact output path/classification in the host-wide lifecycle catalog; the CLI refuses an absent admission. Registered CLI finalization seals that catalog too. The schema-1 QA spec contains a unique `run_id`, exact 40-character `source_commit`,
 independently pinned `inputs` (`path`/`sha256`), and explicit relative `outputs`
 (`path`/`classification`). The run directory must not exist. It is created private,
 with an exclusive, fsynced `retention-start.json` and ACTIVE state. Declare reference
@@ -188,7 +231,10 @@ handlers are restored. Uncatchable SIGKILL or host loss cannot guarantee immedia
 cleanup: reconcile recorded processes before another attachment or retry.
 Failed plans retain files and their
 partial preparation; they never apply or silently retry. Existing completion receipts
-cannot be overwritten or replayed.
+cannot be overwritten or replayed. If local finalization succeeds but the catalog
+completion refuses (for example a busy lock), preserve that receipt, inspect its
+real result and reconcile with explicit lifecycle `complete`/`check`; never rerun
+or overwrite the QA finalizer to manufacture a clean result.
 
 A successful finalizer writes `cleanup-policy.frozen.json`, `cleanup-plan.json`,
 `cleanup-targets.json` and `retention-finish.json` with CLEANUP_REVIEW_REQUIRED.
@@ -220,8 +266,10 @@ no historical guest is silently reclassified by introducing this helper.
    active/parked branches and PRs, Daily Driver blockers and one next gate in the
    existing current status. Do not create duplicate issues or reports.
 6. Stop owned tests/guests, verify locks available, and leave paused automation
-   paused. Branch retirement is a proposed owner-reviewed list only; no force
-   push, history rewrite, autonomous merge, tag/release deletion or branch deletion.
+   paused. Execute owner-authorized retirement of verified obsolete branches/worktrees
+   in the same maintenance session, retaining original refs in verified archive tags
+   and a checked bundle. Preserve active PR head/base refs and unique WIP. No force
+   push, history rewrite, unverified merge, tag deletion or release publication.
 
 The owner-facing close-out must name actual storage/access blockers, not hide
 unreclaimed data behind a cleanup estimate. A trust or privilege gate is a reason

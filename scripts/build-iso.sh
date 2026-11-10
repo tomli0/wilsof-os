@@ -90,6 +90,20 @@ if len(sys.argv) > 4:
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,63}', os.environ['WILSOF_ISO_VERSION']):
         raise SystemExit('Invalid internal image version')
 PY
+: "${WILSOF_ARTIFACT_CATALOG:?Pre-existing private host-wide retention catalog required}"
+: "${WILSOF_WORKFLOW_ID:?Unique owner workflow identifier required}"
+python3 "$root/scripts/artifact-lifecycle.py" build-begin \
+    --catalog "$WILSOF_ARTIFACT_CATALOG" --workflow "$WILSOF_WORKFLOW_ID" \
+    --source "$WILSOF_SOURCE_COMMIT" --work "$WILSOF_ISO_WORKDIR" --out "$WILSOF_ISO_OUTDIR"
+finish_storage() {
+    result=$?
+    trap - 0
+    python3 "$root/scripts/artifact-lifecycle.py" complete \
+        --catalog "$WILSOF_ARTIFACT_CATALOG" --workflow "$WILSOF_WORKFLOW_ID" --exit-code "$result" || result=1
+    python3 "$root/scripts/artifact-lifecycle.py" check --catalog "$WILSOF_ARTIFACT_CATALOG" || result=1
+    exit "$result"
+}
+trap finish_storage 0
 mkdir -p "$WILSOF_ISO_OUTDIR"
 python3 "$root/scripts/prepare-iso.py" --upstream "$upstream" \
     --output "${WILSOF_ISO_WORKDIR}-profile" --source "$root" --commit "$WILSOF_SOURCE_COMMIT" \
@@ -107,4 +121,4 @@ python3 "$root/scripts/build-inputs.py" "${WILSOF_ISO_WORKDIR}-profile" "$root"
 cp "${WILSOF_ISO_WORKDIR}-profile/BUILD-INPUTS.json" "$WILSOF_ISO_OUTDIR/BUILD-INPUTS.json"
 # Work may contain namespace-owned bind mounts for nested pacman CheckSpace.
 # Retain work/profile as evidence; later cleanup needs a separate mount check.
-exec mkarchiso -v -w "$WILSOF_ISO_WORKDIR" -o "$WILSOF_ISO_OUTDIR" "${WILSOF_ISO_WORKDIR}-profile"
+mkarchiso -v -w "$WILSOF_ISO_WORKDIR" -o "$WILSOF_ISO_OUTDIR" "${WILSOF_ISO_WORKDIR}-profile"

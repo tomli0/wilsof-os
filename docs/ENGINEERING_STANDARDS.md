@@ -1,5 +1,7 @@
 # Engineering-standard for Wilsof OS
 
+> Gjeldende agent-, gren-, lagrings- og rapporteringsregler står i [AGENTS.md](../AGENTS.md), [artefaktlivssyklusen](artifact-maintenance.md) og [kort rapportering](development-reporting.md). Disse erstatter historiske krav om nye rapportgrener/12-punktsrapporter for hver økt; øvrige sikkerhets- og akseptporter består.
+
 Denne standarden beskriver hvordan endringer skal avgrenses, implementeres, gjennomgås og dokumenteres. Målet er færre feil og tryggere leveranser, ikke flere prosesser. Kravene gjelder mennesker og utviklingsagenter. En liten dokumentasjonsrettelse trenger ikke samme bevis som en installerendring.
 
 ## 1. Virkeområde og forholdet til eksisterende dokumentasjon

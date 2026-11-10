@@ -1,91 +1,98 @@
 # Wilsof OS
 
-Wilsof OS is an early Arch Linux-based desktop prototype focused on a clean, keyboard-first experience. It combines Hyprland and DankMaterialShell with a consistent visual identity, a unified launcher and a minimal set of everyday applications.
+Wilsof OS is an experimental Arch Linux desktop for a keyboard-first daily-driver
+experience. It combines Hyprland, Dux/DankMaterialShell and Wilsof-owned menu,
+configuration, installer and maintenance tools.
 
-The goal is to make a tiling desktop easy to navigate, with discoverable controls and practical keyboard shortcuts.
+**Not ready to replace Omarchy.** Internal test ISOs exist privately; there is no
+accepted public release. Source tests, native package tests, virtual acceptance
+and physical hardware acceptance are separate gates.
 
-Wilsof is under active development. It is not yet a production-ready distribution or a standalone installation image.
+## Current development
 
-## Current prototype
+The single authoritative live dashboard is
+[project status #16](https://github.com/tomli0/wilsof-os/issues/16).
+[Daily Driver acceptance #60](https://github.com/tomli0/wilsof-os/issues/60) tracks
+remaining defects and acceptance, with the current delivery in
+[draft PR #61](https://github.com/tomli0/wilsof-os/pull/61), branch
+`integration/private3-20261107`. This integration stream is an explicit temporary
+exception; normal future changes follow the protected-main workflow.
 
-- Arch Linux, greetd/tuigreet, Hyprland and DankMaterialShell (DMS).
-- An intentionally empty desktop using the approved WS wallpaper, charcoal `#14181E`, ice-blue `#86B9CE`, thin window borders and restrained rounding.
-- A minimal top bar for workspace orientation, time and essential system status.
-- `Super+Space` opens the single DMS Spotlight entry. Empty search starts with installed applications; supported local categories expose applications, DMS tools/settings and files when `dsearch` is installed. It is not yet a complete universal search for open windows or every system action.
-- `Super+I` opens DMS Settings.
-- `Super+F1` opens local shortcut help generated from Wilsof's shared shortcut manifest in DMS Notepad.
-- `Super+L` and Hypridle call the same idempotent Hyprlock wrapper. The lock configuration and PAM wiring are present; real password unlock remains a manual check.
-- Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe and VLC are part of the test-VM package set. Ghostty remains the standard terminal; its actual active-session launch is verified on VM 113.
-- `wilsof-doctor` is a read-only development/support check for dependencies, Wilsof-owned files, session units and relevant log locations.
-- [`docs/iso.md`](docs/iso.md) describes the internal-only Archiso test-image profile and its safety limits; no ISO is bundled or published.
-- [`docs/security.md`](docs/security.md) defines the threat model, audit results, security reporting policy and proposed release gates. Those gates are proposals, not release approval.
+The GitHub default branch is not automatically the latest private candidate.
+Nothing here authorizes merging, publishing an ISO or changing owner hardware.
+Historical reports remain available in Git and under `docs/development-reports/`;
+[the status pointer](docs/status.md) avoids another competing dated dashboard.
 
-## Screenshots from the Arch test session
+## Current source candidate
 
-![Wilsof application launcher](evidence/vm113-2026-10-16-launcher-apps.png)
+- One resident Wilsof Menu, eight categories, ranked local application/action
+  search, nested navigation and explicit power confirmation.
+- Shared shortcut editor and managed configuration with personal-setting
+  preservation; actual active-session and physical-client evidence remain scoped.
+- Read-only hardware diagnostics and an explicit installer plan with target
+  identity, live-media/mount guards and separately confirmed synthetic replacement.
+- Source-pinned image payload, dated signed repository policy, native package
+  provenance and fail-closed production signing/trust gates.
+- Standard Ghostty terminal, approved WS branding and a restrained charcoal and
+  ice-blue desktop. Earlier VM screenshots below are historical, not this RC.
+- Explicit host artifact inventory/cleanup, protected retention and audited
+  end-of-sprint maintenance; never an unattended deletion service.
 
-![Wilsof settings](evidence/vm113-2026-10-16-settings.png)
+See [the user guide](docs/brukerveiledning.md),
+[installer/build boundaries](docs/iso.md), [security gates](docs/security.md),
+[package signing](docs/package-signing.md), [recovery](docs/recovery.md) and
+[Omarchy transition requirements](docs/omarchy-transition.md).
 
-![Wilsof shortcut help](evidence/vm113-2026-10-16-help.png)
+## Remaining Daily Driver gates
 
-![Wilsof lock surface](evidence/vm113-2026-10-16-lock.png)
+1. Owner-authenticated production signing identity, protected custody and narrowly
+   approved public trust enrollment. No key/signature approval is implied.
+2. Native acceptance of the retained production signed packages and real consumers.
+3. A coherent future update closure and recovery, not a partial library upgrade.
+4. A separately approved new source-pinned ISO after privilege/capacity gates.
+5. Complete exact-new-image virtual acceptance, security and notice/license checks.
+6. Physical MacBook hardware, backup/restore and replacement acceptance.
 
-These are screenshots of the running Arch VM, not the browser prototype in `prototype/`.
+Keep Omarchy and owner data intact. The current retained candidate still has a
+historical portal teardown defect; a later source correction is not a new ISO.
+No physical Wi-Fi, graphics, trackpad, audio, Bluetooth, suspend or power pass is
+inferred from emulator evidence.
 
-## What is implemented, and what is not
+## Historical screenshots
 
-The application launcher, settings entry, local help renderer, optional VM fallback bindings, theme, wallpaper, active binding layer and installer guards are implemented in the prototype.
+![Historical VM launcher](evidence/vm113-2026-10-16-launcher-apps.png)
+![Historical VM lock surface](evidence/vm113-2026-10-16-lock.png)
 
-The launcher is deliberately application-focused today. Its DMS UI exposes upstream categories, but Wilsof does not claim tested local-file search, open-window search, aliases in Norwegian and English, or system-power actions through that launcher. The physical MacBook → Omarchy → Proxmox keyboard path, Escape/Enter behavior, PAM unlock, idle-lock observation, logout/login and reboot persistence need direct manual verification.
+These captures are from the October 16 VM session, not the current source/ISO.
+VM113 and the historical Fedora disk remain protected.
 
-See [the current status](docs/status.md), [test plan](docs/testplan.md) and [known deviations](docs/avvik.md) for evidence and limits.
+## Development and retention
 
-## Trying the isolated test VM
-
-The repository contains the intended configuration and test-VM scripts; it does not contain credentials, a disk image or an installer release. Use only an authorized disposable Arch VM and follow [the VM runbook](docs/vm-runbook.md). The user-profile installer has an explicit `WILSOF_TARGET_VM=1` guard and only manages Wilsof-owned files in the target user's home directory:
-
-    WILSOF_TARGET_VM=1 /opt/wilsof-os/scripts/install-user-config.sh
-
-The optional VM fallback layer is for clients that intercept Super before it reaches the guest:
-
-    wilsof-vm-test-binds enable
-    wilsof-vm-test-binds disable
-
-It adds only `Ctrl+Alt+Space`, `Ctrl+Alt+L`, `Ctrl+Alt+I` and `Ctrl+Alt+F1`; it does not replace the standard Wilsof bindings.
-
-## Everyday use
-
-The English [user guide](docs/brukerveiledning.md) covers opening applications, settings, help, workspaces, locking, power actions and the VM fallback layer. Architecture and design boundaries are documented in [architecture](docs/arkitektur.md) and [decisions](docs/beslutningslogg.md).
-
-## Engineering and product documentation
-
-Engineering and reporting standards were merged through PR #52 and #53. The product documents remain dated planning material; Integration3 source consolidation does not constitute native, security, ISO or release acceptance.
-
-The [engineering standard](docs/ENGINEERING_STANDARDS.md), [engineering guide](CONTRIBUTING.md), [reporting procedure](docs/development-reporting.md) and [adaptation template](docs/templates/ENGINEERING_STANDARDS_TEMPLATE.md) retain the existing documentation from PR #35.
-
-The [product vision](docs/product/WILSOF_PRODUCT_VISION.md), [UX specification](docs/product/WILSOF_UX_SPECIFICATION.md), [technical architecture](docs/product/WILSOF_TECHNICAL_ARCHITECTURE.md) and [roadmap](docs/product/WILSOF_IMPLEMENTATION_ROADMAP.md) preserve the dated planning baseline from PR #36, not a claim that those features ship on main. Runtime, installer, ISO and physical acceptance remain separate. See the [consolidation provenance and validation](docs/development-reports/2026-11-03-documentation-consolidation.md).
-
-## Development checks
-
-Read the concise [engineering guide](CONTRIBUTING.md) before contributing. The [quality audit](docs/quality-audit.md) records the current evidence, fixes and bounded follow-ups.
+Read the [engineering guide](CONTRIBUTING.md),
+[engineering standard](docs/ENGINEERING_STANDARDS.md),
+[quality audit](docs/quality-audit.md) and
+[artifact maintenance procedure](docs/artifact-maintenance.md).
 
     python3 -m pip install -r requirements-dev.txt
     python3 -m pytest -q
-    shellcheck --exclude=SC1091 --shell=sh bin/wilsof-doctor bin/wilsof-help bin/wilsof-lock bin/wilsof-search bin/wilsof-vm-test-binds scripts/bootstrap-desktop.sh scripts/build-iso.sh scripts/install-user-config.sh scripts/preflight-arch.sh scripts/preflight-fedora.sh
     shellcheck --shell=bash automation/wilsof-github-worker.sh scripts/install-arch-test-vm.sh iso/profiledef.sh
 
-    python3 -m json.tool config/dms/wilsof-theme.json
+GitHub Actions also checks the prescribed shell dialects and JSON inputs.
+Maintenance fixture tests use qemu-img, xorriso and squashfs-tools, not a product
+ISO build or VM boot. The host-only maintenance CLI defaults to read-only:
 
-The bounded [GitHub workflow](docs/github-workflow.md) documents the project queue, approval marker, hourly model-free queue check and the reason automatic model starts are disabled.
+    python3 scripts/artifact-maintenance.py --policy /private/run/retention.json
 
-GitHub Actions runs these local validation checks without secrets, homelab access, deployment or destructive disk operations.
+Develop → Test → Deliver → Preserve essential evidence → Clean up → Continue.
+Hermes owns that close-out. Use explicit successful-workflow manifests and exact
+approved cleanup targets. Preserve unresolved failures, pinned artifacts,
+backing chains, source/WIP, credentials and shared dependency stores. Routine
+status belongs on existing #16/#60/PR61; do not make report-only branches or
+redundant source archives. See the [GitHub workflow](docs/github-workflow.md).
 
-## Branch and maturity
+## Credits and redistribution
 
-The active Arch work is on `arch-install`. The repository default branch is `main`; its GitHub landing page remains unchanged until pull request review and merge. Review the current work directly at [the Arch branch README](https://github.com/tomli0/wilsof-os/blob/arch-install/README.md) and [pull request #1](https://github.com/tomli0/wilsof-os/pull/1).
-
-Historical Fedora material is retained where useful as history. It is not the active prototype path.
-
-## Credits and license
-
-Wilsof integrates Arch Linux, Hyprland, Hyprlock, Hypridle, DankMaterialShell and the listed desktop applications. Wilsof does not claim ownership of those upstream projects. No license file is currently included in this repository; no license grant should be inferred until one is added.
+Wilsof integrates upstream projects; it does not claim their ownership.
+Licensing, required notices and proprietary-driver redistribution remain explicit
+release gates. No new blanket license grant or public binary redistribution
+approval is made by this development README.

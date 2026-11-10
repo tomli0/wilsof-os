@@ -1,12 +1,20 @@
 # Engineering guide
 
 > Rutine-QA/status: bruk eksisterende issue-/PR-kommentar etter Engineering Standards §12.1; ingen ny report-only-gren eller rapportcommit. Full rapport kreves fortsatt for vesentlige milepæler på eksisterende autorisert leveransegren. Dette avklarer rapporteringskravene nedenfor, uten å endre sikkerhets- eller godkjenningsgrenser.
-
+>
 > Engineering- og rapporteringsreglene fra PR #52/#53 beholdes. Denne integrasjonskandidaten inkluderer Integration3-kilden fra PR #51; kjør bare relevante valideringskommandoer mot eksakt identifisert revisjon. Kildetester er ikke native-, sikkerhets-, ISO- eller fysisk aksept.
 
 Wilsof is a safety-bounded desktop prototype. Prefer a small, reviewed change with direct evidence over a broad rewrite.
 
 ## Before changing code
+
+Hermes owns the [artifact lifecycle and end-of-sprint cleanup](docs/artifact-maintenance.md):
+Develop → Test → Deliver → Preserve essential evidence → Clean up → Continue.
+Every session records actual storage used/reclaimed, protected artifacts,
+remaining candidates, active/parked branches and PRs, and Daily Driver blockers.
+Cleanup requires exact successful-workflow manifests, read-only planning and an
+explicit approved target set; it never restarts paused automation or authorizes
+a privileged build. Reuse unchanged test evidence and avoid redundant reports.
 
 - Read the relevant Issue, comments, current branch/worktree state and this guide.
 - Work in an isolated branch or worktree. Do not overwrite another worker's changes.

@@ -1,8 +1,14 @@
-# Next session — internal ISO and preserved VM 113 history
+# Archived checkpoint — internal ISO and preserved VM 113 history
+
+> Historical evidence only, not current development instructions. The sole current
+> project status and next action are [issue #16](https://github.com/tomli0/wilsof-os/issues/16)
+> via [the current status pointer](status.md). Follow [current agent rules](../AGENTS.md).
+> Branches, PRs, VM states and next-step instructions below are dated history;
+> do not resume them or recreate a retired branch from this checkpoint.
 
 Updated: 2026-10-27 UTC
 
-## Current entry point
+## Historical entry point
 
 - Use draft PR #27 and branch `integration/internal-iso-20261026`, not the historical branch below. Preserve unrelated work and acquire the existing worker lock before development.
 - Read the [controlled session close](checkpoints/session-close-20261027.md) first; it supersedes active-work instructions in earlier checkpoints. This session is closed. Original candidate2 and diagnostic shutdown/offline verification completed; do not query obsolete installer/VM PIDs or repeat installation.

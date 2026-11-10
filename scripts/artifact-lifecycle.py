@@ -216,8 +216,11 @@ def register(catalog, spec):
                     a['classification'] in ('PROTECTED', 'ARCHIVE') and
                     a.get('exception_reason')) for a in record['artifacts']) + status['active_counts'].get(kind, 0) > limit:
                 raise ValueError('artifact limit exceeded: ' + kind)
-        pending = sum(w['budget_bytes'] for w in state['workflows']
-                      if w['state'] == 'ACTIVE')
+        observed = {row['workflow']: row['allocated_bytes'] for row in status['workflow_usage']}
+        # Existing allocation is already deducted from statvfs available space.
+        # Match audit(): reserve only each active workflow's unallocated remainder.
+        pending = sum(max(0, w['budget_bytes'] - observed[w['workflow']])
+                      for w in state['workflows'] if w['state'] == 'ACTIVE')
         space = os.statvfs(parent)
         if space.f_bavail * space.f_frsize < budget + pending + RESERVE:
             raise ValueError('insufficient capacity after concurrent reservations')

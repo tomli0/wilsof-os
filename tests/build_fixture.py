@@ -1,4 +1,4 @@
-"""Scratch-only wrapper harness: materializer/package tools/mkarchiso substituted."""
+"""Scratch wrapper harness; native build/package/storage boundaries substituted."""
 import json
 import os
 from pathlib import Path
@@ -17,7 +17,11 @@ def layout(tmp_path):
     (source / 'SOURCE_COMMIT').write_text('a' * 40 + '\n')
     (tmp_path / 'catalog.json').write_text(json.dumps({'schema': 1, 'inventory_complete': True, 'workflows': []}))
     shutil.copy2(ROOT / 'scripts/build-iso.sh', source / 'scripts/build-iso.sh')
-    shutil.copy2(ROOT / 'scripts/artifact-lifecycle.py', source / 'scripts/artifact-lifecycle.py')
+    lifecycle = (ROOT / 'scripts/artifact-lifecycle.py').read_text()
+    # The builder is substituted: exercise real admission with a deterministic
+    # capacity boundary, never reserve a fictitious 25 GiB on the test host.
+    lifecycle = lifecycle.replace('import os\n', 'import os\nfrom types import SimpleNamespace\nos.statvfs = lambda path: SimpleNamespace(f_bavail=100 * 1024**3, f_frsize=1)\n', 1)
+    (source / 'scripts/artifact-lifecycle.py').write_text(lifecycle)
     (source / 'runtime/pinned-package.py').write_text('def verified_package(directory):\n    return directory / "internal.pkg.tar.zst"\n')
     (source / 'scripts/prepare-iso.py').write_text('import pathlib,sys\np=pathlib.Path(sys.argv[sys.argv.index("--output")+1]); p.mkdir()\n(p/"packages.x86_64").write_text("base\\n")\n')
     (source / 'scripts/boot-profile.py').write_text('def configure_boot(profile,source):\n    pass\n')

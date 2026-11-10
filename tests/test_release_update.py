@@ -19,6 +19,71 @@ def load():
     return runpy.run_path(str(HELPER))
 
 
+@pytest.mark.parametrize('name', [
+    'S.gpg-agent', 'S.gpg-agent.ssh', 'S.gpg-agent.extra',
+    'S.gpg-agent.browser', 'S.dirmngr', 'S.keyboxd',
+])
+def test_native_private_gnupg_sockets_do_not_block_plan_or_signature(system, monkeypatch, name):
+    import socket
+    api = load(); native = NativeBoundary()
+    keys = system / 'etc/pacman.d/gnupg'
+    monkeypatch.chdir(keys)  # Relative bind avoids AF_UNIX path-length noise.
+    with socket.socket(socket.AF_UNIX) as agent:
+        agent.bind(name)
+        (keys / name).chmod(0o600)
+        folder = proposal(api, system, native)
+        api['execute'](system, folder, run=native)
+    assert api['policy'](system)['date'] == '2026-11-02'
+
+
+@pytest.mark.parametrize('defect', ['unknown-socket', 'writable-socket', 'socket-link', 'fifo', 'state-socket'])
+def test_gnupg_socket_exception_stays_narrow_before_processes(system, monkeypatch, defect):
+    import socket
+    api = load(); native = NativeBoundary()
+    folder = system / ('var/lib/wilsof-release-update' if defect == 'state-socket' else 'etc/pacman.d/gnupg')
+    folder.mkdir(parents=True, exist_ok=True)
+    monkeypatch.chdir(folder)
+    name = 'S.unexpected' if defect == 'unknown-socket' else 'S.gpg-agent'
+    with socket.socket(socket.AF_UNIX) as agent:
+        if defect == 'socket-link':
+            target = system / 'regular'; target.write_text('not a socket')
+            (folder / name).symlink_to(target)
+        elif defect == 'fifo':
+            os.mkfifo(name, 0o600)
+        else:
+            agent.bind(name)
+            (folder / name).chmod(0o666 if defect == 'writable-socket' else 0o600)
+        with pytest.raises(ValueError, match='Unsafe'):
+            api['plan'](system, '2026-11-02', system / 'plan', run=native)
+    assert native.calls == []
+    assert not (system / 'plan').exists()
+
+
+@pytest.mark.parametrize('shared', [False, True])
+def test_self_conflicting_virtual_provides_are_not_other_package_removals(system, shared):
+    api = load(); native = NativeBoundary()
+    desc = system / 'var/lib/pacman/local/demo-1-1/desc'
+    desc.write_text(desc.read_text() + '\n%PROVIDES%\ndemo-virtual=1\n')
+    if shared:
+        other = system / 'var/lib/pacman/local/other-1-1/desc'
+        other.parent.mkdir(); other.write_text('%NAME%\nother\n\n%VERSION%\n1-1\n\n%PROVIDES%\ndemo-virtual=1\n')
+        native.installed += 'other 1-1\n'
+    def metadata(argv, **kwargs):
+        result = native(argv, **kwargs)
+        if str(argv[0]).endswith('bsdtar'):
+            result.stdout += 'conflict = demo-virtual<2\nreplaces = demo-virtual\n'
+        return result
+    before = (system / 'etc/pacman.conf').read_bytes()
+    if shared:
+        with pytest.raises(ValueError, match='removal/replacement'):
+            api['plan'](system, '2026-11-02', system / 'plan', run=metadata)
+    else:
+        record = api['plan'](system, '2026-11-02', system / 'plan', run=metadata)
+        assert record['final_inventory'] == ['demo 2-1']
+    assert (system / 'etc/pacman.conf').read_bytes() == before
+    assert not any('-Syu' in argv for argv, _ in native.calls)
+
+
 def test_companion_is_in_image_source_allowlist():
     assert 'bin/wilsof-release-update' in (ROOT / 'runtime/image-files.txt').read_text().splitlines()
 

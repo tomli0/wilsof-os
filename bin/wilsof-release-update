@@ -1,0 +1,411 @@
+#!/usr/bin/env python3
+"""Explicit signed full snapshot upgrade. No key enrollment, rollback or retry.
+
+Root usage: --plan 2026-11-02 /var/lib/wilsof-release-update/proposal-20261102
+Independently review and detach-sign that directory's manifest.json, then use
+--execute DIRECTORY in a terminal. --recover DIRECTORY only promotes an already
+complete installed package set; interrupted partial upgrades require manual
+repair/review, not a hidden retry. Preserve proposals and receipts after use.
+"""
+import argparse
+import datetime
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import stat
+import subprocess
+import sys
+
+STATE = 'var/lib/wilsof-release-update'
+SNAPSHOT = 'usr/share/wilsof/REPOSITORY-SNAPSHOT.json'
+HEX = r'[0-9a-f]{64}'
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def safe(path, root=Path('/'), *, missing=False):
+    path, root = Path(path), Path(root)
+    owner = 0 if root == Path('/') else os.getuid()
+    if not path.is_absolute() or '..' in path.parts:
+        raise ValueError('Canonical absolute path required')
+    for item in (path, *path.parents):
+        if not item.exists() and not item.is_symlink() and missing:
+            continue
+        info = item.lstat()
+        if (info.st_uid != owner or info.st_mode & 0o022 or
+                not (stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode)) or
+                (stat.S_ISREG(info.st_mode) and info.st_nlink != 1)):
+            raise ValueError('Unsafe ownership/mode/link/type: ' + str(item))
+        if item == root:
+            break
+    return path
+
+
+def read_json(path):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('Duplicate JSON field')
+            result[key] = value
+        return result
+    if path.stat().st_size > 4 * 1024**2:
+        raise ValueError('Oversized manifest/receipt')
+    return json.loads(path.read_text(), object_pairs_hook=unique)
+
+
+def config(date):
+    if datetime.date.fromisoformat(date).isoformat() != date:
+        raise ValueError('Exact ISO snapshot date required')
+    server = 'https://archive.archlinux.org/repos/' + date.replace('-', '/') + '/$repo/os/$arch'
+    text = ('[options]\nArchitecture = x86_64\nCheckSpace\n'
+            'SigLevel = Required TrustedOnly DatabaseOptional\nLocalFileSigLevel = Optional\n\n'
+            '[core]\nServer = ' + server + '\n\n[extra]\nServer = ' + server + '\n')
+    record = dict(schema=1, date=date, architecture='x86_64', repositories=['core', 'extra'],
+                  pacman_conf_sha256=digest(text.encode()))
+    return text, 'Server = ' + server + '\n', record
+
+
+def policy(root):
+    record = read_json(safe(root / SNAPSHOT, root))
+    text, mirrors, expected = config(record['date'])
+    if (record != expected or safe(root / 'etc/pacman.conf', root).read_text() != text or
+            safe(root / 'etc/pacman.d/mirrorlist', root).read_text() != mirrors):
+        raise ValueError('Current snapshot policy changed; no fallback')
+    return record
+
+
+def command(run, argv):
+    return run(list(map(str, argv)), check=True, capture_output=True, text=True).stdout
+
+
+def inventory(root, run):
+    return sorted(command(run, ['/usr/bin/pacman', '-Q']).splitlines())
+
+
+def guards(root):
+    for relative in (SNAPSHOT, 'etc/pacman.conf', 'etc/pacman.d/mirrorlist',
+                     'usr/share/wilsof/source/SOURCE_COMMIT', 'usr/lib/os-release'):
+        safe(root / relative, root)
+    for relative in (SNAPSHOT, 'etc/pacman.conf', 'etc/pacman.d/mirrorlist', STATE + '/current.json', STATE + '/transaction.json'):
+        temporary = safe((root / relative).with_name(Path(relative).name + '.new'), root, missing=True)
+        if temporary.exists():
+            raise ValueError('Incomplete atomic write requires explicit owner review: ' + str(temporary))
+    for relative in ('var/lib/pacman', 'etc/pacman.d/gnupg', STATE):
+        folder = safe(root / relative, root, missing=relative == STATE)
+        for item in folder.rglob('*'):
+            safe(item, root)
+    if root == Path('/'):
+        for tool in ('pacman', 'gpg', 'bsdtar'):
+            safe(Path('/usr/bin') / tool)
+        if not (root / 'boot').is_mount() or shutil.disk_usage(root / 'boot').free < 64 * 1024**2:
+            raise ValueError('Mounted /boot with at least 64 MiB free required')
+        if shutil.disk_usage(root).free < 2 * 1024**3:
+            raise ValueError('At least 2 GiB free on root required')
+
+
+def baseline(root, run):
+    guards(root)
+    current = policy(root)
+    authenticated = read_active(root, run=run) if (root / STATE).exists() else None
+    if authenticated is None and current['date'] != '2026-11-01':
+        raise ValueError('Advanced current snapshot requires its completed authenticated receipt')
+    if 'ID=arch' not in safe(root / 'usr/lib/os-release', root).read_text().splitlines() or (root / 'run/archiso/airootfs').exists():
+        raise ValueError('Installed Arch-based system required; no live update')
+    source = safe(root / 'usr/share/wilsof/source/SOURCE_COMMIT', root).read_text().strip()
+    if not re.fullmatch(r'[0-9a-f]{40}', source):
+        raise ValueError('Invalid immutable source identity')
+
+    if (root / 'var/lib/pacman/db.lck').exists():
+        raise ValueError('Pacman lock exists; inspect ownership, never automatically remove')
+    command(run, ['/usr/bin/pacman', '-Dk'])
+    return source, inventory(root, run)
+
+
+def resolve(root, folder, run):
+    common = ['--config', folder / 'pacman.conf', '--dbpath', folder / 'db',
+              '--cachedir', folder / 'cache', '--gpgdir', root / 'etc/pacman.d/gnupg',
+              '--logfile', folder / 'pacman.log', '--noconfirm']
+    command(run, ['/usr/bin/pacman', '-Sy', *common])
+    rows = command(run, ['/usr/bin/pacman', '-Sup', *common, '--print-format', '%n\t%v\t%f\t%h']).splitlines()
+    command(run, ['/usr/bin/pacman', '-Suw', *common])
+    installed = set()
+    for desc in (folder / 'db/local').glob('*/desc'):
+        for block in desc.read_text().split('\n\n'):
+            lines = block.splitlines()
+            if lines and lines[0] in {'%NAME%', '%PROVIDES%'}:
+                installed.update(re.split(r'[<>=]', value)[0] for value in lines[1:])
+    packages = []
+    for row in rows:
+        name, version, filename, sha = row.split('\t')
+        if not re.fullmatch(r'[A-Za-z0-9@_+.-]+', name) or not re.fullmatch(HEX, sha) or '/' in filename or filename.startswith('.'):
+            raise ValueError('Invalid resolved package')
+        archive = safe(folder / 'cache' / filename, root)
+        if digest(archive.read_bytes()) != sha:
+            raise ValueError('Package checksum mismatch')
+        info = command(run, ['/usr/bin/bsdtar', '-xOf', archive, '.PKGINFO'])
+        if any(re.split(r'[<>=]', value)[0] in installed - {name}
+               for value in re.findall(r'^(?:conflict|replaces) = (.+)$', info, re.M)):
+            raise ValueError('Package removal/replacement requires a separately reviewed migration; unsupported')
+        for key, value in [('pkgname', name), ('pkgver', version)]:
+            if re.findall(r'^' + key + r' = (.+)$', info, re.M) != [value]:
+                raise ValueError('Package metadata mismatch')
+        packages.append(dict(name=name, version=version, filename=filename, sha256=sha,
+                             dependencies=re.findall(r'^depend = (.+)$', info, re.M)))
+    if len({p['name'] for p in packages}) != len(packages):
+        raise ValueError('Duplicate resolved package')
+    return sorted(packages, key=lambda p: p['name'])
+
+
+def signer(root):
+    base = root / 'usr/share/wilsof'
+    test = base / 'portal-test-only.json'
+    if test.exists() or test.is_symlink():
+        value = read_json(safe(test, root))
+        if (set(value) != {'schema', 'mode', 'production_trust', 'build_version', 'primary_fingerprint',
+                           'package_sha256', 'certificate_sha256'} or type(value['schema']) is not int or
+                value['schema'] != 1 or value['mode'] != 'test-only' or value['production_trust'] != 'pending' or
+                not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,53}-test-only', value['build_version']) or
+                not re.fullmatch(HEX, value['certificate_sha256'])):
+            raise ValueError('Invalid persistent TEST ONLY marker')
+        scope = 'test-only'
+    else:
+        value = read_json(safe(base / 'packages/xdg-desktop-portal-hyprland-1.4.1-2.1-x86_64.pkg.tar.zst.approval.json', root))
+        if (set(value) != {'schema', 'approval', 'package_sha256', 'primary_fingerprint'} or
+                type(value['schema']) is not int or value['schema'] != 1 or value['approval'] != 'owner-approved'):
+            raise ValueError('Production signer approval pending')
+        scope = 'production'
+    fingerprint = value.get('primary_fingerprint', '')
+    if (not re.fullmatch(r'[0-9A-F]{40}', fingerprint) or
+            value['package_sha256'] != 'd3d2dba441324ed467574ea27f5d2432f7f10cf851e1cc46aaf73bed2d8e7fd0'):
+        raise ValueError('Invalid pinned signer')
+    return scope, fingerprint
+
+
+def database_hash(root, folder):
+    return digest(json.dumps([(str(p.relative_to(folder)), digest(safe(p, root).read_bytes()))
+                              for p in sorted(folder.rglob('*')) if p.is_file()]).encode())
+
+
+def project(before, packages):
+    final = dict(line.split(' ', 1) for line in before)
+    final.update((p['name'], p['version']) for p in packages)
+    return sorted(n + ' ' + v for n, v in final.items())
+
+
+def plan(root, date, folder, *, run=subprocess.run):
+    root, folder = Path(root), Path(folder)
+    safe(folder, root, missing=True)
+    scope, fingerprint = signer(root)
+    source, before = baseline(root, run)
+    current = policy(root)
+    text, _, _ = config(date)
+    if date <= current['date']:
+        raise ValueError('Only forward snapshot advancement is supported')
+    folder.mkdir(mode=0o755)
+    (folder / 'cache').mkdir(mode=0o700)
+    (folder / 'db').mkdir(mode=0o700)
+    shutil.copytree(root / 'var/lib/pacman/local', folder / 'db/local')
+    (folder / 'pacman.conf').write_text(text)
+    packages = resolve(root, folder, run)
+    record = dict(schema=1, scope=scope, production_trust='pending' if scope == 'test-only' else 'owner-approved',
+                  primary_fingerprint=fingerprint, source_commit=source, from_date=current['date'], target_date=date,
+                  config_sha256=digest(text.encode()), baseline_sha256=digest(('\n'.join(before) + '\n').encode()),
+                  local_db_sha256=database_hash(root, folder / 'db/local'),
+                  packages=packages, final_inventory=project(before, packages))
+    (folder / 'manifest.json').write_text(json.dumps(record, sort_keys=True) + '\n')
+    return record
+
+
+def signed(root, folder, run):
+    safe(folder, root)
+    for item in folder.rglob('*'):
+        safe(item, root)
+    manifest = safe(folder / 'manifest.json', root)
+    signature = safe(folder / 'manifest.json.sig', root)
+    if not 0 < signature.stat().st_size <= 65536:
+        raise ValueError('Bounded detached signature required')
+    safe(root / 'etc/pacman.d/gnupg', root)
+    for item in (root / 'etc/pacman.d/gnupg').rglob('*'):
+        safe(item, root)
+    scope, fingerprint = signer(root)
+    status = command(run, ['/usr/bin/gpg', '--no-options', '--batch', '--no-autostart',
+        '--homedir', root / 'etc/pacman.d/gnupg', '--no-auto-key-retrieve', '--no-auto-key-import',
+        '--trust-model', 'pgp', '--status-fd', '1', '--verify', signature, manifest])
+    rows = [line[9:].split() for line in status.splitlines() if line.startswith('[GNUPG:] ')]
+    valid = [r for r in rows if r and r[0] == 'VALIDSIG']
+    allowed = {'NEWSIG', 'KEY_CONSIDERED', 'SIG_ID', 'GOODSIG', 'VALIDSIG', 'TRUST_FULLY', 'TRUST_ULTIMATE'}
+    if (any(not r or r[0] not in allowed for r in rows) or len(valid) != 1 or len(valid[0]) != 11 or
+            valid[0][10] != fingerprint or valid[0][8] not in {'8', '9', '10', '11'} or valid[0][9] != '00' or
+            sum(r[0] == 'NEWSIG' for r in rows) != 1 or sum(r[0] == 'GOODSIG' for r in rows) != 1 or
+            sum(r[0] in {'TRUST_FULLY', 'TRUST_ULTIMATE'} and r[1:] == ['0', 'pgp'] for r in rows) != 1):
+        raise ValueError('Manifest signature is not fully trusted under the exact pinned signer')
+    record = read_json(manifest)
+    fields = {'schema', 'scope', 'production_trust', 'primary_fingerprint', 'source_commit', 'from_date',
+              'target_date', 'config_sha256', 'baseline_sha256', 'local_db_sha256', 'packages', 'final_inventory'}
+    if (not isinstance(record, dict) or set(record) != fields or type(record['schema']) is not int or record['schema'] != 1 or
+            record['scope'] != scope or record['primary_fingerprint'] != fingerprint or
+            record['production_trust'] != ('pending' if scope == 'test-only' else 'owner-approved') or
+            record['config_sha256'] != digest(config(record['target_date'])[0].encode()) or
+            record['target_date'] <= config(record['from_date'])[2]['date'] or
+            not re.fullmatch(r'[0-9a-f]{40}', record['source_commit']) or
+            not re.fullmatch(HEX, record['baseline_sha256']) or not isinstance(record['packages'], list) or
+            not isinstance(record['final_inventory'], list) or
+            record['final_inventory'] != sorted(set(record['final_inventory']))):
+        raise ValueError('Invalid exact-schema signed manifest')
+    for package in record['packages']:
+        if (not isinstance(package, dict) or set(package) != {'name', 'version', 'filename', 'sha256', 'dependencies'} or
+                not re.fullmatch(r'[A-Za-z0-9@_+.-]+', package['name']) or
+                not re.fullmatch(HEX, package['sha256']) or not isinstance(package['dependencies'], list) or
+                any(not isinstance(d, str) or not d or '\n' in d for d in package['dependencies'])):
+            raise ValueError('Invalid exact-schema package closure')
+    if len({p['name'] for p in record['packages']}) != len(record['packages']):
+        raise ValueError('Duplicate package closure')
+    return record
+
+
+def atomic(path, text):
+    temporary = path.with_name(path.name + '.new')
+    with temporary.open('x') as stream:
+        stream.write(text)
+        stream.flush()
+        os.fsync(stream.fileno())
+    temporary.chmod(0o644)
+    temporary.replace(path)
+
+
+def execute(root, folder, *, recover=False, run=subprocess.run):
+    root, folder = Path(root), Path(folder)
+    guards(root)
+    record = signed(root, folder, run)
+    if (root / 'usr/share/wilsof/source/SOURCE_COMMIT').read_text().strip() != record['source_commit']:
+        raise ValueError('Immutable image source differs from signed plan')
+    state = safe(root / STATE, root, missing=True)
+    state.mkdir(parents=True, exist_ok=True, mode=0o755)
+    receipt_path = safe(state / 'transaction.json', root, missing=True)
+    receipt = dict(phase='incomplete', plan=str(folder), manifest_sha256=digest((folder / 'manifest.json').read_bytes()),
+                   pid=os.getpid(), boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip())
+    old = read_json(receipt_path) if receipt_path.exists() else None
+    if recover:
+        if not old or old['manifest_sha256'] != receipt['manifest_sha256'] or old['plan'] != str(folder):
+            raise ValueError('Recovery requires the same recorded signed plan')
+        source_config, source_mirrors, source_snapshot = config(record['from_date'])
+        target_config, target_mirrors, target_snapshot = config(record['target_date'])
+        for relative, before, after in [('etc/pacman.conf', source_config, target_config),
+                ('etc/pacman.d/mirrorlist', source_mirrors, target_mirrors),
+                (SNAPSHOT, json.dumps(source_snapshot, sort_keys=True) + '\n', json.dumps(target_snapshot, sort_keys=True) + '\n')]:
+            if (root / relative).read_text() not in {before, after}:
+                raise ValueError('Recovery policy differs from both recorded snapshots; preserve owner edits')
+        if old['phase'] == 'incomplete' and old['boot_id'] == receipt['boot_id'] and Path('/proc', str(old['pid'])).exists():
+            raise ValueError('Recorded transaction owner still exists')
+        if any(p.read_text().strip() == 'pacman' for p in Path('/proc').glob('[0-9]*/comm') if p.exists()):
+            raise ValueError('Pacman is still running; inspect transaction ownership')
+    elif old and old['phase'] != 'complete':
+        raise ValueError('Incomplete transaction requires explicit completed-set recovery; no retry')
+    if recover:
+        if (root / 'var/lib/pacman/db.lck').exists() or (root / 'var/lib/pacman/db.lck').is_symlink():
+            raise ValueError('Review stale lock ownership manually; helper never removes locks')
+        command(run, ['/usr/bin/pacman', '-Dk'])
+    else:
+        source, before = baseline(root, run)
+        if (source != record['source_commit'] or policy(root)['date'] != record['from_date'] or
+                digest(('\n'.join(before) + '\n').encode()) != record['baseline_sha256'] or
+                database_hash(root, root / 'var/lib/pacman/local') != record['local_db_sha256'] or
+                database_hash(root, folder / 'db/local') != record['local_db_sha256'] or
+                project(before, record['packages']) != record['final_inventory']):
+            raise ValueError('Signed plan baseline changed')
+        if (folder / 'pacman.conf').read_text() != config(record['target_date'])[0] or resolve(root, folder, run) != record['packages']:
+            raise ValueError('Prospective full dependency closure changed')
+        if inventory(root, run) != before or database_hash(root, root / 'var/lib/pacman/local') != record['local_db_sha256']:
+            raise ValueError('Installed baseline changed during prospective resolution')
+        atomic(receipt_path, json.dumps(receipt, sort_keys=True) + '\n')
+        try:
+            run(['/usr/bin/pacman', '--config', str(folder / 'pacman.conf'), '--cachedir', str(folder / 'cache'), '-Syu'], check=True)
+        except BaseException:
+            receipt['phase'] = 'failed'
+            atomic(receipt_path, json.dumps(receipt, sort_keys=True) + '\n')
+            raise
+    if inventory(root, run) != record['final_inventory']:
+        raise ValueError('Installed closure incomplete; no policy advancement or automatic retry')
+    if safe(root / 'usr/share/wilsof/source/SOURCE_COMMIT', root).read_text().strip() != record['source_commit']:
+        raise ValueError('Immutable image source changed during transaction; no policy advancement')
+    command(run, ['/usr/bin/pacman', '-Dk'])
+    text, mirrors, snapshot = config(record['target_date'])
+    outputs = {root / 'etc/pacman.conf': text, root / 'etc/pacman.d/mirrorlist': mirrors,
+               root / SNAPSHOT: json.dumps(snapshot, sort_keys=True) + '\n'}
+    for path in outputs:
+        safe(path, root)
+        safe(path.with_name(path.name + '.new'), root, missing=True)
+    for path, value in outputs.items():
+        atomic(path, value)
+    receipt['phase'] = 'complete'
+    atomic(receipt_path, json.dumps(receipt, sort_keys=True) + '\n')
+    atomic(safe(state / 'current.json', root, missing=True), json.dumps(receipt, sort_keys=True) + '\n')
+    return snapshot
+
+
+def read_active(root=Path('/'), *, run=subprocess.run):
+    root = Path(root)
+    state = safe(root / STATE, root)
+    pending = safe(state / 'transaction.json', root, missing=True)
+    if pending.exists() and read_json(pending)['phase'] != 'complete':
+        raise ValueError('Incomplete snapshot transaction requires explicit recovery')
+    current = safe(state / 'current.json', root, missing=True)
+    if not current.exists():
+        return None
+    receipt = read_json(current)
+    folder = Path(receipt['plan'])
+    # Execution authenticated this exact manifest before writing the root-owned
+    # completed receipt. Ordinary users need not open the private pacman keyring.
+    record = read_json(safe(folder / 'manifest.json', root))
+    safe(folder / 'manifest.json.sig', root)
+    if (receipt['phase'] != 'complete' or receipt['manifest_sha256'] != digest((folder / 'manifest.json').read_bytes()) or
+            safe(root / 'usr/share/wilsof/source/SOURCE_COMMIT', root).read_text().strip() != record['source_commit'] or
+            policy(root)['date'] != record['target_date']):
+        raise ValueError('Active snapshot receipt mismatch')
+    return policy(root)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--plan', metavar='DATE', help='resolve/download using a separate DB; does not sign or install')
+    group.add_argument('--execute', action='store_true', help='verify the signed plan and run interactive full -Syu')
+    group.add_argument('--recover', action='store_true', help='activate only an already-complete signed package set; never retry packages')
+    parser.add_argument('directory', type=Path, help='absolute root-owned proposal directory; preserve it after activation')
+    args = parser.parse_args()
+    try:
+        if os.geteuid() != 0:
+            raise ValueError('Run this explicit mutation command as root in an interactive terminal')
+        os.umask(0o022)
+        safe(Path(__file__).absolute())
+        if not args.plan and not (sys.stdin.isatty() and sys.stdout.isatty()):
+            raise ValueError('Interactive terminal required for execute/recover')
+        state = safe(Path('/') / STATE, missing=True)
+        state.mkdir(parents=True, exist_ok=True, mode=0o755)
+        with safe(state / 'helper.lock', missing=True).open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if args.plan:
+                result = plan(Path('/'), args.plan, args.directory)
+                print('Unsigned proposal ready; independently review and detach-sign manifest.json with the existing pinned signer.')
+            else:
+                result = execute(Path('/'), args.directory, recover=args.recover)
+                print('Verified package closure activated. Image source/user configuration unchanged; no atomic rollback.')
+            print(json.dumps(result, sort_keys=True))
+        return 0
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+        print('Snapshot operation refused/incomplete: ' + str(error), file=sys.stderr)
+        return 78
+    except KeyboardInterrupt:
+        print('Interrupted; inspect transaction receipt and pacman logs. No retry or lock deletion.', file=sys.stderr)
+        return 130
+
+
+if __name__ == '__main__':
+    sys.exit(main())

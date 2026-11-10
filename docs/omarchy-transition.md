@@ -1,29 +1,56 @@
 # Omarchy to Wilsof: gated backup, hardware and recovery procedure
 
-Status on 9 November 2026: **replacement NO-GO**. This procedure authorizes
+Status on 10 November 2026: **replacement NO-GO**. This procedure authorizes
 neither USB writing nor any change to the MacBook's internal disk. Keep Omarchy
-intact. The Private3 image has passed its 18 basic virtual functional gates, but
-has a reproducible portal crash on logout and unresolved maintenance, installer,
-license-inclusion and physical-acceptance gates. Use the accompanying exact-image
-acceptance report, not historical Private2 results.
+intact. The retained Private3 ISO passed 18 basic virtual gates but still contains
+the portal logout crash and blank-only installer. Source commit
+`91606297fc8a1a7a61c6271f734872bc47920271` adds the native-tested portal backport,
+explicit replacement workflow and candidate input gates; it is NOT a new ISO.
+Use the current stabilization report together with the original exact-image report.
 
 ## 1. Decisions required before replacement
 
-1. Resolve the portal teardown crash and retest repeated session exits/logins.
-2. Deliver a separately authorized image containing the reviewed installer target
-   identification correction; source changes do not update the frozen ISO.
-3. Implement and test a physical replacement policy. The current installer only
-   accepts an entirely zero-filled disk and refuses visible Btrfs before importing
-   archinstall. It cannot directly replace an existing Omarchy disk. Do not bypass
-   those guards, erase Omarchy externally, or infer approval from this document.
-4. Resolve future coherent snapshot/security-update delivery and tested recovery.
-   The tested updater maintains only the 2026-11-01 snapshot; two successful
-   no-ops are not future-version upgrades or automatic rollback.
-5. Verify required license/notice inclusion. Broadcom notices are present; Dux's
-   package file list contains no standalone license file. Its MIT metadata alone
-   does not resolve inclusion or redistribution review.
+1. Integrate the portal correction through a genuinely trusted signed package and
+   retest the exact new image. Ten ordinary native login/logout cycles passed with
+   the extracted corrected ELF; this is not signed-package or ISO acceptance.
+2. Authorize one new privileged ISO build only after its pinned inputs and native
+   signature/consumer gates pass. Preserve the existing image without modification.
+3. Retest the replacement installer in that image. A real synthetic EFI/Btrfs OS
+   replacement, valid GPT/ESP/ext4 root, disk-only UEFI boot and ordinary PAM login
+   passed in a disclosed source-overlay lab; the existing ISO remains blank-only.
+4. Resolve coherent future snapshot/security-update delivery and remaining recovery
+   gates. Native planning against 2026-11-08 refuses aquamarine/hyprgraphics ABI
+   changes required by the private compositor; no packages were upgraded. Frozen
+   2026-11-01 maintenance is not forward progression or automatic rollback.
+5. Verify the exact new image's required notices and redistribution obligations.
+   Supplemental pinned Dux/shared-component notices now stage into both live and
+   target roots in source tests. This is not complete transitive/legal clearance;
+   proprietary Broadcom distribution remains a release gate.
 6. Complete live hardware tests, independent verified backups and an owner-reviewed
    restore/recovery plan. Actual internal-disk replacement needs separate approval.
+
+### Two installer modes in the new source, not the retained ISO
+
+- Default `wilsof-install`: retain the strict validated blank-disk workflow. It
+  does not silently erase a GPT header or an existing filesystem.
+- Explicit `wilsof-install --replace-existing`: whole-disk replacement only, not
+  migration, data preservation, dual boot or secure erasure. It destroys Omarchy
+  and all other data on the selected disk after authorization. Use only from a
+  separately accepted new live image, after physical testing and verified backups.
+
+There is no target default. Review the displayed path, model/manufacturer, size,
+transport and identity; compare with the physical disk and the independent backup
+record. Review every existing partition, EFI/Btrfs/ext4 signature and the complete
+plan digest. Type the exact displayed `REPLACE <selected-path> sha256-<plan-digest>`
+confirmation; a generic yes/no is not sufficient. An identity, layout, path,
+mount/active-mapping or media-protection refusal must not be bypassed. Do not
+hotplug storage or permit another partition/filesystem writer during installation.
+
+The installer re-probes before destructive writes; detected changes cause refusal.
+Signature erasure is bound to open descriptors, but subsequent archinstall work
+still uses device paths: do not describe the whole installation as atomic,
+FD-confined or rollback-protected. Interruption after authorization may leave the
+selected disk unbootable. Keep independent recovery media and backups available.
 
 ## 2. Backup selection: owner-only future work
 

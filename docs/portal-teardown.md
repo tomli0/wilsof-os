@@ -63,8 +63,14 @@ The test package is unsigned. It was not installed through pacman or represented
 as trusted. Runtime testing used a disclosed systemd user-unit ExecStart override
 to its extracted ELF in the disposable guest; package database identity remains
 1.4.1-2. Signature trust and independent image/fresh-target integration must be
-completed before a new candidate build. Never disable signature verification to
-consume this development artifact.
+completed before a new candidate build. Source commit
+`91606297fc8a1a7a61c6271f734872bc47920271` now carries the independently pinned
+archive plus mandatory detached signature into both consumers, preserves the
+existing trusted-signature policy, and checks installed package/ELF identity.
+Synthetic transaction tests and a bounded separate AI source assessment pass;
+the retained real archive fails preflight because its signature is absent.
+Valid/untrusted signature acceptance through the real consumers is NOT RUN.
+Never disable signature verification to consume this development artifact.
 
 The immutable Private3 ISO remains byte-identical and still contains the crash.
 There is no new ISO or final virtual acceptance. A new privileged ISO build needs

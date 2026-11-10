@@ -79,7 +79,37 @@ Planning against coherent official snapshot 2026-11-08 was refused because
 installed database and policy stayed unchanged. No future transaction was run.
 A compatible, signature-verified complete closure is required before advancing.
 
-Actual mid-transaction interruption/retry, full-system backup restoration and
-future update/reboot/application acceptance are NOT RUN. `pacman -Dk` after an
-EFI repair does not establish any of them. Existing versioned Wilsof managed-file
-backups support explicit per-file restoration only, not transactional OS rollback.
+## Additional executed synthetic transaction gate
+
+A separate, network-isolated single-ID mapped-root lab exercised real pacman and
+libalpm, not substituted package commands. Two harmless signed test packages
+started at `1.0-1`. During a transaction to `2.0-1`, a controlled SIGKILL of the
+exact owned process group occurred inside package A's real `post_upgrade`, before
+package B was upgraded. Inventory was then A `2.0-1`, B `1.0-1`; `pacman -Dk`
+returned 0. Database consistency did not mean the transaction was complete or
+that the package set was coherent. The stale lock and interrupted database were
+preserved, not silently removed.
+
+Only after confirming the owned process group had exited and copying the fixture
+database did the explicit lab recovery remove that fixture's stale lock, reinstall
+the entire exact signed test set and verify both versions `2.0-1`, matching payload
+bytes, database check 0 and no remaining lock. The host package database,
+configuration, public keyring and trust database retained their hashes. Test keys
+were removed and namespace mounts disappeared after exit. Nothing in the runtime
+update controller automatically removes locks or retries transactions.
+
+Two earlier lab attempts failed before fault injection because the disposable
+chroot lacked an executable interpreter and then the native libalpm-configured
+`/usr/bin/bash` path. Their failures are retained. Correcting the lab and proving
+the actual shell prerequisite preceded the successful third attempt; they are not
+production update failures or accepted interruption tests.
+
+This proves a synthetic package-transaction failure/recovery seam, not a real
+future Wilsof update, kernel/DKMS migration, boot after package recovery, full-system
+restore or atomic rollback. The complete OS transition remains blocked as described
+in [the coherent update plan](update-transition.md).
+
+Full OS mid-transaction interruption/recovery, full-system backup restoration and
+future update/reboot/application acceptance remain NOT RUN. Existing versioned
+Wilsof managed-file backups support explicit per-file restoration only, not
+transactional OS rollback.

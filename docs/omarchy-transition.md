@@ -6,7 +6,16 @@ intact. The retained Private3 ISO passed 18 basic virtual gates but still contai
 the portal logout crash and blank-only installer. Source commit
 `91606297fc8a1a7a61c6271f734872bc47920271` adds the native-tested portal backport,
 explicit replacement workflow and candidate input gates; it is NOT a new ISO.
-Use the current stabilization report together with the original exact-image report.
+Use the [daily-RC continuation report](development-reports/2026-11-10-daily-rc-trust-replacement.md)
+together with the original exact-image report. Later native source-overlay tests
+also pass full ext4 and blank-GPT replacement, disk-only PAM login and writable
+unselected-disk preservation; a real post-erasure interruption returns 130 with no
+rollback. None of these changes is in the retained immutable ISO.
+
+The [signing decision](package-signing.md), [coherent update transition](update-transition.md)
+and [general PC hardware matrix](hardware-compatibility.md) state the remaining
+trust, maintenance and physical gates. No production identity or new build is
+approved merely by following those documents.
 
 ## 1. Decisions required before replacement
 

@@ -65,6 +65,7 @@ def main():
     source = Path('/usr/share/wilsof/source')
     snapshot = runpy.run_path(str(source / 'runtime/repository-snapshot.py'))
     snapshot['read'](target)
+    runpy.run_path(str(source / 'runtime/notices.py'))['stage'](source, target)
     private = runpy.run_path(str(source / 'runtime/private-hyprland.py'))
     private_record = private['embedded'](Path('/usr/share/wilsof'))
     if private_record is not None:
@@ -75,6 +76,8 @@ def main():
     pin = runpy.run_path(str(source / 'runtime/pinned-package.py'))
     if not live:
         pin['install_package'](target, '/usr/share/wilsof/packages')
+    portal = runpy.run_path(str(source / 'runtime/portal-package.py'))
+    portal['install'](target, Path('/usr/share/wilsof'))
     destination = target / 'usr/share/wilsof/source'
     if source.resolve() != destination.resolve():
         if destination.exists():

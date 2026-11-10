@@ -61,6 +61,7 @@ The profile is a sibling of work, not `work/profile`.
        : "${WILSOF_APPROVED_COMMIT:?Set the independently approved full source commit}"
        : "${WILSOF_EXPORT_ROOT:?Set a new absolute archive-export directory}"
        : "${WILSOF_HYPRIDLE_PACKAGE:?Set the exact verified internal package path}"
+       : "${WILSOF_PORTAL_PACKAGE:?Set the exact reviewed portal backport with a trusted detached signature}"
        : "${WILSOF_ISO_VERSION:?Set a unique internal image version}"
        : "${WILSOF_ISO_WORKDIR:=/srv/wilsof-iso-work}"
        : "${WILSOF_ISO_OUTDIR:=/srv/wilsof-iso-out}"
@@ -76,6 +77,7 @@ The profile is a sibling of work, not `work/profile`.
            WILSOF_ISO_OUTDIR="$WILSOF_ISO_OUTDIR" \
            WILSOF_SOURCE_COMMIT="$WILSOF_APPROVED_COMMIT" \
            WILSOF_HYPRIDLE_PACKAGE="$WILSOF_HYPRIDLE_PACKAGE" \
+           WILSOF_PORTAL_PACKAGE="$WILSOF_PORTAL_PACKAGE" \
            WILSOF_ARCHISO_RELENG="$WILSOF_ARCHISO_RELENG" \
            SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \
            WILSOF_ISO_VERSION="$WILSOF_ISO_VERSION" \

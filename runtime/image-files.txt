@@ -62,3 +62,11 @@ bin/wilsof-shortcuts
 bin/wilsof-appearance
 config/wilsof-keybinds.json
 config/hypr/hyprlock-idle.conf
+runtime/notices.py
+runtime/portal-package.py
+assets/notices/dux-shell-2.0.0/LICENSE
+assets/notices/dux-shell-2.0.0/DCommon-MIT.txt
+assets/notices/dux-shell-2.0.0/ipp-Apache-2.0.txt
+assets/notices/dux-shell-2.0.0/plasma-GPL-2.0.txt
+assets/notices/dux-shell-2.0.0/vsix-MIT.txt
+assets/notices/dux-shell-2.0.0/PROVENANCE.json

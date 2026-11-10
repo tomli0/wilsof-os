@@ -12,6 +12,7 @@ command -v mkarchiso >/dev/null 2>&1 || { printf '%s\n' 'build-iso: archiso is u
 : "${WILSOF_ISO_WORKDIR:?Dedicated absolute work directory required}"
 : "${WILSOF_ISO_OUTDIR:?Dedicated absolute output directory required}"
 : "${WILSOF_HYPRIDLE_PACKAGE:?Exact verified internal Hypridle artifact required}"
+: "${WILSOF_PORTAL_PACKAGE:?Exact portal backport archive and trusted detached signature required}"
 : "${SOURCE_DATE_EPOCH:?Fixed source/build epoch required}"
 : "${WILSOF_ISO_VERSION:?Explicit internal image version required}"
 upstream=${WILSOF_ARCHISO_RELENG:-/usr/share/archiso/configs/releng}
@@ -22,7 +23,7 @@ if [ ! -f "$root/SOURCE_COMMIT" ] || [ "$(cat "$root/SOURCE_COMMIT")" != "$WILSO
     printf '%s\n' 'Build from a verified git archive with its exact SOURCE_COMMIT marker.' >&2
     exit 65
 fi
-python3 - "$WILSOF_SOURCE_COMMIT" "$WILSOF_ISO_WORKDIR" "$WILSOF_ISO_OUTDIR" "$root" "$upstream" "$WILSOF_HYPRIDLE_PACKAGE" <<'PY'
+python3 - "$WILSOF_SOURCE_COMMIT" "$WILSOF_ISO_WORKDIR" "$WILSOF_ISO_OUTDIR" "$root" "$upstream" "$WILSOF_HYPRIDLE_PACKAGE" "$WILSOF_PORTAL_PACKAGE" <<'PY'
 from pathlib import Path
 from runpy import run_path
 import os, re, sys
@@ -51,7 +52,7 @@ if o.exists() and (not o.is_dir() or any(o.iterdir())):
     raise SystemExit('Output must be an empty directory')
 # The wrapper always supplies inputs; the shorter form supports guard-only tests.
 if len(sys.argv) > 4:
-    source, upstream, package = map(Path, sys.argv[4:])
+    source, upstream, package = map(Path, sys.argv[4:7])
     if not all(p.is_absolute() for p in (source, upstream, package)):
         raise SystemExit('Absolute source/releng/package paths required')
     for folder, names in ((source, ('SOURCE_COMMIT', 'runtime/pinned-package.py')),
@@ -77,6 +78,13 @@ if len(sys.argv) > 4:
     pin = run_path(str(source / 'runtime/pinned-package.py'))
     if pin['verified_package'](package.parent) != package:
         raise SystemExit('Exact verified internal Hypridle package filename required')
+    if len(sys.argv) > 7:
+        portal_package = Path(sys.argv[7])
+        portal = run_path(str(source / 'runtime/portal-package.py'))
+        record = portal['artifact'](portal_package)
+        portal_inputs = (portal_package, Path(str(portal_package) + '.sig'))
+        if any(overlaps(p, i.resolve()) for p in paths for i in portal_inputs) or any(overlaps(source.resolve(), i.resolve()) for i in portal_inputs):
+            raise SystemExit('Portal artifacts must remain outside source and output trees')
     if not re.fullmatch(r'[0-9]{1,12}', os.environ['SOURCE_DATE_EPOCH']) or int(os.environ['SOURCE_DATE_EPOCH']) > 253402300799:
         raise SystemExit('Invalid fixed source/build epoch')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,63}', os.environ['WILSOF_ISO_VERSION']):
@@ -85,7 +93,7 @@ PY
 mkdir -p "$WILSOF_ISO_OUTDIR"
 python3 "$root/scripts/prepare-iso.py" --upstream "$upstream" \
     --output "${WILSOF_ISO_WORKDIR}-profile" --source "$root" --commit "$WILSOF_SOURCE_COMMIT" \
-    --hypridle-package "$WILSOF_HYPRIDLE_PACKAGE"
+    --hypridle-package "$WILSOF_HYPRIDLE_PACKAGE" --portal-package "$WILSOF_PORTAL_PACKAGE"
 python3 - "$root" "${WILSOF_ISO_WORKDIR}-profile" <<'PY'
 from pathlib import Path
 from runpy import run_path

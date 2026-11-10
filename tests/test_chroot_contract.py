@@ -116,6 +116,12 @@ def provision_transaction(tmp_path, monkeypatch, effect='intact', exit_code=0):
     (source / 'bin').mkdir(parents=True)
     (source / 'bin/wilsof-config-update').write_text('# fixture\n')
     (source / 'bin/wilsof-session').write_text('# session fixture\n')
+    # Provisioning now ships pinned notices; exercise the real safe stage helper.
+    import shutil
+    (source / 'runtime').mkdir()
+    shutil.copy2(ROOT / 'runtime/notices.py', source / 'runtime/notices.py')
+    shutil.copy2(ROOT / 'runtime/portal-package.py', source / 'runtime/portal-package.py')
+    shutil.copytree(ROOT / 'assets/notices', source / 'assets/notices')
     target = tmp_path / 'target'
     (target / 'etc').mkdir(parents=True)
     (target / 'usr/lib').mkdir(parents=True)

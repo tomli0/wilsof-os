@@ -24,6 +24,10 @@ def layout(tmp_path):
         (upstream / name).write_text('fixture\n')
     package = tmp_path / 'internal.pkg.tar.zst'
     package.write_bytes(b'fixture; not an actual verified Hypridle artifact')
+    portal = tmp_path / 'portal.pkg.tar.zst'
+    portal.write_bytes(b'synthetic portal archive; not signature acceptance')
+    Path(str(portal)+'.sig').write_bytes(b'synthetic detached signature')
+    (source / 'runtime/portal-package.py').write_text('def artifact(path):\n    if not path.is_file() or not path.with_name(path.name+".sig").is_file(): raise ValueError("missing portal input")\n    return {"package":str(path)}\n')
     for name, text in {
         'id': '#!/bin/sh\nprintf "0\\n"\n',
         'pacman': '#!/bin/sh\nexit 0\n',
@@ -39,6 +43,6 @@ def layout(tmp_path):
         'WILSOF_SOURCE_COMMIT': 'a' * 40, 'SOURCE_DATE_EPOCH': '1767225600',
         'WILSOF_ISO_VERSION': 'fixture', 'WILSOF_ARCHISO_RELENG': str(upstream),
         'WILSOF_ISO_WORKDIR': str(tmp_path / 'work'), 'WILSOF_ISO_OUTDIR': str(tmp_path / 'out'),
-        'WILSOF_HYPRIDLE_PACKAGE': str(package), 'CAPTURE': str(tmp_path / 'mkarchiso.json'),
+        'WILSOF_HYPRIDLE_PACKAGE': str(package), 'WILSOF_PORTAL_PACKAGE': str(portal), 'CAPTURE': str(tmp_path / 'mkarchiso.json'),
     }
     return source, upstream, package, env

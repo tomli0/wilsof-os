@@ -3,37 +3,314 @@
   "$id": "wilsof.install-plan/v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "target", "layout", "bootloader", "account", "encryption", "optional_packages", "codecs", "review_digest", "executor"],
+  "required": [
+    "schema",
+    "target",
+    "layout",
+    "bootloader",
+    "account",
+    "encryption",
+    "optional_packages",
+    "codecs",
+    "review_digest",
+    "executor"
+  ],
   "properties": {
-    "schema": {"const": "wilsof.install-plan/v1"},
-    "plan_id": {"type": "string"},
+    "schema": {
+      "const": "wilsof.install-plan/v1"
+    },
+    "plan_id": {
+      "type": "string"
+    },
     "target": {
-      "type": "object", "additionalProperties": false,
-      "required": ["path", "size_bytes", "identity", "expected_empty"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "size_bytes",
+        "identity",
+        "expected_empty"
+      ],
       "properties": {
-        "path": {"type": "string", "pattern": "^/dev/"},
-        "size_bytes": {"type": "integer", "minimum": 1},
-        "identity": {"type": "string", "minLength": 1},
-        "expected_empty": {"const": true},
+        "path": {
+          "type": "string",
+          "pattern": "^/dev/"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_empty": {
+          "type": "boolean"
+        },
         "display": {
-          "type": "object", "additionalProperties": false,
-          "required": ["manufacturer", "model", "transport", "removable"],
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "manufacturer",
+            "model",
+            "transport",
+            "removable"
+          ],
           "properties": {
-            "manufacturer": {"type": "string"},
-            "model": {"type": "string"},
-            "transport": {"type": "string"},
-            "removable": {"type": ["boolean", "null"]}
+            "manufacturer": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "transport": {
+              "type": "string"
+            },
+            "removable": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        },
+        "existing": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "device_number",
+              "size_bytes",
+              "table",
+              "filesystem",
+              "partition_type",
+              "efi",
+              "header_sha256",
+              "signatures"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^/dev/[A-Za-z0-9_-]+$"
+              },
+              "device_number": {
+                "type": "string",
+                "pattern": "^[0-9]+:[0-9]+$"
+              },
+              "size_bytes": {
+                "type": "integer",
+                "minimum": 131072
+              },
+              "table": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "filesystem": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "partition_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "efi": {
+                "type": "boolean"
+              },
+              "header_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "signatures": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "type",
+                    "offset",
+                    "uuid"
+                  ],
+                  "properties": {
+                    "type": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "offset": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "uuid": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     },
-    "layout": {"type": "object", "additionalProperties": false, "required": ["mode", "table", "firmware", "partitions"], "properties": {"mode": {"const": "whole-disk"}, "table": {"const": "gpt"}, "firmware": {"const": "uefi"}, "partitions": {"type": "array", "minItems": 2, "maxItems": 2, "prefixItems": [{"const": "ESP"}, {"const": "root"}], "items": false}}},
-    "bootloader": {"type": "string"},
-    "account": {"type": "object", "additionalProperties": false, "required": ["username", "password_in_plan"], "properties": {"username": {"type": "string"}, "password_in_plan": {"const": false}}},
-    "encryption": {"type": "object", "additionalProperties": false, "required": ["enabled"], "properties": {"enabled": {"type": "boolean"}}},
-    "optional_packages": {"type": "array", "items": {"type": "string"}},
-    "codecs": {"type": "object"},
-    "review_digest": {"type": "string", "pattern": "^sha256-"},
-    "executor": {"type": "object", "additionalProperties": false, "required": ["adapter", "adapter_version"], "properties": {"adapter": {"const": "archinstall"}, "adapter_version": {"type": "string", "minLength": 1}}}
-  }
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "table",
+        "firmware",
+        "partitions"
+      ],
+      "properties": {
+        "mode": {
+          "const": "whole-disk"
+        },
+        "table": {
+          "const": "gpt"
+        },
+        "firmware": {
+          "const": "uefi"
+        },
+        "partitions": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [
+            {
+              "const": "ESP"
+            },
+            {
+              "const": "root"
+            }
+          ],
+          "items": false
+        }
+      }
+    },
+    "bootloader": {
+      "type": "string"
+    },
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "username",
+        "password_in_plan"
+      ],
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "password_in_plan": {
+          "const": false
+        }
+      }
+    },
+    "encryption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "optional_packages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "codecs": {
+      "type": "object"
+    },
+    "review_digest": {
+      "type": "string",
+      "pattern": "^sha256-"
+    },
+    "executor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter",
+        "adapter_version"
+      ],
+      "properties": {
+        "adapter": {
+          "const": "archinstall"
+        },
+        "adapter_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "installation_mode": {
+      "enum": [
+        "blank",
+        "replace-existing"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "installation_mode"
+        ],
+        "properties": {
+          "installation_mode": {
+            "const": "replace-existing"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "target": {
+            "properties": {
+              "expected_empty": {
+                "const": false
+              }
+            },
+            "required": [
+              "existing"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "target": {
+            "properties": {
+              "expected_empty": {
+                "const": true
+              }
+            },
+            "not": {
+              "required": [
+                "existing"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
 }

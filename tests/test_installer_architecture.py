@@ -7,11 +7,17 @@ DOC = ROOT / "docs" / "installer-architecture.md"
 PLAN_SCHEMA = ROOT / "schemas" / "installation-plan.schema.json"
 
 
-def test_installation_plan_schema_keeps_first_alpha_destructive_boundary():
+def test_installation_plan_schema_keeps_blank_default_and_explicit_replacement_boundary():
     schema = json.loads(PLAN_SCHEMA.read_text(encoding="utf-8"))
     props = schema["properties"]
     assert props["schema"]["const"] == "wilsof.install-plan/v1"
-    assert props["target"]["properties"]["expected_empty"]["const"] is True
+    # Authorized replacement supersedes the old unconditional blank-only rule;
+    # absence of the explicit mode must still require an empty target.
+    conditional = schema['allOf'][0]
+    assert conditional['if']['required'] == ['installation_mode']
+    assert conditional['else']['properties']['target']['properties']['expected_empty']['const'] is True
+    assert conditional['then']['properties']['target']['properties']['expected_empty']['const'] is False
+    assert conditional['then']['properties']['target']['required'] == ['existing']
     assert props["layout"]["properties"]["mode"]["const"] == "whole-disk"
     assert props["layout"]["properties"]["table"]["const"] == "gpt"
     assert props["layout"]["properties"]["firmware"]["const"] == "uefi"

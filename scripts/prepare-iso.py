@@ -24,9 +24,11 @@ def inventory(directory):
     return result
 
 
-def prepare(upstream, output, source, commit, *, hypridle_package=None):
+def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_package=None):
     private = runpy.run_path(str(source / 'runtime/private-hyprland.py'))
     private_record = private['load']()
+    portal = runpy.run_path(str(source / 'runtime/portal-package.py'))
+    portal_record = None if portal_package is None else portal['artifact'](portal_package)
     if not re.fullmatch(r'[0-9a-f]{40}', commit):
         raise ValueError('An exact source commit is required')
     if output.exists() or output.is_symlink():
@@ -65,6 +67,7 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     root = output / 'airootfs'
     snapshot = runpy.run_path(str(source / 'runtime/repository-snapshot.py'))
     snapshot['stage'](root)
+    runpy.run_path(str(source / 'runtime/notices.py'))['stage'](source, root)
     runpy.run_path(str(source / 'runtime/broadcom-wl.py'))['stage'](root)
     (output / 'pacman.conf').write_text(snapshot['CONFIG'])
     (root / 'mnt/wilsof').mkdir(parents=True, exist_ok=True)
@@ -118,6 +121,9 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     if private_record is not None:
         private['stage'](private_record, root / 'usr/share/wilsof')
         customization += "; private=runpy.run_path('/usr/share/wilsof/source/runtime/private-hyprland.py'); private['install']('/', '/usr/share/wilsof', required=True)"
+    if portal_record is not None:
+        portal['stage'](portal_record, root / 'usr/share/wilsof')
+        customization += "; portal=runpy.run_path('/usr/share/wilsof/source/runtime/portal-package.py'); portal['install']('/', '/usr/share/wilsof')"
     customization += "; wl['discard_image_signing_key']()"
     # Supported by pinned Archiso 91; removed from the image after execution.
     write('root/customize_airootfs.sh', '#!/bin/sh\nset -eu\npython3 -c "' + customization + '"\n', 0o755)
@@ -174,8 +180,9 @@ def main():
         parser.add_argument('--' + flag, type=Path, required=True)
     parser.add_argument('--commit', required=True)
     parser.add_argument('--hypridle-package', type=Path)
+    parser.add_argument('--portal-package', type=Path)
     args = parser.parse_args()
-    prepare(args.upstream, args.output, args.source, args.commit, hypridle_package=args.hypridle_package)
+    prepare(args.upstream, args.output, args.source, args.commit, hypridle_package=args.hypridle_package, portal_package=args.portal_package)
 
 
 if __name__ == '__main__':

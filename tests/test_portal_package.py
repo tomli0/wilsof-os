@@ -1,6 +1,8 @@
 """Synthetic artifact/signature boundaries; not cryptographic trust acceptance."""
 from pathlib import Path
 import hashlib
+import json
+import os
 import runpy
 import subprocess
 
@@ -17,6 +19,8 @@ def api():
 def fixture(tmp_path,monkeypatch):
     module=api();package=tmp_path/module['NAME'];package.write_bytes(b'synthetic package')
     signature=Path(str(package)+'.sig');signature.write_bytes(b'synthetic detached signature')
+    Path(str(package)+'.approval.json').write_text(json.dumps({'schema':1,'approval':'owner-approved',
+        'package_sha256':hashlib.sha256(package.read_bytes()).hexdigest(),'primary_fingerprint':'A'*40}))
     module['artifact'].__globals__['SHA256']=hashlib.sha256(package.read_bytes()).hexdigest()
     module['artifact'].__globals__['BINARY_SHA256']=hashlib.sha256(b'synthetic ELF').hexdigest()
     monkeypatch.setitem(module['artifact'].__globals__,'member',lambda p,n:b'pkgname = xdg-desktop-portal-hyprland\npkgver = 1.4.1-2.1\narch = x86_64\ndepend = wayland\n' if n=='.PKGINFO' else b'synthetic ELF')
@@ -58,8 +62,15 @@ def test_portal_install_preserves_policy_and_propagates_signature_refusal(tmp_pa
     snapshot=runpy.run_path(str(ROOT/'runtime/repository-snapshot.py'));snapshot['stage'](target)
     if case=='policy-drift':(target/'etc/pacman.conf').write_text('SigLevel = Never\n')
     calls=[]
+    monkeypatch.setattr(os,'geteuid',lambda:0)
     def run(argv,**kwargs):
         calls.append(argv)
+        if 'gpg' in argv:
+            from test_portal_trust import status
+            assert argv[:4]==['arch-chroot','-r',str(target),'gpg']
+            assert '--no-auto-key-import' in argv and '--no-auto-key-retrieve' in argv
+            assert argv[argv.index('--homedir')+1]=='/etc/pacman.d/gnupg'
+            return subprocess.CompletedProcess(argv,0,status('A'*40),'')
         assert argv[:4]==['arch-chroot','-r',str(target),'pacman']
         assert '--config' not in argv and '--nodeps' not in argv
         out=''

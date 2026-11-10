@@ -69,7 +69,11 @@ archive plus mandatory detached signature into both consumers, preserves the
 existing trusted-signature policy, and checks installed package/ELF identity.
 Synthetic transaction tests and a bounded separate AI source assessment pass;
 the retained real archive fails preflight because its signature is absent.
-Valid/untrusted signature acceptance through the real consumers is NOT RUN.
+Valid/untrusted production signature acceptance through the real consumers is NOT RUN.
+The subsequent [owner-controlled signing gate](package-signing.md) additionally
+requires an external approved primary-fingerprint pin and real GnuPG verification
+before pacman. Its isolated test-only keys and native synthetic libalpm package
+controls do not approve an identity or accept this retained real portal package.
 Never disable signature verification to consume this development artifact.
 
 The immutable Private3 ISO remains byte-identical and still contains the crash.

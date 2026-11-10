@@ -138,16 +138,17 @@ def test_apply_refuses_without_removing_anything(lab, monkeypatch, tmp_path, cha
     assert target.exists()
 
 
-def test_interruption_preserves_write_ahead_audit(lab, monkeypatch, tmp_path):
+@pytest.mark.parametrize('exception', [KeyboardInterrupt, SystemExit])
+def test_interruption_preserves_write_ahead_audit(lab, monkeypatch, tmp_path, exception):
     m, p, target, _ = lab
     approved = m.plan(p)
     assert hasattr(m, 'apply_plan'), 'explicit execution is missing'
     original = m.process_guard
     monkeypatch.setattr(m, 'process_guard', lambda p, t, strict=False: original(p, t, False))
     def interrupt(*args, **kwargs):
-        raise KeyboardInterrupt()
+        raise exception()
     monkeypatch.setattr(m.os, 'unlink', interrupt)
-    with pytest.raises(KeyboardInterrupt):
+    with pytest.raises(exception):
         m.apply_plan(p, approved['plan_sha256'], ['one'], str(tmp_path / 'audit'))
     assert target.exists()
     events = [json.loads(x) for x in (tmp_path / 'audit/events.jsonl').read_text().splitlines()]
@@ -275,6 +276,22 @@ def test_mapped_inode_detected_through_alias_path(lab, monkeypatch):
         m.process_guard(p, [record])
 
 
+def test_cached_proof_rejects_symlink_ancestor_even_with_same_inode(lab, tmp_path):
+    m, _, target, _ = lab
+    original = tmp_path / 'retained-directory'
+    original.mkdir()
+    proof_path = original / 'retained.bin'
+    proof_path.write_bytes(target.read_bytes())
+    record = m.file_record(str(proof_path))
+    moved = tmp_path / 'moved-retained-directory'
+    original.rename(moved)
+    original.symlink_to(moved, target_is_directory=True)
+    # The bytes, inode and timestamps still match; the ancestor is no longer safe.
+    with pytest.raises((m.Refusal, OSError)):
+        m.proof_record({'path': str(proof_path)}, {str(proof_path): record})
+    assert target.exists() and proof_path.exists()
+
+
 def test_default_inventory_is_read_only(tmp_path):
     root = tmp_path / 'wilsof-run'
     root.mkdir()
@@ -290,3 +307,18 @@ def test_default_inventory_is_read_only(tmp_path):
     assert report['files'][0]['classification'] == 'UNKNOWN'
     assert artifact.read_bytes() == b'keep until explicitly approved'
     assert sorted(p.name for p in root.iterdir()) == ['temporary.bin']
+
+
+def test_terminating_signal_is_not_swallowed_by_proof_reader_selector(tmp_path):
+    marker = tmp_path / 'continued-after-cancel'
+    code = ('import os,runpy,selectors,signal,threading,pathlib\n'
+            f'm=runpy.run_path({str(SCRIPT)!r},run_name="fixture")\n'
+            'signal.signal(signal.SIGTERM,m["interrupted"])\n'
+            'r,w=os.pipe()\n'
+            'selector=selectors.DefaultSelector();selector.register(r,selectors.EVENT_READ)\n'
+            'timer=threading.Timer(0.1,lambda:os.kill(os.getpid(),signal.SIGTERM));timer.start()\n'
+            'selector.select(2)\n'
+            f'pathlib.Path({str(marker)!r}).write_text("unsafe continuation")\n')
+    result = subprocess.run([sys.executable, '-I', '-c', code], capture_output=True, timeout=5)
+    assert result.returncode == 143
+    assert not marker.exists(), 'cancellation was swallowed and execution continued'

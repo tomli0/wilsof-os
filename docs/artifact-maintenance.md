@@ -150,6 +150,59 @@ that root NOT READY for chroot/build reuse, even when its package DB is preserve
 Rematerialize from its exact source/package manifest or retained immutable image;
 never use the retained DB as evidence that pruned files still exist.
 
+## Producer integration: bounded post-test cleanup
+
+New QA producers must register retention before allocating a disk. Use the host-only
+helper (not an image payload or an unattended cleaner):
+
+    python3 scripts/qa-retention.py begin --run-root /private/new-qa-run --spec /private/run-spec.json
+
+The schema-1 spec contains a unique `run_id`, exact 40-character `source_commit`,
+independently pinned `inputs` (`path`/`sha256`), and explicit relative `outputs`
+(`path`/`classification`). The run directory must not exist. It is created private,
+with an exclusive, fsynced `retention-start.json` and ACTIVE state. Declare reference
+or current candidate disks PROTECTED; unresolved/unique evidence is ARCHIVE or
+PROTECTED. Only independently reconstructed/duplicated temporary outputs may be
+DISPOSABLE. A passing test does not make its installed acceptance baseline disposable.
+Keep deletable outputs in a strict subdirectory such as `artifacts/`, with evidence
+outside it. Unknown/unlisted output stays retained.
+
+The producer remains responsible for its finite QEMU supervisor, existing QA lock,
+normal shutdown and verified process exit. After stopping it, write a schema-1 result
+with matching `run_id`, integer `exit_code`, Boolean `timed_out` and
+`pending_acceptance`, and named `checks`. Each PASS check needs retained evidence
+objects with exact absolute `path` and `sha256`. Hashes bind evidence; they are not
+independent certification of a producer's PASS claim. Review the actual test receipts.
+Then call:
+
+    python3 scripts/qa-retention.py finish --run-root /private/new-qa-run --result /private/new-qa-run/test-result.json --policy /private/new-qa-run/cleanup-policy.json --seconds 120
+
+A failure, timeout, pending acceptance or absent cleanup policy writes RETAIN and
+never invokes maintenance. An eligible success rechecks input and evidence identities,
+restricts all targets to declared disposable outputs of that exact run, preserves
+other outputs and receipts as protected pins, and runs the existing real maintenance
+planner in a separate process group with a 1–300-second bound. Timeout/cancellation
+stops that owned group, including proof readers. TERM/HUP/INT unwind through the
+same cleanup; repeated signals cannot interrupt its bounded stop, and original
+handlers are restored. Uncatchable SIGKILL or host loss cannot guarantee immediate
+cleanup: reconcile recorded processes before another attachment or retry.
+Failed plans retain files and their
+partial preparation; they never apply or silently retry. Existing completion receipts
+cannot be overwritten or replayed.
+
+A successful finalizer writes `cleanup-policy.frozen.json`, `cleanup-plan.json`,
+`cleanup-targets.json` and `retention-finish.json` with CLEANUP_REVIEW_REQUIRED.
+It does not delete, invent approval, grant root, enroll keys or claim reclaimed bytes.
+Review the exact outputs and independent proofs; apply the frozen policy with the
+existing explicit policy/plan/target approvals, normal authenticated host inspection
+and a finite supervisor. Read the actual audit back before reporting cleanup.
+This is the normal post-test close-out step, not an optional age-based cache sweep.
+
+The helper is source/fixture-tested, including actual CLI planning, failed/pending
+refusals and descendant termination. Retrofitting a historical supervisor or
+retiring an existing installed disk still needs its own verified retention decision;
+no historical guest is silently reclassified by introducing this helper.
+
 ## Normal sprint contract
 
 1. Before allocating space, inspect existing evidence, source/input digests,

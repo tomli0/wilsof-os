@@ -119,8 +119,13 @@ def proof_record(proof, retained_cache=None):
         kept = file_record(proof['path'])
     else:
         kept = dict(kept)
-        if metadata(os.stat(proof['path'], follow_symlinks=False)) != kept['identity']:
-            raise Refusal('retained archive identity changed')
+        path = canonical(proof['path'])
+        parent = directory(path.parent)
+        try:
+            if metadata(os.stat(path.name, dir_fd=parent, follow_symlinks=False)) != kept['identity']:
+                raise Refusal('retained archive identity changed')
+        finally:
+            os.close(parent)
     if 'member' not in proof:
         return kept
     member = str(canonical(proof['member']))
@@ -488,7 +493,8 @@ def interrupted(signum, frame):
     # A second terminating signal must not interrupt the short audit/FD unwinding path.
     for value in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         signal.signal(value, signal.SIG_IGN)
-    raise InterruptedError('maintenance interrupted by signal ' + str(signum))
+    # InterruptedError is swallowed by selectors.select(); cancellation must unwind.
+    raise SystemExit(128 + signum)
 
 
 def main():

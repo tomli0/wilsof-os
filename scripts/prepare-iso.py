@@ -184,7 +184,7 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_p
     tty = root / 'etc/systemd/system/getty.target.wants/getty@tty2.service'
     tty.parent.mkdir(parents=True, exist_ok=True)
     tty.symlink_to('/usr/lib/systemd/system/getty@.service')
-    write('etc/systemd/system/wilsof-live-setup.service', '[Unit]\nDescription=Prepare ephemeral Wilsof live desktop\nRequires=wilsof-live-console.service\nAfter=systemd-sysusers.service local-fs.target wilsof-live-console.service\nBefore=greetd.service\nOnFailure=wilsof-live-failure.service\n[Service]\nType=oneshot\nExecStart=/usr/local/lib/wilsof/live-setup\nTimeoutStartSec=180\nRemainAfterExit=yes\n[Install]\nWantedBy=multi-user.target\n')
+    write('etc/systemd/system/wilsof-live-setup.service', '[Unit]\nDescription=Prepare ephemeral Wilsof live desktop\nRequires=wilsof-live-console.service pacman-init.service\nAfter=systemd-sysusers.service local-fs.target wilsof-live-console.service pacman-init.service\nBefore=greetd.service\nOnFailure=wilsof-live-failure.service\n[Service]\nType=oneshot\nExecStart=/usr/local/lib/wilsof/live-setup\nTimeoutStartSec=180\nRemainAfterExit=yes\n[Install]\nWantedBy=multi-user.target\n')
     write('etc/systemd/system/greetd.service.d/live.conf', '[Unit]\nRequires=wilsof-live-setup.service\nAfter=wilsof-live-setup.service\nOnFailure=wilsof-live-failure.service\n')
     write('etc/systemd/system/default.target', '')
     (root / 'etc/systemd/system/default.target').unlink()

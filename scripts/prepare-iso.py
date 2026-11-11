@@ -62,6 +62,29 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_p
     if any((upstream / name).exists() or (upstream / name).is_symlink()
            for name in ('BUILD-SOURCE.json', 'BUILD-INPUTS.json', 'BOOT-CONTRACT.json', '.build-inputs', '.wilsof-boot-upstream')):
         raise ValueError('Refusing inherited reserved provenance path')
+    image_files = (source / 'runtime/image-files.txt').read_text().splitlines()
+    entrypoints = ('wilsof-install', 'wilsof-config-update', 'wilsof-session', 'wilsof-release-update')
+    if any('bin/' + name not in image_files for name in entrypoints):
+        raise ValueError('Required entrypoint missing from reviewed image manifest')
+    # Validate the complete reviewed payload before creating any output. In
+    # particular, the privileged updater must never become an optional input.
+    def reviewed_input(relative):
+        parts = Path(relative).parts
+        if not parts or Path(relative).is_absolute() or '..' in parts:
+            raise ValueError('Image manifest paths must be relative and contained')
+        origin = source
+        for part in parts:
+            origin /= part
+            if origin.is_symlink():
+                raise ValueError(f'Refusing source symlink: {relative}')
+        if not origin.is_file():
+            raise ValueError(f'Missing reviewed image input: {relative}')
+        if relative == 'bin/wilsof-release-update' and origin.stat().st_mode & 0o022:
+            raise ValueError('Refusing writable source updater')
+        return origin
+
+    for relative in image_files:
+        reviewed_input(relative)
     inputs = {'source_commit': commit, 'source': inventory(source), 'releng': inventory(upstream)}
     shutil.copytree(upstream, output, symlinks=True)
     with (output / 'BUILD-SOURCE.json').open('x', encoding='utf-8') as record:
@@ -103,17 +126,8 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_p
 
     payload = root / 'usr/share/wilsof/source'
     payload.mkdir(parents=True)
-    for relative in (source / 'runtime/image-files.txt').read_text().splitlines():
-        parts = Path(relative).parts
-        if not parts or Path(relative).is_absolute() or '..' in parts:
-            raise ValueError('Image manifest paths must be relative and contained')
-        origin = source
-        for part in parts:
-            origin /= part
-            if origin.is_symlink():
-                raise ValueError(f'Refusing source symlink: {relative}')
-        if not origin.is_file():
-            raise ValueError(f'Missing reviewed image input: {relative}')
+    for relative in image_files:
+        origin = reviewed_input(relative)
         dest = payload / relative
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(origin, dest)
@@ -150,9 +164,8 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_p
     lib.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source / 'runtime/provision-target', lib / 'provision-target')
     (lib / 'provision-target').chmod(0o755)
-    for name in ('wilsof-install', 'wilsof-config-update', 'wilsof-session'):
-        if (source / 'bin' / name).is_file():
-            write('usr/local/bin/' + name, (source / 'bin' / name).read_text(), 0o755)
+    for name in entrypoints:
+        write('usr/local/bin/' + name, (payload / 'bin' / name).read_text(), 0o755)
     shutil.copy2(source / 'runtime/desktop-packages.txt', root / 'usr/share/wilsof/desktop-packages.txt')
     if private_record is not None:
         desktop = (source / 'runtime/desktop-packages.txt').read_text().splitlines()

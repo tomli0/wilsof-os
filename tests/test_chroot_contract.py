@@ -107,17 +107,21 @@ runpy.run_path = load
 
 def provision_transaction(tmp_path, monkeypatch, effect='intact', exit_code=0):
     import os
+    import shutil
     import sys
 
     api = runpy.run_path(str(ROOT / 'runtime/provision-target'))
     main = api['main']
     namespace = main.__globals__
+    # Explicitly simulate root-owned scratch inputs without privileged tests.
+    monkeypatch.setitem(namespace, 'ROOT_UID', os.getuid())
+    monkeypatch.setitem(namespace, 'ROOT_GID', os.getgid())
     source = tmp_path / 'source'
     (source / 'bin').mkdir(parents=True)
     (source / 'bin/wilsof-config-update').write_text('# fixture\n')
     (source / 'bin/wilsof-session').write_text('# session fixture\n')
+    shutil.copy2(ROOT / 'bin/wilsof-release-update', source / 'bin/wilsof-release-update')
     # Provisioning now ships pinned notices; exercise the real safe stage helper.
-    import shutil
     (source / 'runtime').mkdir()
     shutil.copy2(ROOT / 'runtime/notices.py', source / 'runtime/notices.py')
     shutil.copy2(ROOT / 'runtime/portal-package.py', source / 'runtime/portal-package.py')
@@ -125,6 +129,8 @@ def provision_transaction(tmp_path, monkeypatch, effect='intact', exit_code=0):
     target = tmp_path / 'target'
     (target / 'etc').mkdir(parents=True)
     (target / 'usr/lib').mkdir(parents=True)
+    target.chmod(0o755)
+    (target / 'usr').chmod(0o755)
     (target / 'usr/lib/os-release').write_text('ID=arch\n')
     (target / 'etc/passwd').write_text('demo:x:1000:1000::/home/demo:/bin/bash\n')
     (target / 'home/demo').mkdir(parents=True)

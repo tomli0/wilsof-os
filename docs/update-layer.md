@@ -34,11 +34,50 @@ The command performs full-package maintenance **on the existing frozen
 snapshot**. A successful no-op is reported as no package-version change, not
 an OS version upgrade. This cannot supply future security updates while the
 snapshot stays frozen. Advancing to a new dated policy, including the private
-compositor and patched idle-daemon compatibility, requires a reviewed source /
-package manifest and disposable native acceptance first. That progression is
-not yet implemented; do not treat a passing `--check` as daily-driver update
-readiness. Check relevant Arch advisories and review the actual Pacman proposed
-transaction/replacements before answering its confirmation prompt.
+compositor and patched idle-daemon compatibility, is a separate administrative
+operation below; it is never an implicit side effect of `wilsof update`.
+Do not treat a passing `--check` as daily-driver update readiness. Review the
+actual Pacman proposed transaction/replacements before answering its prompt.
+
+## Administrative snapshot advancement
+
+The normal image materializer and live/installed provisioner install the existing
+`wilsof-release-update` companion at `/usr/local/bin/wilsof-release-update` with
+mode 0755 (Archiso explicitly assigns root:root). It is a required reviewed image
+input, not an optional download. Lifecycle source/fixture checks do not establish
+ISO, boot, native transaction or physical-client acceptance.
+
+On an installed system, an administrator can explicitly propose a **forward**
+full-snapshot update. For example, from the initial 2026-11-01 policy:
+
+```sh
+sudo /usr/local/bin/wilsof-release-update --plan 2026-11-02 /var/lib/wilsof-release-update/proposal-20261102
+```
+
+Use a new, unused absolute proposal path under root-owned, non-writable ancestors;
+the helper creates its directory. Planning resolves/downloads using a separate
+package database; it does not sign or install the proposal.
+Independently review its exact `manifest.json`, package closure and baseline, then
+provide `manifest.json.sig` using the **already pinned and trusted signer**.
+TEST ONLY proposals remain TEST ONLY; production signer approval is separate.
+The helper never imports/enrolls keys or substitutes another trust policy.
+Execute only that reviewed signed proposal in an interactive terminal:
+
+```sh
+sudo /usr/local/bin/wilsof-release-update --execute /var/lib/wilsof-release-update/proposal-20261102
+```
+
+Preserve the proposal, signature, package cache and transaction receipts under
+`/var/lib/wilsof-release-update/`. Policy advances only after the installed package
+inventory matches the signed final closure and database checks pass. Installation
+of the companion does not run it, schedule updates, grant passwordless sudo,
+change `SOURCE_COMMIT`, migrate personal configuration or restart the desktop.
+
+After interruption, inspect the receipts, Pacman logs, lock ownership and installed
+packages before choosing a reviewed repair. `--recover DIRECTORY` accepts only the
+same recorded signed plan whose package closure is **already complete**; it never
+retries packages, deletes locks or provides atomic rollback. Live media, missing
+trust, changed baselines and unsupported removals/replacements fail closed.
 
 ## Sequencing and failure contract
 

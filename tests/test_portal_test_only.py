@@ -418,8 +418,11 @@ def test_fresh_target_entrypoint_enrolls_before_all_three_real_consumers(tmp_pat
     (source / 'bin').mkdir()
     for name in ('wilsof-config-update', 'wilsof-session'):
         (source / 'bin' / name).write_text('# fixture\n')
+    shutil.copy2(ROOT / 'bin/wilsof-release-update', source / 'bin/wilsof-release-update')
     target = tmp_path / 'target'
     (target / 'usr/lib').mkdir(parents=True)
+    target.chmod(0o755)
+    (target / 'usr').chmod(0o755)
     (target / 'usr/lib/os-release').write_text('ID=arch\n')
     (target / 'etc').mkdir()
     (target / 'etc/passwd').write_text('demo:x:1000:1000::/home/demo:/bin/bash\n')
@@ -427,6 +430,8 @@ def test_fresh_target_entrypoint_enrolls_before_all_three_real_consumers(tmp_pat
     snapshot = runpy.run_path(str(ROOT / 'runtime/repository-snapshot.py'))
     snapshot['stage'](target)
     provision = runpy.run_path(str(ROOT / 'runtime/provision-target'))
+    monkeypatch.setitem(provision['main'].__globals__, 'ROOT_UID', os.getuid())
+    monkeypatch.setitem(provision['main'].__globals__, 'ROOT_GID', os.getgid())
     def mapped(value):
         return {'/usr/share/wilsof': base, '/usr/share/wilsof/source': source,
                 '/usr/share/wilsof/packages': base / 'packages'}.get(str(value), Path(value))

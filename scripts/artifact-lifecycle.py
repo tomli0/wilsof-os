@@ -242,7 +242,15 @@ def validate_build_admission(catalog, receipt, workflow, source, work, out):
         raise ValueError('root-owned immutable host admission receipt required')
     data=json.loads(receipt.read_text())
     raw=canonical(catalog).read_bytes()
-    expected=dict(schema=1,scope='host-admitted-isolated-build',catalog_sha256=hashlib.sha256(raw).hexdigest(),workflow=workflow,source_commit=source,work=work,out=out)
+    expected: dict[str,object]=dict(schema=1,scope='host-admitted-isolated-build',catalog_sha256=hashlib.sha256(raw).hexdigest(),workflow=workflow,source_commit=source,work=work,out=out)
+    if not isinstance(data,dict):raise ValueError('host admission identity/catalog changed')
+    preservation=data.get('preservation')
+    if 'preservation' in data:
+        if (not isinstance(preservation,dict) or set(preservation)!={'reason','profile_classification'} or
+                not isinstance(preservation['reason'],str) or not preservation['reason'].strip() or
+                len(preservation['reason'])>1024 or preservation['profile_classification'] not in ('DISPOSABLE','PROTECTED')):
+            raise ValueError('explicit root-owned workspace preservation required')
+        expected['preservation']=preservation
     if data!=expected:raise ValueError('host admission identity/catalog changed')
     state=json.loads(raw)
     matches=[w for w in state.get('workflows',[]) if w['workflow']==workflow]
@@ -250,6 +258,10 @@ def validate_build_admission(catalog, receipt, workflow, source, work, out):
         raise ValueError('existing inventoried host admission required')
     record=matches[0]
     expected_paths=[(work,'build-workspace','DISPOSABLE'),(work+'-profile','cache','DISPOSABLE'),(out,'iso','PROTECTED')]
+    if preservation is not None:
+        expected_paths=[(work,'build-workspace','PROTECTED'),(work+'-profile','cache',preservation['profile_classification']),(out,'iso','PROTECTED')]
+        if not record['artifacts'] or record['artifacts'][0].get('exception_reason')!=preservation['reason']:
+            raise ValueError('workspace preservation reason changed')
     if (record['state']!='ACTIVE' or record['budget_bytes']!=MAX_BUDGET or
             record['purpose']!='Sequential isolated ISO build from '+source or
             [(a['path'],a['kind'],a['classification']) for a in record['artifacts']]!=expected_paths):

@@ -52,6 +52,18 @@ allocation or an incomplete sandbox inventory. The supervisor must finalize and
 check the actual host catalog after the finite build service exits, including
 failure/cancellation; the in-sandbox wrapper never claims host finalization.
 
+An owner-directed preservation build may retain a new workspace as PROTECTED
+with an individually documented `exception_reason` through the existing native
+registration/audit rules. Its root-owned mode-0400 admission receipt must then
+include exactly `preservation: {reason: <the identical exception_reason>,
+profile_classification: DISPOSABLE | PROTECTED}`. The validator binds that explicit
+choice to the full catalog digest, exact paths/source/workflow and unchanged
+25 GiB budget. Ordinary receipts retain their original DISPOSABLE contract.
+This does not authorize cleanup, reclassification of older artifacts, a different
+catalog, larger byte budgets or a smaller reserve; actual host admission still
+checks them before issuing the receipt. No retained artifact is deleted by this
+handoff, and protected intermediates require a later explicit retirement decision.
+
 ## Ownership and lifecycle
 
 Hermes owns the end-of-session storage lifecycle:

@@ -183,8 +183,31 @@ def validate_target(policy, artifact, all_targets, retained_cache=None):
         raise Refusal('source repository is protected')
     workflow = artifact['workflow']
     if (not workflow['id'] or workflow['state'] != 'completed' or
-            workflow['result'] != 'success' or workflow['pending_acceptance'] is not False):
+            workflow['pending_acceptance'] is not False):
         raise Refusal('unfinished workflow or unresolved evidence')
+    if workflow['result'] != 'success':
+        retirement = workflow.get('retirement', {})
+        evidence = retirement.get('evidence', {})
+        if (workflow['result'] != 'failure' or
+                retirement.get('scope') != 'duplicate-intermediates-only' or
+                set(evidence) != {'failure', 'inputs', 'log', 'reproduction'}):
+            raise Refusal('failed workflow requires explicit preserved retirement evidence')
+        pins = {p['path']: p['sha256'] for p in policy['pins']}
+        for item in evidence.values():
+            if (set(item) != {'path', 'sha256'} or item['path'] in all_targets or
+                    pins.get(item['path']) != item['sha256']):
+                raise Refusal('retirement evidence must be independently pinned and retained')
+            kept = file_record(item['path'])
+            if kept['sha256'] != item['sha256']:
+                raise Refusal('retirement evidence changed')
+        failure_path = evidence['failure']['path']
+        if canonical(failure_path).stat().st_size > 65536:
+            raise Refusal('bounded original failure receipt required')
+        failure = json.loads(canonical(failure_path).read_text())
+        if (failure.get('schema') != 1 or failure.get('workflow') != workflow['id'] or
+                failure.get('result') != 'FAIL' or type(failure.get('exit_code')) is not int or
+                failure['exit_code'] == 0):
+            raise Refusal('original nonzero FAIL receipt must remain unchanged')
     record = file_record(str(path))
     if record['identity']['nlink'] != 1 or record['sha256'] != artifact['sha256']:
         raise Refusal('identity/hash or hardlink refusal')

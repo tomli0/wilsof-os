@@ -64,6 +64,39 @@ catalog, larger byte budgets or a smaller reserve; actual host admission still
 checks them before issuing the receipt. No retained artifact is deleted by this
 handoff, and protected intermediates require a later explicit retirement decision.
 
+## Bounded reusable pool admission (preparation, not native deployment)
+
+The host-only `pool_capacity(inner_available, host_available, backing_allocated,
+outstanding=0)` helper reconciles the proposed 32 GiB pool without changing the
+25 GiB build budget or existing 30 GiB admission threshold. A supervisor must
+first authenticate the dedicated mount/backing identity and take the established
+project lock. Supply both filesystems' actual `statvfs().f_bavail * f_frsize`
+and the backing file's `st_blocks * 512`, not its sparse logical length.
+
+Let P=32 GiB, B=25 GiB, Ei=5 GiB, X=3 GiB, Eo=5 GiB, A=already allocated backing
+bytes, R=new evidence/other unallocated outer reservations, and U=measured inner
+available bytes after filesystem metadata/reserved blocks/current occupancy.
+Admission requires U >= B+Ei = 30 GiB and host available >= P-A+X+Eo+R.
+Ei is already inside P; do not add it to the outer requirement. At first creation
+A=0, so the host needs at least 40 GiB plus R. On reuse A is already charged to
+host available and must not be counted twice. This helper is arithmetic, not a
+quota, mount certificate, catalog registration, or permission to create a pool.
+
+For an empty pool with measured U0, pre-admission staging/cache must stay at or
+below U0-30 GiB. A persistent 6 GiB cache cannot fit that margin in any 32 GiB
+pool; keep frozen reconstruction inputs separately preserved and read-only.
+Register before materializing the new profile/cache. After a failed attempt,
+stop/reap its entire service and verify namespace/process exit, preserve failure
+receipts/logs/input pins/reproduction, then retire only exact approved duplicated
+intermediates. Reconcile catalog reservations honestly and use a fresh workflow
+ID and empty working paths. Unlink within a pool does not establish physical
+host reclamation: measure backing allocation again. No global trim, silent pool
+reset, automatic deletion, or retained ISO overwrite is allowed.
+
+The proposed pool still requires owner-approved physical-space recovery,
+filesystem creation, mount/isolation checks and a native repeated-failure test.
+Source/real-file fixture tests do not certify that deployment or ISO acceptance.
+
 ## Ownership and lifecycle
 
 Hermes owns the end-of-session storage lifecycle:
@@ -87,7 +120,7 @@ Daily Driver acceptance gates, not a second general status history.
 | ACTIVE | A process, mount, lock or ongoing workflow owns it; never remove. |
 | PROTECTED | Accepted reference/current candidate ISO, necessary backing image, pinned baseline, source/WIP, signing material, credentials, user data, shared dependency store or protected backup; never remove. |
 | ARCHIVE | Unique completed evidence suitable for an existing authorized archive; retain locally until verified transfer and an explicit retention decision. |
-| DISPOSABLE | Explicit completed successful workflow manifest, no pending acceptance, known identity, retained reconstruction/duplicate proof, no owner or dependent backing chain. |
+| DISPOSABLE | Explicit completed successful workflow manifest, or the separately approved failed-build duplicate-only exception below; known identity, retained duplicate proof, no owner/backing/intermediate dependency. |
 | UNKNOWN | Missing identity, permissions, ownership, provenance or dependency evidence; retain. |
 
 Age is not a classification. A successful fixture may be disposable; a failed
@@ -146,10 +179,25 @@ The version-1 policy is a private JSON object with these fields:
 - `artifacts`: objects containing unique `id`, exact `path`, `classification`,
   expected `sha256`, `workflow`, and a reconstruction `proof`.
 
-A disposable workflow must have a nonempty `id`, `state: completed`,
+A disposable workflow normally has a nonempty `id`, `state: completed`,
 `result: success`, and `pending_acceptance: false`. A caller must establish those
 facts from retained workflow evidence; a JSON label is not self-authenticating.
-A failure or historical baseline is not made disposable by changing a label.
+A failure or historical baseline is not made successful by changing a label.
+
+A completed failed build can instead propose independently duplicated
+intermediates with `result: failure` (never success), `pending_acceptance: false`
+for that intermediate's retirement, and an explicit `retirement` object:
+`scope: duplicate-intermediates-only` and `evidence` with exactly `failure`,
+`inputs`, `log`, and `reproduction` path/SHA256 objects. Every evidence file must
+be independently pinned outside the deletion target set. The retained schema-1
+failure receipt must name the exact `workflow`, `result: FAIL`, and original
+nonzero integer `exit_code`. The normal duplicate, process/mount, backing,
+policy/plan/target approval and durable audit guards remain mandatory. This
+read-only planning exception does not stop a service, certify namespace exit,
+authorize deletion, mutate the original outcome, or release a catalog slot.
+Do not apply it to unique failure-state data or unresolved intermediate dependencies.
+After an approved apply, separately reconcile the exact stopped workflow's catalog
+custody; never call `complete --exit-code 0` to release a failed build.
 
 A proof has a retained `path` and the candidate's expected content `sha256`.
 Ordinary proofs are independently retained duplicate files. For immutable
@@ -279,7 +327,8 @@ no historical guest is silently reclassified by introducing this helper.
    retention manifest at creation. Record bounded QEMU supervisor lifetime,
    shutdown interface, backing parents and owning QA lock; no detached orphan.
 3. After delivery, preserve exact essential receipts and unresolved failure
-   evidence first. Mark only successful disposable outputs as candidates.
+   evidence first. Mark successful disposable outputs as candidates; failed builds
+   require the explicit pinned duplicate-only exception above, never a PASS rewrite.
 4. Generate/review a read-only maintenance plan. Execute only that explicit
    approved policy/target set within current owner authorization, then verify
    actual storage and preservation. Do not auto-prune shared package stores.

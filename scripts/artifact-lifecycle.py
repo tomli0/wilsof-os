@@ -118,6 +118,36 @@ def audit(catalog, state=None) -> dict:
                 workflow_usage=workflow_usage, available_bytes=filesystems, violations=violations)
 
 
+def pool_capacity(inner_available, host_available, backing_allocated, outstanding=0):
+    """Read-only dual-filesystem gate; measurements are bytes, never sparse length.
+
+    The caller must authenticate a dedicated 32GiB mounted pool and hold the
+    established project lock. This arithmetic does not allocate/mount a pool,
+    certify its identity, register a workflow, or authorize retirement/builds.
+    outstanding includes new evidence and other unallocated host reservations.
+    """
+    pool_bytes, export_bytes = 32 * GIB, 3 * GIB
+    values = (inner_available, host_available, backing_allocated, outstanding)
+    if (any(type(v) is not int or v < 0 for v in values) or
+            inner_available > pool_bytes or backing_allocated > pool_bytes):
+        raise ValueError('invalid measured build-pool capacity')
+    inner_required = MAX_BUDGET + RESERVE  # The existing 30GiB gate, inside 32GiB.
+    remaining_growth = pool_bytes - backing_allocated
+    outer_required = remaining_growth + export_bytes + RESERVE + outstanding
+    violations = []
+    if inner_available < inner_required:
+        violations.append('inner pool cannot admit 25GiB plus its included 5GiB reserve')
+    if host_available < outer_required:
+        violations.append('outer physical capacity cannot cover backing growth/export/reserve')
+    return dict(pool_bytes=pool_bytes, build_budget_bytes=MAX_BUDGET,
+                inner_required_bytes=inner_required, inner_available_bytes=inner_available,
+                additional_staging_headroom_bytes=max(0, inner_available - inner_required),
+                host_available_bytes=host_available, backing_allocated_bytes=backing_allocated,
+                remaining_backing_growth_bytes=remaining_growth,
+                outer_required_bytes=outer_required, outstanding_bytes=outstanding,
+                violations=violations)
+
+
 def canonical(value):
     path = Path(value)
     if not path.is_absolute() or str(path) != value or '..' in path.parts:

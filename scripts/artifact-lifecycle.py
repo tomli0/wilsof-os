@@ -14,7 +14,8 @@ import time
 GIB = 1024 ** 3
 RESERVE = 5 * GIB
 MAX_BUDGET = 25 * GIB
-LIMITS = {'iso': 2, 'qa-disk': 2, 'build-workspace': 1}
+POOL_BYTES = 32 * GIB
+LIMITS = {'iso': 2, 'qa-disk': 2, 'build-workspace': 1, 'build-pool': 1}
 CACHE_LIMIT = 6 * GIB
 EVIDENCE_LIMIT = 256 * 1024 ** 2
 LOG_DAYS = 7
@@ -79,6 +80,11 @@ def audit(catalog, state=None) -> dict:
         for artifact in workflow['artifacts']:
             target = canonical(artifact['path'])
             size, files = usage(target)
+            if artifact['kind'] == 'build-pool' and target.exists():
+                info = target.lstat()
+                if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
+                        info.st_size != POOL_BYTES or size > POOL_BYTES):
+                    violations.append('build pool backing shape changed: ' + artifact['path'])
             observed += size
             parent = target.parent
             while not parent.exists():
@@ -100,7 +106,8 @@ def audit(catalog, state=None) -> dict:
             if artifact['kind'] == 'evidence' and size > EVIDENCE_LIMIT:
                 violations.append('failure evidence exceeds bounded receipt/reproducer budget: ' + artifact['path'])
         budget = workflow['budget_bytes']
-        workflow_usage.append(dict(workflow=workflow['workflow'], allocated_bytes=observed, budget_bytes=budget))
+        workflow_usage.append(dict(workflow=workflow['workflow'], allocated_bytes=observed,
+                                   budget_bytes=budget, filesystem_device=device))
         # Zero-budget ARCHIVE records are explicit imported historical custody, not new allocation.
         if budget > 0 and observed > budget:
             violations.append('workflow budget exceeded: ' + workflow['workflow'])
@@ -203,7 +210,12 @@ def register(catalog, spec):
     if not spec.get('artifacts'):
         raise ValueError('explicit artifacts required')
     budget = spec.get('budget_bytes')
-    if type(budget) is not int or not 0 < budget <= MAX_BUDGET:
+    pool = any(a.get('kind') == 'build-pool' for a in spec['artifacts'])
+    if pool and (len(spec['artifacts']) != 1 or budget != POOL_BYTES or
+                 spec['artifacts'][0].get('classification') != 'PROTECTED' or
+                 spec['artifacts'][0].get('exception_reason')):
+        raise ValueError('one explicit protected32GiB pool reservation required')
+    if type(budget) is not int or not 0 < budget <= (POOL_BYTES if pool else MAX_BUDGET):
         raise ValueError('bounded positive workflow budget required')
     parent = canonical(spec['artifacts'][0]['path']).parent
     while not parent.exists():
@@ -247,10 +259,12 @@ def register(catalog, spec):
                     a.get('exception_reason')) for a in record['artifacts']) + status['active_counts'].get(kind, 0) > limit:
                 raise ValueError('artifact limit exceeded: ' + kind)
         observed = {row['workflow']: row['allocated_bytes'] for row in status['workflow_usage']}
+        devices = {row['workflow']: row['filesystem_device'] for row in status['workflow_usage']}
         # Existing allocation is already deducted from statvfs available space.
         # Match audit(): reserve only each active workflow's unallocated remainder.
         pending = sum(max(0, w['budget_bytes'] - observed[w['workflow']])
-                      for w in state['workflows'] if w['state'] == 'ACTIVE')
+                      for w in state['workflows'] if w['state'] == 'ACTIVE' and
+                      devices[w['workflow']] == parent.stat().st_dev)
         space = os.statvfs(parent)
         if space.f_bavail * space.f_frsize < budget + pending + RESERVE:
             raise ValueError('insufficient capacity after concurrent reservations')

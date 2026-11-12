@@ -127,7 +127,9 @@ def test_preservation_admission_refuses_changed_authority_before_output(tmp_path
 def test_preservation_registration_keeps_capacity_and_global_limits(tmp_path,monkeypatch):
     api,cat,p,data,work,out,old=preserved_setup(tmp_path,monkeypatch)
     assert api['MAX_BUDGET']==25*1024**3 and api['RESERVE']==5*1024**3
-    assert api['LIMITS']=={'iso':2,'qa-disk':2,'build-workspace':1}
+    # The dedicated pool adds a separate singleton; ordinary build/QA/ISO limits stay identical.
+    assert {kind:api['LIMITS'][kind] for kind in ('iso','qa-disk','build-workspace')}=={'iso':2,'qa-disk':2,'build-workspace':1}
+    assert api['LIMITS']['build-pool']==1
     record=json.loads(cat.read_text())['workflows'][-1]
     record['workflow']='another';record['artifacts']=[dict(a,path=a['path']+'-another') for a in record['artifacts']]
     monkeypatch.setattr(os,'statvfs',lambda _:SimpleNamespace(f_bavail=30*1024**3-1,f_frsize=1))

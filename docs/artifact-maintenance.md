@@ -7,6 +7,7 @@
 | Active ISO images | Two: accepted reference and current candidate |
 | Disposable QA disks | Two simultaneously; sequential QA preferred |
 | Active ISO workspace | One, including its derived profile |
+| Dedicated build pool | One protected regular backing file, exactly 32 GiB logical maximum |
 | Regenerable cache | 6 GiB per host-wide catalog |
 | Ordinary logs | Seven days, unless pinned to an unresolved issue |
 | Failure diagnostic bundle | 256 MiB per failure; larger unique evidence needs a documented exception |
@@ -25,7 +26,7 @@ to hide existing resources. Normal CLI commands require an existing schema-1 cat
 with `inventory_complete: true`, recorded only after real inventory/import; they
 never initialize it implicitly. Before allocation, register schema 1 with `owner`,
 `workflow`, `purpose`, `budget_bytes`, and `artifacts`. Every artifact has exact
-`path`, `kind` (`iso`, `qa-disk`, `build-workspace`, `cache`, `log`, `evidence`),
+`path`, `kind` (`iso`, `qa-disk`, `build-workspace`, `build-pool`, `cache`, `log`, `evidence`),
 `classification`, `dependencies`, and `cleanup_condition`. Creation time is
 recorded automatically; small files inherit workflow custody. Only individually
 justified PROTECTED/ARCHIVE historical artifacts use `exception_reason`.
@@ -81,6 +82,20 @@ Ei is already inside P; do not add it to the outer requirement. At first creatio
 A=0, so the host needs at least 40 GiB plus R. On reuse A is already charged to
 host available and must not be counted twice. This helper is arithmetic, not a
 quota, mount certificate, catalog registration, or permission to create a pool.
+
+The pool backing has its own explicit 32 GiB reservation, not a larger ordinary
+build budget. Registration accepts only one PROTECTED `build-pool` artifact,
+exactly that budget and no preservation exception; a second pool is refused.
+Audit requires a regular single-link file of exactly 32 GiB logical length with
+no larger physical allocation. Native creation must independently authenticate
+the backing inode, loop limits and mounted filesystem. Keep its outstanding
+outer growth reserved until the owned build has verifiably exited, then account
+later QA separately. The backing must not be deleted/reset to reuse the pool.
+
+Reservations are attributed to the measured filesystem device. An outer backing
+reservation must not be charged again as pending inner allocation. Both devices
+still retain their own unchanged 5 GiB reserve; absence of native measurements
+is not permission to substitute an invented available-space value.
 
 For an empty pool with measured U0, pre-admission staging/cache must stay at or
 below U0-30 GiB. A persistent 6 GiB cache cannot fit that margin in any 32 GiB

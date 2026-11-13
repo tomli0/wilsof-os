@@ -244,6 +244,90 @@ def test_refusal_preserves_policy_before_real_upgrade(system, defect):
     assert all((system / p).read_bytes() == content for p, content in original.items())
 
 
+@pytest.mark.parametrize('recover', [True, False])
+def test_completed_inventory_recovery_refuses_missing_initramfs_before_policy_write(system, recover):
+    """Inventory completion must not promote an unbootable installation."""
+    api = load(); native = NativeBoundary()
+    native.installed += 'linux 7.2.14.arch1-1\nlinux-headers 7.2.14.arch1-1\n'
+    folder = proposal(api, system, native)
+    final = '\n'.join(json.loads((folder / 'manifest.json').read_text())['final_inventory']) + '\n'
+    if recover:
+        native.fail = lambda argv: '-Syu' in argv
+        with pytest.raises(subprocess.CalledProcessError):
+            api['execute'](system, folder, run=native)
+        native.fail = None; native.installed = final
+    def completed_package_boundary(argv, **kwargs):
+        result = native(argv, **kwargs)
+        if '-Syu' in argv:
+            native.installed = final
+        return result
+    boot = system / 'boot'; boot.mkdir()
+    (boot / 'vmlinuz-linux').write_bytes(b'unit-only kernel fixture')
+    image = boot / 'initramfs-linux.img'
+    image.write_bytes(b'unit-only initramfs fixture'); image.unlink()
+    policy_before = {p: (system / p).read_bytes() for p in (
+        'etc/pacman.conf', 'etc/pacman.d/mirrorlist', api['SNAPSHOT'])}
+    receipt = system / api['STATE'] / 'transaction.json'
+    receipt_before = receipt.read_bytes() if recover else None
+    native.calls.clear()
+    with pytest.raises((ValueError, OSError), match='boot|initramfs'):
+        api['execute'](system, folder, recover=recover, run=completed_package_boundary)
+    assert all((system / p).read_bytes() == data for p, data in policy_before.items())
+    assert not (system / api['STATE'] / 'current.json').exists()
+    if recover:
+        assert receipt.read_bytes() == receipt_before
+        assert not any('-Syu' in argv for argv, _ in native.calls)
+    else:
+        assert json.loads(receipt.read_text())['phase'] == 'incomplete'
+        assert sum('-Syu' in argv for argv, _ in native.calls) == 1
+
+
+@pytest.mark.parametrize('image_state', ['valid', 'corrupt-archive', 'wrong-kernel', 'stale-boot-kernel'])
+def test_completed_kernel_recovery_requires_native_initramfs_validation(system, image_state):
+    api = load(); native = NativeBoundary()
+    native.installed += 'linux 7.2.14.arch1-1\nlinux-headers 7.2.14.arch1-1\n'
+    folder = proposal(api, system, native)
+    native.fail = lambda argv: '-Syu' in argv
+    with pytest.raises(subprocess.CalledProcessError):
+        api['execute'](system, folder, run=native)
+    native.fail = None
+    native.installed = '\n'.join(json.loads((folder / 'manifest.json').read_text())['final_inventory']) + '\n'
+    boot = system / 'boot'; boot.mkdir()
+    (boot / 'vmlinuz-linux').write_bytes(b'unit-only kernel fixture')
+    (boot / 'initramfs-linux.img').write_bytes(b'unit-only archive; native parsing is substituted below')
+    pkgbase = system / 'usr/lib/modules/7.2.14-arch1-1/pkgbase'
+    pkgbase.parent.mkdir(parents=True); pkgbase.write_text('linux\n')
+    (pkgbase.parent / 'vmlinuz').write_bytes((boot / 'vmlinuz-linux').read_bytes())
+    if image_state == 'stale-boot-kernel':
+        (boot / 'vmlinuz-linux').write_bytes(b'previous-kernel bytes, not the installed package')
+    def native_image(argv, **kwargs):
+        args = list(map(str, argv))
+        if args[:3] == ['/usr/bin/pacman', '-Ql', 'linux']:
+            native.calls.append((args, kwargs))
+            return subprocess.CompletedProcess(args, 0, 'linux /usr/lib/modules/7.2.14-arch1-1/pkgbase\n', '')
+        if args[0] == '/usr/bin/lsinitcpio':
+            native.calls.append((args, kwargs))
+            if image_state == 'corrupt-archive':
+                raise subprocess.CalledProcessError(1, args, stderr='invalid/truncated initramfs archive')
+            kernel = '7.2.11-arch1-1' if image_state == 'wrong-kernel' else '7.2.14-arch1-1'
+            out = '==> Kernel: ' + kernel + '\n' if '-a' in args else 'usr/lib/modules/' + kernel + '/kernel/virtio.ko\n'
+            return subprocess.CompletedProcess(args, 0, out, '')
+        return native(args, **kwargs)
+    before = {p: (system / p).read_bytes() for p in (
+        'etc/pacman.conf', 'etc/pacman.d/mirrorlist', api['SNAPSHOT'],
+        api['STATE'] + '/transaction.json')}
+    native.calls.clear()
+    if image_state == 'valid':
+        api['execute'](system, folder, recover=True, run=native_image)
+        assert api['policy'](system)['date'] == '2026-11-02'
+    else:
+        with pytest.raises((ValueError, subprocess.SubprocessError)):
+            api['execute'](system, folder, recover=True, run=native_image)
+        assert all((system / p).read_bytes() == data for p, data in before.items())
+        assert not (system / api['STATE'] / 'current.json').exists()
+    assert not any('-Syu' in argv for argv, _ in native.calls)
+
+
 def test_failed_transaction_has_no_retry_and_recovery_requires_completed_set(system):
     api = load(); native = NativeBoundary(); folder = proposal(api, system, native)
     before = (system / 'etc/pacman.conf').read_bytes()

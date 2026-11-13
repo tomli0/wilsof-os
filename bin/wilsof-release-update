@@ -297,6 +297,34 @@ def atomic(path, text):
     temporary.replace(path)
 
 
+def verify_boot_artifacts(root, final_inventory, run):
+    """A complete package database does not establish a usable kernel image."""
+    if not any(line.startswith('linux ') for line in final_inventory):
+        return
+    for relative in ('boot/vmlinuz-linux', 'boot/initramfs-linux.img'):
+        path = safe(root / relative, root, missing=True)
+        if not path.is_file() or path.stat().st_size == 0:
+            raise ValueError('Required kernel boot artifact missing/empty: ' + relative)
+    files = command(run, ['/usr/bin/pacman', '-Ql', 'linux'])
+    releases = re.findall(r'^linux /usr/lib/modules/([A-Za-z0-9][A-Za-z0-9._+-]*)/pkgbase$', files, re.M)
+    if len(releases) != 1:
+        raise ValueError('Cannot bind initramfs to one installed linux kernel')
+    release = releases[0]
+    pkgbase = safe(root / 'usr/lib/modules' / release / 'pkgbase', root)
+    if pkgbase.read_text().strip() != 'linux':
+        raise ValueError('Installed kernel package identity differs')
+    packaged = safe(pkgbase.parent / 'vmlinuz', root)
+    if digest(packaged.read_bytes()) != digest((root / 'boot/vmlinuz-linux').read_bytes()):
+        raise ValueError('Boot kernel differs from installed linux package')
+    image = root / 'boot/initramfs-linux.img'
+    analysis = command(run, ['/usr/bin/lsinitcpio', '-n', '-a', image])
+    kernels = re.findall(r'^==> Kernel: ([^\s]+)$', analysis, re.M)
+    if kernels != [release]:
+        raise ValueError('Initramfs kernel differs from installed linux kernel')
+    # Analysis alone is not the native main-archive traversal.
+    command(run, ['/usr/bin/lsinitcpio', '-n', '--cpio', '-l', image])
+
+
 def execute(root, folder, *, recover=False, run=subprocess.run):
     root, folder = Path(root), Path(folder)
     guards(root)
@@ -353,6 +381,7 @@ def execute(root, folder, *, recover=False, run=subprocess.run):
     if safe(root / 'usr/share/wilsof/source/SOURCE_COMMIT', root).read_text().strip() != record['source_commit']:
         raise ValueError('Immutable image source changed during transaction; no policy advancement')
     command(run, ['/usr/bin/pacman', '-Dk'])
+    verify_boot_artifacts(root, record['final_inventory'], run)
     text, mirrors, snapshot = config(record['target_date'])
     outputs = {root / 'etc/pacman.conf': text, root / 'etc/pacman.d/mirrorlist': mirrors,
                root / SNAPSHOT: json.dumps(snapshot, sort_keys=True) + '\n'}

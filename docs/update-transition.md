@@ -87,6 +87,15 @@ before any separately approved recovery. A stale lock can be removed only after
 that exact transaction's processes have exited and the operator has reviewed
 consistency; never delete a production lock automatically.
 
+A complete package inventory and `pacman -Dk` are not sufficient recovery proof.
+Before normal execution or explicit recovery promotes policy/completion, the
+standard `linux` layout requires safe, nonempty boot kernel/initramfs files, an
+exact boot-kernel match to the installed package, native initramfs analysis bound
+to that package's kernel release, and a native main-archive traversal. Missing,
+invalid or stale boot artifacts refuse promotion. Repair/rebuild remains an
+explicit operator action, never a hidden retry; a fresh encrypted-root boot and
+normal login are still separate acceptance gates.
+
 Recovery uses independently authenticated trusted media and a coherent exact
 package set. Do not restore only the compositor libraries, ignore ABI dependencies,
 use a broken installed network stack as the sole source, or assume the current

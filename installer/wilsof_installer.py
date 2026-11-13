@@ -129,8 +129,6 @@ def validate_plan(plan):
     if ((mode == 'blank' and (not plan['target']['expected_empty'] or 'existing' in plan['target'])) or
             (mode == 'replace-existing' and (plan['target']['expected_empty'] or not plan['target'].get('existing')))):
         raise Refusal('Installation mode and reviewed target do not match')
-    if plan['encryption']['enabled']:
-        raise Refusal('Encryption is not supported by this adapter')
     if plan['bootloader'] != 'systemd-boot':
         raise Refusal('Only systemd-boot is supported')
     try:
@@ -195,7 +193,8 @@ def load_archinstall():
     from archinstall.lib.disk.filesystem import FilesystemHandler
     from archinstall.lib.installer import Installer
     from archinstall.lib.models.bootloader import Bootloader
-    from archinstall.lib.models.device import DiskLayoutConfiguration, DiskLayoutType, FilesystemType, Unit
+    from archinstall.lib.models.device import (
+        DiskEncryption, DiskLayoutConfiguration, DiskLayoutType, EncryptionType, FilesystemType, Unit)
     from archinstall.lib.models.locale import LocaleConfiguration
     from archinstall.lib.models.users import Password, User
     return SimpleNamespace(**{key: value for key, value in locals().items()
@@ -223,14 +222,15 @@ def check_target_mount(path):
 class ArchinstallExecutor:
     def __init__(self, manifest=Path('/usr/share/wilsof/desktop-packages.txt'),
                  provision=Path('/usr/local/lib/wilsof/provision-target'),
-                 target=Path('/mnt/wilsof'), guest=((), False), *, defer_api=False):
+                 target=Path('/mnt/wilsof'), guest=((), False), *, defer_api=False, encrypt=False):
+        self.encrypt = encrypt
         self.guest_enabled = guest[1]
         self.packages = list(dict.fromkeys([
             'base', 'linux', 'linux-firmware', 'mkinitcpio', 'networkmanager', 'sudo', 'greetd',
             # Include upstream bootloader/microcode/accessibility additions in review.
             'efibootmgr', 'dosfstools', 'e2fsprogs', 'intel-ucode', 'amd-ucode',
             'brltty', 'espeakup', 'alsa-utils',
-            *read_manifest(manifest), *guest[0],
+            *(['cryptsetup'] if encrypt else []), *read_manifest(manifest), *guest[0],
         ]))
         private = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'runtime/private-hyprland.py'))
         self.private_record = private['embedded'](Path('/usr/share/wilsof'))
@@ -248,15 +248,24 @@ class ArchinstallExecutor:
 
     def package_review_digest(self):
         return 'sha256-' + hashlib.sha256(
-            json.dumps({'packages': self.packages,
+            json.dumps({'packages': self.packages, 'encryption': self.encrypt,
                         'repository_inputs': self.repository_inputs,
                         'private_hyprland': None if self.private_record is None else {
                             k: self.private_record[k] for k in
                             ('name', 'version', 'architecture', 'sha256', 'binary_sha256')}},
                        separators=(',', ':'), sort_keys=True).encode()).hexdigest()
 
-    def execute(self, plan, password, guard):
+    def execute(self, plan, password, guard, *, encryption_password=None):
         import asyncio
+        if plan['encryption']['enabled'] != self.encrypt:
+            raise Refusal('Encryption choice differs from reviewed executor')
+        if self.encrypt and (not isinstance(encryption_password, str) or
+                             len(encryption_password) < 12 or
+                             not encryption_password.strip() or encryption_password == password or
+                             any(not 32 <= ord(c) <= 126 for c in encryption_password)):
+            raise Refusal('Encryption requires a separate nonblank printable ASCII passphrase of at least 12 characters')
+        if not self.encrypt and encryption_password is not None:
+            raise Refusal('Unexpected encryption passphrase for an unencrypted plan')
         private = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'runtime/private-hyprland.py'))
         if private['embedded'](Path('/usr/share/wilsof')) != self.private_record:
             raise Refusal('Private Hyprland policy changed after package review')
@@ -299,6 +308,11 @@ class ArchinstallExecutor:
             raise Refusal('Archinstall proposed an unsupported layout')
         config = api.DiskLayoutConfiguration(
             config_type=api.DiskLayoutType.Default, device_modifications=[modification])
+        if self.encrypt:
+            config.disk_encryption = api.DiskEncryption(
+                encryption_type=api.EncryptionType.LUKS,
+                encryption_password=api.Password(plaintext=encryption_password),
+                partitions=[parts[1]], hsm_device=None)
         handler = api.FilesystemHandler(config)
         final_guard()  # Reprobe reviewed or erased state after all interactive input.
         # The full-disk scan may be lengthy: revalidate the destination last too.
@@ -306,6 +320,10 @@ class ArchinstallExecutor:
         if snapshot['read'](Path('/')) != self.repository_inputs['snapshot']:
             raise Refusal('Repository snapshot changed before disk operations')
         handler.perform_filesystem_operations()
+        if self.encrypt:
+            # Never continue installing if the backend silently skipped encryption.
+            subprocess.run(['cryptsetup', 'isLuks', '--type', 'luks2', str(parts[1].safe_dev_path)],
+                           check=True, capture_output=True, timeout=30)
         with api.Installer(self.target, config, base_packages=list(self.packages),
                            kernels=['linux']) as installation:
             installation.mount_ordered_layout()
@@ -349,6 +367,7 @@ class ArchinstallExecutor:
 def interactive(executor, *, mode='blank', probe=None, ask=input, secret=getpass.getpass, output=print):
     if mode not in ('blank', 'replace-existing'):
         raise Refusal('Unknown installation mode')
+    encrypt = getattr(executor, 'encrypt', False)
     probe = probe or (probe_disk if mode == 'blank' else probe_replacement)
     path = ask('Target whole-disk path (no default; e.g. /dev/vda): ')
     output('Checking that every byte of the target is zero; this can take time.' if mode == 'blank'
@@ -362,7 +381,7 @@ def interactive(executor, *, mode='blank', probe=None, ask=input, secret=getpass
                    'partitions': ['ESP', 'root']},
         'bootloader': 'systemd-boot',
         'account': {'username': username, 'password_in_plan': False},
-        'encryption': {'enabled': False}, 'optional_packages': [],
+        'encryption': {'enabled': encrypt}, 'optional_packages': [],
         'codecs': {'selected': False},
         'executor': {'adapter': 'archinstall', 'adapter_version': ARCHINSTALL_VERSION},
     }
@@ -375,8 +394,20 @@ def interactive(executor, *, mode='blank', probe=None, ask=input, secret=getpass
     if not password or '\x00' in password or '\n' in password or password != confirmation:
         raise Refusal('Passwords must be nonempty, single-line and match')
     del confirmation
+    encryption_password = None
+    if encrypt:
+        output('Disk unlock uses the US keyboard layout. Keep the disk passphrase separately backed up; there is no automatic recovery key.')
+        encryption_password = secret('New disk encryption passphrase (hidden): ')
+        confirmation = secret('Confirm disk encryption passphrase (hidden): ')
+        if (len(encryption_password) < 12 or
+                not encryption_password.strip() or
+                any(not 32 <= ord(c) <= 126 for c in encryption_password) or
+                encryption_password != confirmation or encryption_password == password):
+            raise Refusal('Disk passphrases must match, differ from the account password, and contain at least 12 printable ASCII characters')
+        del confirmation
     output('Whole-disk installation erases all data, including Windows, on the selected disk.')
-    output('Internal installer: unencrypted ext4 root, 1 GiB FAT32 ESP at /boot; no automatic reboot.')
+    output('Internal installer: LUKS2-encrypted ext4 root; unencrypted 1 GiB FAT32 ESP at /boot; no automatic reboot.'
+           if encrypt else 'Internal installer: unencrypted ext4 root, 1 GiB FAT32 ESP at /boot; no automatic reboot.')
     output('Packages: ' + ', '.join(executor.packages))
     output(json.dumps(plan, sort_keys=True, indent=2, ensure_ascii=True))
     phrase = f'ERASE {path}'
@@ -392,10 +423,14 @@ def interactive(executor, *, mode='blank', probe=None, ask=input, secret=getpass
             raise Refusal('Target identity or size changed since review')
 
     try:
-        executor.execute(plan, password, guard)
+        if encrypt:
+            executor.execute(plan, password, guard, encryption_password=encryption_password)
+        else:
+            executor.execute(plan, password, guard)
     finally:
         # Python strings cannot be securely zeroized. Never serialize this value.
         password = None
+        encryption_password = None
     output('Installation completed. Target remains mounted; inspect before manually rebooting.')
 
 
@@ -413,9 +448,11 @@ def main(argv=None):
     parser.add_argument('--validate', metavar='PLAN', help='Read-only schema/digest/runtime validation; no probing')
     parser.add_argument('--replace-existing', action='store_true',
                         help='Explicit full-disk replacement; requires exact target-and-plan confirmation')
+    parser.add_argument('--encrypt', action='store_true',
+                        help='Explicit encrypted-root intent (already mandatory for installation); ESP stays unencrypted')
     args = parser.parse_args(argv)
-    if args.validate and args.replace_existing:
-        parser.error('--validate and --replace-existing cannot be combined')
+    if args.validate and (args.replace_existing or args.encrypt):
+        parser.error('--validate cannot be combined with installation options')
     try:
         if args.validate:
             validate_plan(json.loads(Path(args.validate).read_text()))
@@ -435,10 +472,12 @@ def main(argv=None):
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter('error', getpass.GetPassWarning)
+                # Owner policy: every new interactive installation requires encryption.
+                # --encrypt is retained as explicit intent, not an optional downgrade gate.
                 if args.replace_existing:
-                    interactive(ArchinstallExecutor(guest=guest_policy(), defer_api=True), mode='replace-existing')
+                    interactive(ArchinstallExecutor(guest=guest_policy(), defer_api=True, encrypt=True), mode='replace-existing')
                 else:
-                    interactive(ArchinstallExecutor(guest=guest_policy()))
+                    interactive(ArchinstallExecutor(guest=guest_policy(), encrypt=True))
         finally:
             os.umask(previous_umask)
         return 0

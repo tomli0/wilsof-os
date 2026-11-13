@@ -1,7 +1,8 @@
 # Omarchy replacement: final readiness and minimal recovery plan
 
-13 November 2026: **NO-GO for replacement; GO for separately authorized physical Live testing.**
-No physical hardware, USB or Omarchy changes are authorized by this document.
+13 November 2026: **NO-GO for replacement; owner approved non-destructive physical Live testing only.**
+The owner requires disk encryption. USB identity/write confirmation is still needed;
+installation and internal-disk changes remain unauthorized. Keep Omarchy intact.
 
 ## Accepted image — preserve unchanged
 
@@ -35,8 +36,12 @@ The current dashboard is [issue #16](https://github.com/tomli0/wilsof-os/issues/
    explicit recovery passed, but that bounded transition does not establish ongoing
    delivery of later compatible security updates. Resolve the production trust and
    maintenance path, and explicitly accept the disk layout before replacement.
-   If encryption is required, this image is unsuitable; do not improvise a disk
-   conversion. Any changed candidate has a new identity and needs relevant acceptance.
+   Encryption is now REQUIRED, so this image is unsuitable for installation; do not
+   improvise a disk conversion. Required-by-default LUKS2-root support has passed
+   bounded source review in the existing installer, but is NOT included or accepted
+   in this ISO. It needs a
+   genuine encrypted installation, cold-boot unlock/recovery and a newly accepted
+   candidate before physical replacement. The unencrypted ESP is disclosed.
 
 No critical code defect was established by this readiness review. Noninteractive
 `wilsof` PATH limitations and retained QML/logout diagnostics do not justify a
@@ -45,7 +50,7 @@ migration decision; no professional security certification is claimed.
 
 ## Essential physical checks — all still NOT RUN
 
-After separate authorization, identify the expendable USB by model/serial/capacity,
+Live testing is authorized. Identify the expendable USB by model/serial/capacity,
 write only that device, and verify the written image bytes against the accepted
 ISO. Use the [owner USB procedure](internal-test-runbook.md#usb-preparation-performed-by-the-owner).
 Boot Try Wilsof through UEFI. Do not install, mount personal volumes read-write,
@@ -78,7 +83,8 @@ lock/resume and data-persistence checks. Any daily-critical failure means stop.
 3. Obtain explicit installation approval naming the physical target and accepted
    ISO. Recheck actual model/serial/size, partitions, mounts and USB identity.
    Stop on any ambiguity or installer refusal. Stable power; no hotplug or other
-   disk writers. Existing-disk replacement is `wilsof-install --replace-existing`,
+   disk writers. Only a future accepted encrypted candidate may use
+   `wilsof-install --encrypt --replace-existing`,
    with the exact displayed plan-bound confirmation. It erases the entire target;
    default `wilsof-install` is strict blank-disk-only. Neither preserves Omarchy.
 4. Verify the clean installed desktop and essential hardware after disk-only cold

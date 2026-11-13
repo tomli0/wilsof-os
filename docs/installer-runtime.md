@@ -7,6 +7,31 @@ installation requires a root terminal on booted Archiso, x86-64 and 64-bit UEFI.
 Known-enabled Secure Boot is refused; no keys are enrolled or firmware settings
 changed. Firmware without a SecureBoot variable is accepted, not certified.
 
+## Encrypted-root source continuation (13 November 2026)
+
+The owner requires encryption. Current source requires encrypted root for both
+blank-disk and `--replace-existing` CLI installation modes, even without a flag.
+`--encrypt` remains an optional explicit-intent spelling, not an opt-in gate.
+There is no plaintext installation CLI option. The accepted RC2-r2 ISO is unchanged
+and DOES NOT contain this option; its 59 virtual PASS results do not establish
+encrypted installation. Native encrypted installation/boot and a new candidate
+remain mandatory before replacement. No physical installation is authorized.
+
+The source uses archinstall 4.5 `DiskEncryption(encryption_type=EncryptionType.LUKS, ...)` on
+the ext4 root only, with the same config passed to FilesystemHandler and Installer.
+It retains an unencrypted FAT32 ESP, not encrypted boot or Secure Boot. Cryptsetup
+is included in the reviewed package closure. After formatting, a real LUKS2-header
+check must succeed before installation continues; there is no plaintext fallback.
+
+A separate hidden disk passphrase must match its confirmation, differ from the
+account password, and contain at least 12 printable ASCII characters (not all
+spaces). Boot unlock uses the US keymap. No passphrase is placed in the JSON plan,
+argv or environment; the retained backend passes it on stdin. There is no stored
+root-unlock keyfile, TPM enrollment or automatic recovery key. Back up the
+passphrase privately; a lost passphrase cannot be recovered by a login password.
+Python strings cannot be securely zeroized. This remains unaccepted source work,
+not a claim of complete disk/secret/boot-security certification.
+
 ## API authority and pin
 
 The implementation was checked against the installed **archinstall 4.5** source
@@ -20,7 +45,8 @@ The relevant upstream modules and calls are:
   filesystem_type=FilesystemType.EXT4, separate_home=False)`, an async function.
   With UEFI this proposes GPT, a 1 GiB FAT32 ESP starting at 1 MiB mounted at
   `/boot`, and an ext4 `/` using the remaining GPT-aligned space. No swap/home
-  partition, LVM, subvolumes, encryption, or custom partitioner is introduced.
+  partition, LVM, subvolumes or custom partitioner is introduced. `--encrypt`
+  adds LUKS2 to root through `config.disk_encryption`, not a different partitioner.
 - `DiskLayoutConfiguration(config_type=DiskLayoutType.Default,
   device_modifications=[modification])`, then
   `FilesystemHandler(config).perform_filesystem_operations()`.
@@ -54,7 +80,7 @@ need disposable-VM verification.
 ## Safety boundary
 
 The user enters a canonical whole-disk `/dev/NAME` path with no default, a username,
-and matching hidden passwords. Review displays packages, unencrypted layout, the
+and matching hidden passwords. Review displays packages, the chosen encryption layout, the
 entire non-secret canonical plan, and a whole-disk data-loss warning. Current
 source also includes the device-reported manufacturer, model, transport and
 removable flag alongside exact byte capacity in that review. Missing labels are
@@ -71,8 +97,9 @@ Schema: `schemas/installation-plan.schema.json`. The digest is `sha256-` plus th
 hex SHA-256 of UTF-8 JSON with sorted keys, compact separators, ASCII escaping and
 no NaN, excluding only `review_digest`. `plan_id` binds the reviewed effective
 package list, private input identity and full signed repository-transaction
-receipt. Encryption-enabled plans, optional package choices and codec
-selection are rejected rather than silently ignored.
+receipt. Optional package choices and codec selection are rejected rather than
+silently ignored. Encryption is a non-secret Boolean bound into plan and executor
+review; enabling it requires the distinct hidden passphrase before any disk writes.
 
 The initial probe and final pre-filesystem guard both require:
 

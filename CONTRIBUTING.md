@@ -1,15 +1,22 @@
 # Engineering guide
 
-> Rutine-QA/status: bruk eksisterende issue-/PR-kommentar etter Engineering Standards §12.1; ingen ny report-only-gren eller rapportcommit. Full rapport kreves fortsatt for vesentlige milepæler på eksisterende autorisert leveransegren. Dette avklarer rapporteringskravene nedenfor, uten å endre sikkerhets- eller godkjenningsgrenser.
-
-> Engineering- og rapporteringsreglene fra PR #52/#53 beholdes. Denne integrasjonskandidaten inkluderer Integration3-kilden fra PR #51; kjør bare relevante valideringskommandoer mot eksakt identifisert revisjon. Kildetester er ikke native-, sikkerhets-, ISO- eller fysisk aksept.
+> Current workflow authority: [AGENTS.md](AGENTS.md) and the [artifact lifecycle](docs/artifact-maintenance.md). Concise issue #16 close-out replaces historical per-session 12-part reports. Source checks do not imply native, ISO, security or physical acceptance.
 
 Wilsof is a safety-bounded desktop prototype. Prefer a small, reviewed change with direct evidence over a broad rewrite.
 
 ## Before changing code
 
+Hermes owns the [artifact lifecycle and end-of-sprint cleanup](docs/artifact-maintenance.md):
+Develop → Test → Deliver → Preserve essential evidence → Clean up → Continue.
+Every session records actual storage used/reclaimed, protected artifacts,
+remaining candidates, active/parked branches and PRs, and Daily Driver blockers.
+Cleanup requires exact successful-workflow manifests, read-only planning and an
+explicit approved target set; it never restarts paused automation or authorizes
+a privileged build. Reuse unchanged test evidence and avoid redundant reports.
+
 - Read the relevant Issue, comments, current branch/worktree state and this guide.
-- Work in an isolated branch or worktree. Do not overwrite another worker's changes.
+- Reuse the appropriate active branch; create a short-lived branch only for independently reviewable work. Never overwrite another worker's changes.
+- Reconcile completed PRs/issues before unrelated work; archive verified source refs before authorized branch retirement.
 - Trace the runtime path and check history before treating reported behavior as a defect.
 - Keep a single source of truth for a user-facing shortcut, setting or deployment manifest.
 
@@ -42,7 +49,7 @@ The standalone M1 profile CLI and its headless safety/recovery contract are docu
 
 ## Session close-out and GitHub reporting
 
-Every Hermes session, including blocked or documentation-only work, follows the [reporting standard](docs/development-reporting.md): update the checkpoint, write the full 12-part [Markdown report](docs/templates/DEVELOPMENT_REPORT_TEMPLATE.md), commit/push to the authorized branch with remote read-back, update the relevant status issue (#16), and finish with the direct GitHub report link in the terminal. Keep historical evidence separate from new verification. Preserve secrets and private host details locally. If publication is blocked, retain the complete local report and state exactly what was not published.
+Follow the [concise reporting standard](docs/development-reporting.md): retain private receipts, publish verified source changes on the existing delivery branch, and update the sole current dashboard (#16). Answer what works, what is broken, release blockers, next technical action and owner intervention. No report-only branch, repeated full report or duplicate status file. Verify external writes by exact read-back.
 
 This is synchronous normal close-out, not authorization to start a scheduler, worker, new QA round, test, VM, ISO build or installer. For documentation-only reporting, use factual/text/link/diff and sensitive-content checks; do not rerun the application checks above merely to fill the report. Existing review and acceptance boundaries remain. Do not start the next recommended task automatically.
 

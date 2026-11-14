@@ -7,6 +7,35 @@ installation requires a root terminal on booted Archiso, x86-64 and 64-bit UEFI.
 Known-enabled Secure Boot is refused; no keys are enrolled or firmware settings
 changed. Firmware without a SecureBoot variable is accepted, not certified.
 
+## Encrypted-root RC4 contract
+
+The exact RC4 image passed 66/66 virtual checks on November 13, 2026, including
+mandatory encrypted blank/replacement installation, cold unlock, normal login
+and encrypted recovery. See [Getting started](getting-started.md) for its full
+identity. Physical testing is in progress by the owner; individual results have
+not been reported. No physical installation is authorized by this document.
+
+Both normal CLI installation modes require encrypted root even without a flag.
+`--encrypt` is an optional explicit-intent spelling, not an opt-in gate. There is
+no plaintext installation CLI option. Earlier RC2 results did not establish
+this feature and are not its acceptance evidence.
+
+The source uses archinstall 4.5
+`DiskEncryption(encryption_type=EncryptionType.LUKS, ...)` on the ext4 root only,
+with the same config passed to FilesystemHandler and Installer.
+It retains an unencrypted FAT32 ESP, not encrypted boot or Secure Boot. Cryptsetup
+is included in the reviewed package closure. After formatting, a real LUKS2-header
+check must succeed before installation continues; there is no plaintext fallback.
+
+A separate hidden disk passphrase must match its confirmation, differ from the
+account password, and contain at least 12 printable ASCII characters (not all
+spaces). Boot unlock uses the US keymap. No passphrase is placed in the JSON plan,
+argv or environment; the retained backend passes it on stdin. There is no stored
+root-unlock keyfile, TPM enrollment or automatic recovery key. Back up the
+passphrase privately; a lost passphrase cannot be recovered by a login password.
+Python strings cannot be securely zeroized. Bounded RC4 virtual acceptance is not
+complete disk/secret/boot-security certification or physical acceptance.
+
 ## API authority and pin
 
 The implementation was checked against the installed **archinstall 4.5** source
@@ -20,7 +49,8 @@ The relevant upstream modules and calls are:
   filesystem_type=FilesystemType.EXT4, separate_home=False)`, an async function.
   With UEFI this proposes GPT, a 1 GiB FAT32 ESP starting at 1 MiB mounted at
   `/boot`, and an ext4 `/` using the remaining GPT-aligned space. No swap/home
-  partition, LVM, subvolumes, encryption, or custom partitioner is introduced.
+  partition, LVM, subvolumes or custom partitioner is introduced. `--encrypt`
+  adds LUKS2 to root through `config.disk_encryption`, not a different partitioner.
 - `DiskLayoutConfiguration(config_type=DiskLayoutType.Default,
   device_modifications=[modification])`, then
   `FilesystemHandler(config).perform_filesystem_operations()`.
@@ -48,25 +78,39 @@ Python cannot guarantee secret-memory zeroization. Backend logs remain local.
 Systemd-boot uses upstream configuration plus `bootctl --no-variables
 --esp-path=/boot install`; success requires `/boot/EFI/BOOT/BOOTX64.EFI`.
 The `bootloader_removable` flag is deliberately not used: upstream's flag is for
-GRUB/Limine, not systemd-boot. Boot, console login, DNS and session behavior still
-need disposable-VM verification.
+GRUB/Limine, not systemd-boot. RC4 has bounded boot/login/session evidence; physical
+firmware, connectivity and client behavior need their own reported results.
 
 ## Safety boundary
 
 The user enters a canonical whole-disk `/dev/NAME` path with no default, a username,
-and matching hidden passwords. Review displays packages, unencrypted layout, the
-entire non-secret canonical plan, and a whole-disk data-loss warning. Only the exact
-text `ERASE /dev/NAME` permits continuation. There is no unattended execution or
-execute-saved-plan option, automatic retry, SSH setup or automatic reboot.
+and matching hidden passwords. Review displays packages, the chosen encryption
+layout, the entire non-secret canonical plan, and a whole-disk data-loss warning.
+Current
+source also includes the device-reported manufacturer, model, transport and
+removable flag alongside exact byte capacity in that review. Missing labels are
+explicitly `not reported` (or null for the removable flag); transport/removability
+are not proof of physical location. JSON escapes terminal control characters;
+serial/WWN remain behind the private identity hash. These labels are bound into
+the plan digest and compared again before disk operations. The reviewed RC4 source
+contains these checks; device labels do not establish physical target identity
+or authorize hardware installation. Default blank installation requires the exact
+text `ERASE /dev/NAME`. The separate `--replace-existing` mode requires
+`REPLACE <path> <review_digest>`, binding confirmation to its reviewed plan.
+Neither confirmation grants physical-installation authorization. There is no
+unattended execution or execute-saved-plan option, automatic retry, SSH setup or
+automatic reboot.
 
 Schema: `schemas/installation-plan.schema.json`. The digest is `sha256-` plus the
 hex SHA-256 of UTF-8 JSON with sorted keys, compact separators, ASCII escaping and
 no NaN, excluding only `review_digest`. `plan_id` binds the reviewed effective
 package list, private input identity and full signed repository-transaction
-receipt. Encryption-enabled plans, optional package choices and codec
-selection are rejected rather than silently ignored.
+receipt. Optional package choices and codec selection are rejected rather than
+silently ignored. Encryption is a non-secret Boolean bound into plan and executor
+review; enabling it requires the distinct hidden passphrase before any disk writes.
 
-The initial probe and final pre-filesystem guard both require:
+For default blank installation only, the initial probe and final pre-filesystem
+guard both require:
 
 - A writable block disk >=16 GiB, no children, partition table, filesystem,
   wipefs signatures, mounts (including live media), or block-device holders.
@@ -77,11 +121,20 @@ The initial probe and final pre-filesystem guard both require:
   Large disks can take considerable time; cancellation before formatting is safe.
 - An empty, non-symlink, unmounted `/mnt/wilsof` target directory.
 
-The last probe is directly before `perform_filesystem_operations()`, with no
-further prompt. This is not an atomic protection against privileged concurrent
-writers, hotplug or adversarial device replacement; do not change storage during
-installation. Once filesystem operations begin, there is no rollback guarantee.
-Failures stop, leave mounts for inspection, and never reboot automatically.
+Replacement uses `probe_replacement`, not the all-zero blank-disk probe. It binds
+the stable target identity, supported direct partitions, signatures and bounded
+header fingerprints into the review. Mounted/in-use devices and live media are
+refused. The reviewed state is checked again before erasure, then the erased
+state is rechecked before filesystem operations. Existing data need not be zero;
+signature removal is not secure data sanitization. These are runtime contracts,
+not instructions or authorization to replace an owner's existing installation.
+
+The final filesystem guard runs directly before `perform_filesystem_operations()`,
+with no further prompt. This is not an atomic protection against privileged
+concurrent writers, hotplug or adversarial device replacement; do not change
+storage during installation. Once destructive operations begin, there is no
+rollback guarantee. Failures stop, leave mounts for inspection, and never reboot
+automatically.
 
 **Upstream side effect discovered:** importing `device_handler` instantiates a
 handler that scans all disks and can mount unmounted Btrfs partitions. This
@@ -141,8 +194,8 @@ in the target chroot. Host network credentials are not copied.
 full blank checks on memory streams, review/confirmation/password rejection,
 identity/size/mount changes, schema/digest restrictions, package names, lazy
 imports, safe read-only CLI, firmware and mocked archinstall success/failure paths.
-No test calls a real partitioner or filesystem operation. Real Arch dependency
-imports and installation need the parent's isolated-chroot helper/disposable VM;
-they are not validated by mocked tests. Source support and repository metadata
-do not establish native dependency/signature/loadability, installation, desktop
-or security acceptance. No scheduler or public release is activated.
+These fixture tests call no real partitioner or filesystem operation. RC4's real
+Arch dependency/install/boot checks have separate exact-image acceptance evidence;
+mocked tests do not establish those results themselves. Neither evidence class
+establishes physical compatibility, complete security certification or production
+trust. No scheduler or public release is activated.

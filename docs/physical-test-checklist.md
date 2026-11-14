@@ -1,62 +1,84 @@
-# Consolidated physical-only test checklist
+# RC4 physical Live test checklist
 
-Tracking: [status #16](https://github.com/tomli0/wilsof-os/issues/16),
-[startup bug #28](https://github.com/tomli0/wilsof-os/issues/28),
-[integration PR #27](https://github.com/tomli0/wilsof-os/pull/27).
-Use the exact candidate/checksum identified in the current QA checkpoint. A build
-or a successful VM test alone is not approval to install on physical hardware.
+Status: **owner testing in progress; individual results not yet reported**.
+This records the owner's current test activity, not a physical PASS. RC4 already
+passed 66/66 virtual checks on November 13, 2026. Do not rerun those checks merely
+to fill this checklist, and do not modify the ISO during evaluation.
 
-## One non-destructive live-USB boot
+Use only `2026.11.13-rc4-recovery-test-only`; verify the full image identity and
+SHA-256 in [Getting started](getting-started.md). Results from other candidates
+are not transferable. Wilsof remains **TEST ONLY**, not production-approved.
+Current decisions belong on [status #16](https://github.com/tomli0/wilsof-os/issues/16).
 
-1. Verify downloaded SHA-256 and the expendable USB's actual byte capacity before
-   writing it with a verified image writer. The agent does not write physical USBs.
-2. Select **Try Wilsof OS** in the firmware's UEFI boot menu. Keep the USB attached;
-   the default does not copy the rootfs to RAM and never starts installation.
-3. Observe the actual WS splash/activity/stage. Esc switches to boot details;
-   diagnostics is a separate no-splash menu entry. Record the exact failing text,
-   not an approximate service name, if startup fails.
-4. If the desktop fails, use Ctrl+Alt+F2. The local banner gives username `live`
-   and a new password for this boot; input is hidden. Do not retry empty-root login.
-   Run `sudo wilsof-live-recover` to view the relevant journals. A photo of the
-   final error lines is sufficient; exclude the generated credential banner.
-   `sudo wilsof-live-recover --restart` retries setup explicitly. Return to graphics
-   with Ctrl+Alt+F1. If even this console is unavailable, photograph the last boot
-   screen and stop; do not install or modify the internal disk as boot repair.
-5. In a working desktop, check wallpaper/bar, launcher opening/navigation/Escape,
-   Firefox, Files/Text Editor text and widgets, shortcut help and settings. Open
-   Install Wilsof only far enough to see its explicit target prompt, then cancel.
-   Do not select/erase an internal disk.
-6. Check actual keyboard/modifiers, touchpad, scaling/GPU outputs, Wi-Fi/Ethernet,
-   DNS and sound output/input. Record exact Mac model and device IDs where practical.
-   VM audio enumeration or software rendering does not establish hardware support.
-7. Shut down normally and record whether it completes. One concise report should
-   include ISO/checksum, hardware model, the failed checklist step and sanitized
-   error evidence. Do not send network passwords or personal identifiers.
+## Before booting
 
-The live evaluation session is deliberately unlocked. It is not an acceptable
-substitute for testing installed-user password locking. No physical installation
-is authorized by this checklist. Unsupported Secure Boot is not silently disabled.
+- Verify the ISO checksum and the identity of the expendable test USB privately.
+  Writing or rewriting a physical USB requires explicit confirmation of that
+  exact target; this checklist does not authorize an agent to write it.
+- Use the UEFI Live entry. Do not change firmware security settings to force a
+  pass, launch the installer, format storage or mount personal volumes writable.
+- Keep the media attached for the normal Live entry. RAM boot is a separate
+  selection; do not assume the normal entry copied everything into RAM.
+- Do not modify an existing operating system. This is Wilsof hardware evaluation,
+  not migration or replacement work.
 
-## Installed-system checks — separate approval and expendable target required
+## Checks and stop conditions
 
-Ordinary user login, actual password lock/unlock, idle lock, logout/reboot
-persistence, networking/audio, suspend/resume, update behavior and per-file recovery
-must be checked on an explicitly approved dedicated physical test disk. Full-disk
-formatting is not reversible; configuration-file backup is not full-system rollback.
+Record each item as PASS, FAIL, NOT TESTABLE IN LIVE or NOT RUN.
 
-## Existing issue-specific owner evidence
+1. **Boot and display.** Reach the real desktop; verify the internal display,
+   resolution/scaling, brightness and any essential external display. Stop on
+   boot failure, persistent corruption or an unusable input/display surface.
+2. **Keyboard and pointing device.** Check layout, modifier keys, trackpad,
+   scrolling, window focus and the essential shortcuts from Getting started.
+   Real physical key routing is not established by synthetic QMP input.
+3. **Desktop and applications.** Open Wilsof Menu, search, navigate and cancel;
+   check Ghostty, Firefox, Files, shortcut help and appearance settings. Do not
+   install packages, enable private-file indexing or select an installation disk.
+4. **Connectivity.** Check the actual Wi-Fi/wired connection, name resolution,
+   reconnect and required peripherals. Keep SSIDs, passwords, MAC addresses,
+   serial numbers and personal identifiers out of public reports. Virtual module
+   loading is not physical device binding or connectivity.
+5. **Audio and Bluetooth.** Check speaker/headphone output, microphone input and
+   any required Bluetooth pairing/reconnect. Report unavailable devices honestly;
+   a virtual dummy output is not physical acceptance.
+6. **Power and resume.** Check battery/charging, normal shutdown and, when safe,
+   manual/lid suspend and resume on AC and battery. Verify that display, input and
+   connectivity recover; stop for abnormal heat or repeated failure. Record the
+   actual lock behavior, not an assumed authenticated lock from an unlocked Live
+   session. Installed-user password/idle locking remains a separate test where
+   Live mode cannot exercise it.
 
-- #3: original reference-VM graphical persistence after authenticated login/reboot.
-- #4: real physical modifier/key routing; synthetic QMP input is not this test.
-- #5: power-menu navigation and cancellation; no power action on an owner session.
-- #6: idle-lock and actual password unlock; suspend is a separate observation.
-- #7: research is already integrated, but universal search/indexing is not shipped
-  or approved; do not treat this as a request to index private files.
-- #10: standalone unlocked screensaver preview is excluded from this ISO. Its
-  visual/pointer acceptance belongs to PR #20, not the live startup fix.
-- #17: physical power-profile availability and real battery/thermal behavior.
-- #18: physical lock-logo appearance on an installed ordinary account.
+## If the desktop fails
 
-Keep implementation/review blockers on their issues. Only genuinely physical or
-owner-session checks belong here. Do not mark a feature Done from this checklist
-until its full acceptance and review/integration gates have independently passed.
+Use the separate diagnostics entry or Ctrl+Alt+F2. The local console banner
+provides the current Live login; never publish its generated password or type
+credentials into chat. After normal local login, the shipped read-only diagnostic
+entrypoint is:
+
+```sh
+sudo /usr/local/bin/wilsof-live-recover
+```
+
+Preserve the exact error and relevant lines first. The helper's `--restart` option
+is an explicit desktop-setup retry, not a disk repair or proof the first boot
+passed. Do not use installation, formatting, firmware resets or unrelated-disk
+changes to repair a Live boot failure.
+
+## Minimal result report
+
+- Exact RC4 version and verified ISO checksum.
+- Hardware model and relevant non-identifying device/driver information.
+- Checklist item, result, reproducible steps and whether the issue repeats.
+- A sanitized photo/error excerpt if useful; exclude credentials and private data.
+
+Leave unreported checks unmarked. Report failures before trying workarounds that
+would change the test environment. The agent prioritizes those findings without
+changing this accepted image or accessing the owner's physical system.
+
+## Separate installed-system boundary
+
+Live results do not establish installed cold boot, disk unlock, ordinary-user
+password locking, persistence or installed recovery on physical hardware.
+Those checks need an explicitly authorized disposable target and a separate
+installation decision. No physical installation is authorized by this checklist.

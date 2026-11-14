@@ -49,7 +49,9 @@ def options(entry):
 def test_build_materializes_boot_experience_before_mkarchiso():
     build = (ROOT / 'scripts/build-iso.sh').read_text()
     assert 'scripts/boot-profile.py' in build
-    assert build.index('configure_boot') < build.index('exec mkarchiso')
+    # mkarchiso is no longer exec'd: the owning wrapper must finalize retention.
+    assert build.index('configure_boot') < build.index('\nmkarchiso -v ')
+    assert 'trap finish_storage 0' in build
 
 
 def test_menu_defaults_to_safe_live_boot_preserving_upstream_placeholders(tmp_path):

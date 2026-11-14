@@ -3,6 +3,24 @@ import importlib.machinery
 import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
+import pytest
+
+
+@pytest.mark.parametrize('directive', ['Requires', 'After'])
+def test_live_setup_waits_for_successful_upstream_keyring_bootstrap(tmp_path, directive):
+    import configparser
+    import runpy
+    upstream = tmp_path / 'upstream'
+    (upstream / 'airootfs').mkdir(parents=True)
+    (upstream / 'packages.x86_64').write_text('base\n')
+    output = tmp_path / 'profile'
+    runpy.run_path(str(ROOT / 'scripts/prepare-iso.py'))['prepare'](
+        upstream, output, ROOT, 'a' * 40)
+    unit = configparser.ConfigParser(interpolation=None)
+    unit.read(output / 'airootfs/etc/systemd/system/wilsof-live-setup.service')
+    assert 'pacman-init.service' in unit['Unit'][directive].split(), (
+        'Live provisioning must not race the upstream keyring tmpfs/init/populate; '
+        'both successful initialization and explicit ordering are required')
 
 ROOT = Path(__file__).resolve().parents[1]
 

@@ -1,0 +1,24 @@
+{
+  "component": "dux-shell",
+  "version": "2.0.0-1",
+  "upstream_commit": "9b413296b16721f7679fb62e624cb1ed2433fa58",
+  "packaging_commit": "7b536358865de9b2b3c2b4aeb4ce45f0dac20757",
+  "shared_qml_commit": "ebf5e6c002da1bdaa4aaa2f319fea7b8507abc42",
+  "source": "https://github.com/duxlabs-dev/dux-shell",
+  "packaging_source": "https://gitlab.archlinux.org/archlinux/packaging/packages/dux-shell",
+  "files": {
+    "LICENSE": "4cee96286c5b7da9763a4694868bb1853b33bb1558821e0c609ad2eabd426bfa",
+    "DCommon-MIT.txt": "a5b49222ed7b2e61fc82bc0d834be0729d9c4d4ed55798ff563c6ad0474178ad",
+    "ipp-Apache-2.0.txt": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "plasma-GPL-2.0.txt": "a7bee837b9d0591ab997f83ed9472de4a2d1edbb9ac45613aeb5090371a3edda",
+    "vsix-MIT.txt": "276619b7107e62a848ba4e4f64eaddff1d2edfa40f644d7bc69305660a32229a"
+  },
+  "upstream_paths": {
+    "LICENSE": "LICENSE",
+    "DCommon-MIT.txt": "dux-qml-common/LICENSE",
+    "ipp-Apache-2.0.txt": "core/pkg/ipp/LICENSE",
+    "plasma-GPL-2.0.txt": "quickshell/assets/sounds/plasma/LICENSE",
+    "vsix-MIT.txt": "quickshell/matugen/vsix-build/LICENSE"
+  },
+  "scope": "Supplemental upstream notices from the exact packaged source tag; not a complete transitive-license/legal/redistribution audit."
+}

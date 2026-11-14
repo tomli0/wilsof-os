@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import tempfile
@@ -29,6 +30,13 @@ def install_user(source, home, *, live=False):
                 raise RuntimeError(f'Refusing managed symlink: {relative}')
         return current
 
+    version_relative = '.local/state/wilsof-os/config-version.json'
+    version_path = confined(version_relative)
+    if version_path.exists():
+        version = json.loads(version_path.read_text())
+        if (not isinstance(version, dict) or type(version.get('schema_version')) is not int
+                or version['schema_version'] != 1):
+            raise ValueError('Unsupported Wilsof configuration schema; files preserved')
     live = live or confined('.local/state/wilsof-os/live-session').is_file()
 
     def write(relative, data, mode=0o644):
@@ -64,7 +72,7 @@ def install_user(source, home, *, live=False):
     for relative in ('.local', '.local/state', '.local/state/wilsof-os'):
         confined(relative).mkdir(mode=0o700, exist_ok=True)
 
-    for name in ('wilsof-about-info', 'wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-idle', 'wilsof-lock-session', 'wilsof-lock-observer', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-profile', 'wilsof-profile-ui', 'wilsof-shortcuts', 'wilsof-appearance'):
+    for name in ('wilsof', 'wilsof-about-info', 'wilsof-file-search', 'wilsof-search', 'wilsof-lock', 'wilsof-idle', 'wilsof-lock-session', 'wilsof-lock-observer', 'wilsof-help', 'wilsof-help-view', 'wilsof-doctor', 'wilsof-hardware-report', 'wilsof-vm-test-binds', 'wilsof-apply-wallpaper', 'wilsof-action', 'wilsof-shortcuts', 'wilsof-appearance'):
         write(f'.local/bin/{name}', (source / 'bin' / name).read_bytes(), 0o755)
     for name in ('wilsof.lua', 'wilsof.conf', 'hypridle.conf', 'hyprlock.conf', 'hyprlock-idle.conf'):
         write(f'.config/hypr/{name}', (source / 'config/hypr' / name).read_bytes())
@@ -79,7 +87,7 @@ def install_user(source, home, *, live=False):
         ('vm-test/wilsof-vm-test.lua', 'config/hypr/wilsof-vm-test.lua'),
     ):
         write(f'.local/share/wilsof-os/{name}', (source / origin).read_bytes())
-    for name in ('Mørk geometrisk bakgrunn med isblått WS-monogram.png', 'Wilsof OS-logo med geometrisk WS-monogram.png', 'Wilsof lock background.png'):
+    for name in ('Mørk geometrisk bakgrunn med isblått WS-monogram.png', 'Wilsof OS-logo med geometrisk WS-monogram.png', 'Wilsof lock background.png', 'ws-monogram.png'):
         write(f'.local/share/wilsof-os/assets/{name}', (source / 'assets' / name).read_bytes())
 
     # Ghostty is personal configuration, not an always-managed Wilsof override.
@@ -87,6 +95,22 @@ def install_user(source, home, *, live=False):
     ghostty = confined('.config/ghostty/config')
     if not ghostty.exists():
         write('.config/ghostty/config', (source / 'config/ghostty/config').read_bytes())
+
+    # Interactive terminal startup is appended once, preserving personal files.
+    write('.config/wilsof/terminal-start.sh', (source / 'config/terminal/start.sh').read_bytes())
+    fetch = json.loads((source / 'config/terminal/fastfetch.json').read_text())
+    fetch['logo']['source'] = str(home / '.local/share/wilsof-os/ws-ascii.txt')
+    write('.local/share/wilsof-os/fastfetch.json', (json.dumps(fetch) + '\n').encode())
+    write('.local/share/wilsof-os/ws-ascii.txt', (source / 'config/terminal/ws-ascii.txt').read_bytes())
+    terminal_entry = confined('.local/share/applications/com.mitchellh.ghostty.desktop')
+    if not terminal_entry.exists():
+        write('.local/share/applications/com.mitchellh.ghostty.desktop', (source / 'config/terminal/com.mitchellh.ghostty.desktop').read_bytes())
+    for rc in ('.bashrc', '.zshrc'):
+        path = confined(rc)
+        content = path.read_text() if path.exists() else ''
+        if '# WILSOF_MANAGED_TERMINAL_START' not in content:
+            content += '\n# WILSOF_MANAGED_TERMINAL_START\n[ ! -r "$HOME/.config/wilsof/terminal-start.sh" ] || . "$HOME/.config/wilsof/terminal-start.sh"\n'
+            write(rc, content.encode())
 
     app_shortcuts = confined('.config/hypr/wilsof-app-shortcuts.lua')
     if not app_shortcuts.exists():
@@ -105,8 +129,9 @@ def install_user(source, home, *, live=False):
     if not isinstance(plugin_data, dict):
         raise ValueError('DMS plugin settings must be an object; file preserved')
     original_plugins = dict(plugin_data)
-    for plugin in ('wilsofProfiles', 'wilsofCommandCenter'):
-        plugin_data.setdefault(plugin, {'enabled': True})
+    plugin_data.setdefault('wilsofCommandCenter', {'enabled': True})
+    if 'wilsofProfiles' in plugin_data:
+        plugin_data['wilsofProfiles'] = dict(plugin_data['wilsofProfiles'], enabled=False)
     if plugin_data != original_plugins:
         write(plugin_relative, (json.dumps(plugin_data) + '\n').encode())
 
@@ -118,8 +143,21 @@ def install_user(source, home, *, live=False):
         settings_relative = '.config/dms/settings.json'
     settings = confined(settings_relative)
     new_settings = not settings.exists()
-    if live or new_settings:
-        data = json.loads(settings.read_text() if settings.exists() else (source / 'config/dms/settings-template.json').read_text())
+    data = json.loads(settings.read_text() if settings.exists() else (source / 'config/dms/settings-template.json').read_text())
+    migrated = False
+    for bar in data.get('barConfigs', []):
+        owned_bar = any((w if isinstance(w, str) else w.get('id')) in ('wilsofProfiles', 'wilsofCommandCenter') for w in bar.get('leftWidgets', []))
+        for side in ('leftWidgets', 'centerWidgets', 'rightWidgets'):
+            widgets = bar.get(side, [])
+            for i, widget in enumerate(widgets):
+                if widget == 'workspaceSwitcher' and owned_bar:
+                    defaults = json.loads((source / 'config/dms/settings-template.json').read_text())
+                    widgets[i] = dict(defaults['barConfigs'][0]['leftWidgets'][1]); migrated = True
+                elif widget == 'wilsofProfiles':
+                    widgets[i] = 'wilsofCommandCenter'; migrated = True
+                elif isinstance(widget, dict) and widget.get('id') == 'wilsofProfiles':
+                    widgets[i] = dict(widget, id='wilsofCommandCenter'); migrated = True
+    if live or new_settings or migrated:
         if data.get('customThemeFile') in (None, '', '__WILSOF_THEME_PATH__'):
             data['customThemeFile'] = str(home / '.local/share/wilsof-os/wilsof-theme.json')
         data['customPowerActionLock'] = str(home / '.local/bin/wilsof-lock')
@@ -171,6 +209,12 @@ def install_user(source, home, *, live=False):
     if live:
         # A password-locked evaluation account cannot unlock PAM. Never claim it is locked.
         write('.local/bin/wilsof-lock', b'#!/bin/sh\nprintf "%s\\n" "Live evaluation is unlocked. Shut down when finished; do not enter private data."\n', 0o755)
+    # The legacy-to-v1 migration is the existing owned-file deployment above.
+    # Mark completion only after success; backups are not atomic rollback.
+    commit_path = source / 'SOURCE_COMMIT'
+    commit = commit_path.read_text().strip() if commit_path.is_file() else ''
+    record = {'schema_version':1, 'configuration_source_commit':commit if re.fullmatch(r'[0-9a-f]{40}', commit) else None}
+    write(version_relative, (json.dumps(record, sort_keys=True) + '\n').encode(), 0o600)
     return backup
 
 

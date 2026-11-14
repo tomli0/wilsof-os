@@ -24,9 +24,16 @@ def inventory(directory):
     return result
 
 
-def prepare(upstream, output, source, commit, *, hypridle_package=None):
+def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_package=None,
+            portal_test_only=False, build_version=None):
     private = runpy.run_path(str(source / 'runtime/private-hyprland.py'))
     private_record = private['load']()
+    portal = runpy.run_path(str(source / 'runtime/portal-package.py'))
+    if portal_test_only and portal_package is None:
+        raise ValueError('TEST ONLY mode requires the explicit portal package/manifest')
+    portal_mode = {'test_only': True, 'build_version': build_version} if portal_test_only else {}
+    portal_record = None if portal_package is None else portal['artifact'](portal_package, **(
+        portal_mode if portal_test_only else {'build_version': build_version}))
     if not re.fullmatch(r'[0-9a-f]{40}', commit):
         raise ValueError('An exact source commit is required')
     if output.exists() or output.is_symlink():
@@ -42,14 +49,42 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
         if (upstream / name).is_symlink():
             raise ValueError('Refusing releng input symlink')
     package = None
+    hypridle_signature = None
     if hypridle_package is not None:
         pin = runpy.run_path(str(source / 'runtime/pinned-package.py'))
         package = pin['verified_package'](hypridle_package.parent)
         if package != hypridle_package:
             raise ValueError('Exact verified Hypridle package filename required')
+        hypridle_signature = pin['detached_signature'](package, required=portal_test_only)
+    if portal_test_only and private_record is not None:
+        runpy.run_path(str(source / 'runtime/pinned-package.py'))['detached_signature'](
+            private_record['package'], required=True)
     if any((upstream / name).exists() or (upstream / name).is_symlink()
            for name in ('BUILD-SOURCE.json', 'BUILD-INPUTS.json', 'BOOT-CONTRACT.json', '.build-inputs', '.wilsof-boot-upstream')):
         raise ValueError('Refusing inherited reserved provenance path')
+    image_files = (source / 'runtime/image-files.txt').read_text().splitlines()
+    entrypoints = ('wilsof-install', 'wilsof-config-update', 'wilsof-session', 'wilsof-release-update')
+    if any('bin/' + name not in image_files for name in entrypoints):
+        raise ValueError('Required entrypoint missing from reviewed image manifest')
+    # Validate the complete reviewed payload before creating any output. In
+    # particular, the privileged updater must never become an optional input.
+    def reviewed_input(relative):
+        parts = Path(relative).parts
+        if not parts or Path(relative).is_absolute() or '..' in parts:
+            raise ValueError('Image manifest paths must be relative and contained')
+        origin = source
+        for part in parts:
+            origin /= part
+            if origin.is_symlink():
+                raise ValueError(f'Refusing source symlink: {relative}')
+        if not origin.is_file():
+            raise ValueError(f'Missing reviewed image input: {relative}')
+        if relative == 'bin/wilsof-release-update' and origin.stat().st_mode & 0o022:
+            raise ValueError('Refusing writable source updater')
+        return origin
+
+    for relative in image_files:
+        reviewed_input(relative)
     inputs = {'source_commit': commit, 'source': inventory(source), 'releng': inventory(upstream)}
     shutil.copytree(upstream, output, symlinks=True)
     with (output / 'BUILD-SOURCE.json').open('x', encoding='utf-8') as record:
@@ -65,6 +100,8 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     root = output / 'airootfs'
     snapshot = runpy.run_path(str(source / 'runtime/repository-snapshot.py'))
     snapshot['stage'](root)
+    runpy.run_path(str(source / 'runtime/notices.py'))['stage'](source, root)
+    runpy.run_path(str(source / 'runtime/broadcom-wl.py'))['stage'](root)
     (output / 'pacman.conf').write_text(snapshot['CONFIG'])
     (root / 'mnt/wilsof').mkdir(parents=True, exist_ok=True)
     for relative in ('root', 'etc/ssh', 'etc/systemd/network',
@@ -89,17 +126,8 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
 
     payload = root / 'usr/share/wilsof/source'
     payload.mkdir(parents=True)
-    for relative in (source / 'runtime/image-files.txt').read_text().splitlines():
-        parts = Path(relative).parts
-        if not parts or Path(relative).is_absolute() or '..' in parts:
-            raise ValueError('Image manifest paths must be relative and contained')
-        origin = source
-        for part in parts:
-            origin /= part
-            if origin.is_symlink():
-                raise ValueError(f'Refusing source symlink: {relative}')
-        if not origin.is_file():
-            raise ValueError(f'Missing reviewed image input: {relative}')
+    for relative in image_files:
+        origin = reviewed_input(relative)
         dest = payload / relative
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(origin, dest)
@@ -108,23 +136,36 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     (payload / 'FILES.sha256.json').write_text(json.dumps(sums, indent=2, sort_keys=True) + '\n')
     # Gate the installed image dependency even when preparing without a local package.
     customization = "import runpy; pin=runpy.run_path('/usr/share/wilsof/source/runtime/pinned-package.py'); pin['verify_arch_chroot_support'](); snapshot=runpy.run_path('/usr/share/wilsof/source/runtime/repository-snapshot.py'); snapshot['read']()"
+    customization += "; wl=runpy.run_path('/usr/share/wilsof/source/runtime/broadcom-wl.py'); wl['verify']()"
+    if portal_test_only:
+        customization += "; portal=runpy.run_path('/usr/share/wilsof/source/runtime/portal-package.py'); portal['prepare_test_trust']('/', '/usr/share/wilsof', build_version=" + repr(build_version) + ')'
     if package is not None:
         packages_dir = root / 'usr/share/wilsof/packages'
         packages_dir.mkdir(parents=True)
         shutil.copyfile(package, packages_dir / package.name)
-        customization += "; pin['install_package']('/', '/usr/share/wilsof/packages')"
+        if hypridle_signature is not None:
+            shutil.copyfile(hypridle_signature, packages_dir / (package.name + '.sig'))
+        customization += "; pin['install_package']('/', '/usr/share/wilsof/packages'" + (', require_signature=True' if portal_test_only else '') + ')'
     if private_record is not None:
-        private['stage'](private_record, root / 'usr/share/wilsof')
-        customization += "; private=runpy.run_path('/usr/share/wilsof/source/runtime/private-hyprland.py'); private['install']('/', '/usr/share/wilsof', required=True)"
+        private['stage'](private_record, root / 'usr/share/wilsof', require_signature=portal_test_only)
+        customization += "; private=runpy.run_path('/usr/share/wilsof/source/runtime/private-hyprland.py'); private['install']('/', '/usr/share/wilsof', required=True" + (', require_signature=True' if portal_test_only else '') + ')'
+    if portal_record is not None:
+        portal['stage'](portal_record, root / 'usr/share/wilsof')
+        customization += "; portal=runpy.run_path('/usr/share/wilsof/source/runtime/portal-package.py'); portal['install']('/', '/usr/share/wilsof'"
+        if portal_test_only:
+            customization += ', test_only=True, build_version=' + repr(build_version)
+        customization += ')'
+    customization += "; wl['discard_image_signing_key']()"
+    if portal_test_only:
+        customization += "; portal['seal_test_image'](build_version=" + repr(build_version) + ')'
     # Supported by pinned Archiso 91; removed from the image after execution.
     write('root/customize_airootfs.sh', '#!/bin/sh\nset -eu\npython3 -c "' + customization + '"\n', 0o755)
     lib = root / 'usr/local/lib/wilsof'
     lib.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source / 'runtime/provision-target', lib / 'provision-target')
     (lib / 'provision-target').chmod(0o755)
-    for name in ('wilsof-install', 'wilsof-config-update', 'wilsof-session'):
-        if (source / 'bin' / name).is_file():
-            write('usr/local/bin/' + name, (source / 'bin' / name).read_text(), 0o755)
+    for name in entrypoints:
+        write('usr/local/bin/' + name, (payload / 'bin' / name).read_text(), 0o755)
     shutil.copy2(source / 'runtime/desktop-packages.txt', root / 'usr/share/wilsof/desktop-packages.txt')
     if private_record is not None:
         desktop = (source / 'runtime/desktop-packages.txt').read_text().splitlines()
@@ -143,7 +184,7 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
     tty = root / 'etc/systemd/system/getty.target.wants/getty@tty2.service'
     tty.parent.mkdir(parents=True, exist_ok=True)
     tty.symlink_to('/usr/lib/systemd/system/getty@.service')
-    write('etc/systemd/system/wilsof-live-setup.service', '[Unit]\nDescription=Prepare ephemeral Wilsof live desktop\nRequires=wilsof-live-console.service\nAfter=systemd-sysusers.service local-fs.target wilsof-live-console.service\nBefore=greetd.service\nOnFailure=wilsof-live-failure.service\n[Service]\nType=oneshot\nExecStart=/usr/local/lib/wilsof/live-setup\nTimeoutStartSec=180\nRemainAfterExit=yes\n[Install]\nWantedBy=multi-user.target\n')
+    write('etc/systemd/system/wilsof-live-setup.service', '[Unit]\nDescription=Prepare ephemeral Wilsof live desktop\nRequires=wilsof-live-console.service pacman-init.service\nAfter=systemd-sysusers.service local-fs.target wilsof-live-console.service pacman-init.service\nBefore=greetd.service\nOnFailure=wilsof-live-failure.service\n[Service]\nType=oneshot\nExecStart=/usr/local/lib/wilsof/live-setup\nTimeoutStartSec=180\nRemainAfterExit=yes\n[Install]\nWantedBy=multi-user.target\n')
     write('etc/systemd/system/greetd.service.d/live.conf', '[Unit]\nRequires=wilsof-live-setup.service\nAfter=wilsof-live-setup.service\nOnFailure=wilsof-live-failure.service\n')
     write('etc/systemd/system/default.target', '')
     (root / 'etc/systemd/system/default.target').unlink()
@@ -163,6 +204,18 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None):
         link.symlink_to('/usr/lib/systemd/system/bluetooth.service')
     write('usr/share/applications/wilsof-install.desktop', '[Desktop Entry]\nType=Application\nName=Install Wilsof\nComment=Erase an explicitly selected empty test disk\nExec=ghostty -e sudo /usr/local/bin/wilsof-install\nIcon=system-software-install\nTerminal=false\nCategories=System;\n')
     write('etc/motd', 'Wilsof internal test image. Live evaluation is unlocked; do not enter private data. Install Wilsof from the launcher.\n')
+    if portal_test_only:
+        portal['label_test_root'](root)
+        launcher = root / 'usr/share/applications/wilsof-install.desktop'
+        launcher.write_text(launcher.read_text().replace('Name=Install Wilsof\n', 'Name=Install Wilsof TEST ONLY\n'))
+        # The prepared profile, not a later environment override, owns this
+        # nonproduction identity. mkarchiso must make the persistent opt-in root-owned.
+        with (output / 'profiledef.sh').open('a') as profile:
+            profile.write('\niso_name="wilsof-test-only"\niso_application="Wilsof TEST ONLY - production signing trust pending"\n'
+                          'iso_version="' + build_version + '"\n')
+            for path in (root / 'usr/share/wilsof').rglob('*'):
+                if path.is_file() and 'source' not in path.relative_to(root / 'usr/share/wilsof').parts:
+                    profile.write('file_permissions["/' + str(path.relative_to(root)) + '"]="0:0:644"\n')
 
 
 def main():
@@ -171,8 +224,12 @@ def main():
         parser.add_argument('--' + flag, type=Path, required=True)
     parser.add_argument('--commit', required=True)
     parser.add_argument('--hypridle-package', type=Path)
+    parser.add_argument('--portal-package', type=Path)
+    parser.add_argument('--portal-test-only', action='store_true')
+    parser.add_argument('--build-version')
     args = parser.parse_args()
-    prepare(args.upstream, args.output, args.source, args.commit, hypridle_package=args.hypridle_package)
+    prepare(args.upstream, args.output, args.source, args.commit, hypridle_package=args.hypridle_package,
+            portal_package=args.portal_package, portal_test_only=args.portal_test_only, build_version=args.build_version)
 
 
 if __name__ == '__main__':

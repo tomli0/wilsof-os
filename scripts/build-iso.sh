@@ -12,6 +12,7 @@ command -v mkarchiso >/dev/null 2>&1 || { printf '%s\n' 'build-iso: archiso is u
 : "${WILSOF_ISO_WORKDIR:?Dedicated absolute work directory required}"
 : "${WILSOF_ISO_OUTDIR:?Dedicated absolute output directory required}"
 : "${WILSOF_HYPRIDLE_PACKAGE:?Exact verified internal Hypridle artifact required}"
+: "${WILSOF_PORTAL_PACKAGE:?Exact portal backport archive and trusted detached signature required}"
 : "${SOURCE_DATE_EPOCH:?Fixed source/build epoch required}"
 : "${WILSOF_ISO_VERSION:?Explicit internal image version required}"
 upstream=${WILSOF_ARCHISO_RELENG:-/usr/share/archiso/configs/releng}
@@ -22,7 +23,7 @@ if [ ! -f "$root/SOURCE_COMMIT" ] || [ "$(cat "$root/SOURCE_COMMIT")" != "$WILSO
     printf '%s\n' 'Build from a verified git archive with its exact SOURCE_COMMIT marker.' >&2
     exit 65
 fi
-python3 - "$WILSOF_SOURCE_COMMIT" "$WILSOF_ISO_WORKDIR" "$WILSOF_ISO_OUTDIR" "$root" "$upstream" "$WILSOF_HYPRIDLE_PACKAGE" <<'PY'
+python3 - "$WILSOF_SOURCE_COMMIT" "$WILSOF_ISO_WORKDIR" "$WILSOF_ISO_OUTDIR" "$root" "$upstream" "$WILSOF_HYPRIDLE_PACKAGE" "$WILSOF_PORTAL_PACKAGE" <<'PY'
 from pathlib import Path
 from runpy import run_path
 import os, re, sys
@@ -51,7 +52,7 @@ if o.exists() and (not o.is_dir() or any(o.iterdir())):
     raise SystemExit('Output must be an empty directory')
 # The wrapper always supplies inputs; the shorter form supports guard-only tests.
 if len(sys.argv) > 4:
-    source, upstream, package = map(Path, sys.argv[4:])
+    source, upstream, package = map(Path, sys.argv[4:7])
     if not all(p.is_absolute() for p in (source, upstream, package)):
         raise SystemExit('Absolute source/releng/package paths required')
     for folder, names in ((source, ('SOURCE_COMMIT', 'runtime/pinned-package.py')),
@@ -77,15 +78,61 @@ if len(sys.argv) > 4:
     pin = run_path(str(source / 'runtime/pinned-package.py'))
     if pin['verified_package'](package.parent) != package:
         raise SystemExit('Exact verified internal Hypridle package filename required')
+    if len(sys.argv) > 7:
+        portal_package = Path(sys.argv[7])
+        portal = run_path(str(source / 'runtime/portal-package.py'))
+        if 'WILSOF_PORTAL_TEST_ONLY' in os.environ and os.environ['WILSOF_PORTAL_TEST_ONLY'] != '1':
+            raise SystemExit('WILSOF_PORTAL_TEST_ONLY must be the explicit value 1 or absent')
+        test_only = os.environ.get('WILSOF_PORTAL_TEST_ONLY') == '1'
+        version = os.environ['WILSOF_ISO_VERSION']
+        if version.endswith('-test-only') and not test_only:
+            raise SystemExit('TEST ONLY version requires explicit test-only mode')
+        record = portal['artifact'](portal_package, test_only=True, build_version=version) if test_only else portal['artifact'](portal_package)
+        suffixes = ('.sig', '.test-only.json', '.test-only.asc') if test_only else ('.sig', '.approval.json')
+        portal_inputs = (portal_package, *(Path(str(portal_package) + suffix) for suffix in suffixes))
+        if any(overlaps(p, i.resolve()) for p in paths for i in portal_inputs) or any(overlaps(source.resolve(), i.resolve()) for i in portal_inputs):
+            raise SystemExit('Portal artifacts must remain outside source and output trees')
     if not re.fullmatch(r'[0-9]{1,12}', os.environ['SOURCE_DATE_EPOCH']) or int(os.environ['SOURCE_DATE_EPOCH']) > 253402300799:
         raise SystemExit('Invalid fixed source/build epoch')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,63}', os.environ['WILSOF_ISO_VERSION']):
         raise SystemExit('Invalid internal image version')
 PY
+: "${WILSOF_ARTIFACT_CATALOG:?Pre-existing private host-wide retention catalog required}"
+: "${WILSOF_WORKFLOW_ID:?Unique owner workflow identifier required}"
+if [ -n "${WILSOF_HOST_BUILD_ADMISSION:-}" ]; then
+    python3 - "$root" "$WILSOF_HOST_BUILD_ADMISSION" <<'PY'
+import os, runpy, sys
+runpy.run_path(sys.argv[1] + '/scripts/artifact-lifecycle.py')['validate_build_admission'](
+    os.environ['WILSOF_ARTIFACT_CATALOG'], sys.argv[2], os.environ['WILSOF_WORKFLOW_ID'],
+    os.environ['WILSOF_SOURCE_COMMIT'], os.environ['WILSOF_ISO_WORKDIR'], os.environ['WILSOF_ISO_OUTDIR'])
+PY
+else
+    python3 "$root/scripts/artifact-lifecycle.py" build-begin \
+        --catalog "$WILSOF_ARTIFACT_CATALOG" --workflow "$WILSOF_WORKFLOW_ID" \
+        --source "$WILSOF_SOURCE_COMMIT" --work "$WILSOF_ISO_WORKDIR" --out "$WILSOF_ISO_OUTDIR"
+fi
+finish_storage() {
+    result=$?
+    trap - 0
+    if [ -n "${WILSOF_HOST_BUILD_ADMISSION:-}" ]; then
+        printf '%s\n' 'Host-admitted build exited; full host catalog finalization is REQUIRED by the owning supervisor.' >&2
+        exit "$result"
+    fi
+    python3 "$root/scripts/artifact-lifecycle.py" complete \
+        --catalog "$WILSOF_ARTIFACT_CATALOG" --workflow "$WILSOF_WORKFLOW_ID" --exit-code "$result" || result=1
+    python3 "$root/scripts/artifact-lifecycle.py" check --catalog "$WILSOF_ARTIFACT_CATALOG" || result=1
+    exit "$result"
+}
+trap finish_storage 0
 mkdir -p "$WILSOF_ISO_OUTDIR"
-python3 "$root/scripts/prepare-iso.py" --upstream "$upstream" \
+set -- --upstream "$upstream" \
     --output "${WILSOF_ISO_WORKDIR}-profile" --source "$root" --commit "$WILSOF_SOURCE_COMMIT" \
-    --hypridle-package "$WILSOF_HYPRIDLE_PACKAGE"
+    --hypridle-package "$WILSOF_HYPRIDLE_PACKAGE" --portal-package "$WILSOF_PORTAL_PACKAGE" \
+    --build-version "$WILSOF_ISO_VERSION"
+if [ "${WILSOF_PORTAL_TEST_ONLY:-}" = 1 ]; then
+    set -- "$@" --portal-test-only
+fi
+python3 "$root/scripts/prepare-iso.py" "$@"
 python3 - "$root" "${WILSOF_ISO_WORKDIR}-profile" <<'PY'
 from pathlib import Path
 from runpy import run_path
@@ -99,4 +146,4 @@ python3 "$root/scripts/build-inputs.py" "${WILSOF_ISO_WORKDIR}-profile" "$root"
 cp "${WILSOF_ISO_WORKDIR}-profile/BUILD-INPUTS.json" "$WILSOF_ISO_OUTDIR/BUILD-INPUTS.json"
 # Work may contain namespace-owned bind mounts for nested pacman CheckSpace.
 # Retain work/profile as evidence; later cleanup needs a separate mount check.
-exec mkarchiso -v -w "$WILSOF_ISO_WORKDIR" -o "$WILSOF_ISO_OUTDIR" "${WILSOF_ISO_WORKDIR}-profile"
+mkarchiso -v -w "$WILSOF_ISO_WORKDIR" -o "$WILSOF_ISO_OUTDIR" "${WILSOF_ISO_WORKDIR}-profile"

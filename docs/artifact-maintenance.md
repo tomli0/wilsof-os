@@ -1,0 +1,361 @@
+# Wilsof artifact maintenance
+
+## Default limits and storage admission
+
+| Resource | Default |
+| --- | --- |
+| Active ISO images | Two: accepted reference and current candidate |
+| Disposable QA disks | Two simultaneously; sequential QA preferred |
+| Active ISO workspace | One, including its derived profile |
+| Dedicated build pool | One protected regular backing file, exactly 32 GiB logical maximum |
+| Regenerable cache | 6 GiB per host-wide catalog |
+| Ordinary logs | Seven days, unless pinned to an unresolved issue |
+| Failure diagnostic bundle | 256 MiB per failure; larger unique evidence needs a documented exception |
+| ISO incremental allocation budget | 25 GiB: 16 GiB work, 6 GiB cache, 3 GiB output |
+| Emergency free-space reserve | 5 GiB in addition to the declared peak budget |
+| Source-check / two-disk QA budget | 1 GiB / up to 16 GiB by default; record the actual estimate |
+
+Default ISO admission needs 30 GiB currently available; budgets are preflight
+reservations and close-out checks, not filesystem quotas. Measure allocated bytes
+and peak concurrent requirements, not virtual disk capacity. Never expand storage
+to bypass cleanup. Historical protected exceptions need individual purpose,
+dependencies and retirement conditions; numeric limits do not authorize removal.
+
+Use one existing inventoried private catalog per host, never an empty replacement
+to hide existing resources. Normal CLI commands require an existing schema-1 catalog
+with `inventory_complete: true`, recorded only after real inventory/import; they
+never initialize it implicitly. Before allocation, register schema 1 with `owner`,
+`workflow`, `purpose`, `budget_bytes`, and `artifacts`. Every artifact has exact
+`path`, `kind` (`iso`, `qa-disk`, `build-workspace`, `build-pool`, `cache`, `log`, `evidence`),
+`classification`, `dependencies`, and `cleanup_condition`. Creation time is
+recorded automatically; small files inherit workflow custody. Only individually
+justified PROTECTED/ARCHIVE historical artifacts use `exception_reason`.
+
+    python3 scripts/artifact-lifecycle.py register --catalog /private/catalog.json --spec /private/workflow-spec.json
+    python3 scripts/artifact-lifecycle.py check --catalog /private/catalog.json
+
+Admission serializes writes, checks capacity plus concurrent reservations, and
+refuses excess slots or unresolved cache/log/evidence violations without deleting
+anything. The normal build wrapper requires `WILSOF_ARTIFACT_CATALOG` and unique
+`WILSOF_WORKFLOW_ID`, registers before materialization and seals on exit. Successful
+work with disposable output remaining is CLEANUP_PENDING, not a clean lifecycle;
+its occupied workspace blocks another build. After verified cleanup, call
+`complete --catalog ... --workflow ... --exit-code 0` and `check`.
+This is a cooperating-owner workflow, not protection against hostile root or
+catalog tampering. It grants neither build authorization nor artifact acceptance.
+
+For a root-isolated builder that cannot see historical host artifacts, the owning
+host supervisor must perform real `build-begin` admission while holding the
+existing project lock. `WILSOF_HOST_BUILD_ADMISSION` may then name a root-owned,
+mode-0400 receipt binding the exact catalog SHA256, active reservation, source,
+workflow and work/output paths. The build wrapper validates it without a second
+allocation or an incomplete sandbox inventory. The supervisor must finalize and
+check the actual host catalog after the finite build service exits, including
+failure/cancellation; the in-sandbox wrapper never claims host finalization.
+
+An owner-directed preservation build may retain a new workspace as PROTECTED
+with an individually documented `exception_reason` through the existing native
+registration/audit rules. Its root-owned mode-0400 admission receipt must then
+include exactly `preservation: {reason: <the identical exception_reason>,
+profile_classification: DISPOSABLE | PROTECTED}`. The validator binds that explicit
+choice to the full catalog digest, exact paths/source/workflow and unchanged
+25 GiB budget. Ordinary receipts retain their original DISPOSABLE contract.
+This does not authorize cleanup, reclassification of older artifacts, a different
+catalog, larger byte budgets or a smaller reserve; actual host admission still
+checks them before issuing the receipt. No retained artifact is deleted by this
+handoff, and protected intermediates require a later explicit retirement decision.
+
+## Bounded reusable pool admission (preparation, not native deployment)
+
+The host-only `pool_capacity(inner_available, host_available, backing_allocated,
+outstanding=0)` helper reconciles the proposed 32 GiB pool without changing the
+25 GiB build budget or existing 30 GiB admission threshold. A supervisor must
+first authenticate the dedicated mount/backing identity and take the established
+project lock. Supply both filesystems' actual `statvfs().f_bavail * f_frsize`
+and the backing file's `st_blocks * 512`, not its sparse logical length.
+
+Let P=32 GiB, B=25 GiB, Ei=5 GiB, X=3 GiB, Eo=5 GiB, A=already allocated backing
+bytes, R=new evidence/other unallocated outer reservations, and U=measured inner
+available bytes after filesystem metadata/reserved blocks/current occupancy.
+Admission requires U >= B+Ei = 30 GiB and host available >= P-A+X+Eo+R.
+Ei is already inside P; do not add it to the outer requirement. At first creation
+A=0, so the host needs at least 40 GiB plus R. On reuse A is already charged to
+host available and must not be counted twice. This helper is arithmetic, not a
+quota, mount certificate, catalog registration, or permission to create a pool.
+
+The pool backing has its own explicit 32 GiB reservation, not a larger ordinary
+build budget. Registration accepts only one PROTECTED `build-pool` artifact,
+exactly that budget and no preservation exception; a second pool is refused.
+Audit requires a regular single-link file of exactly 32 GiB logical length with
+no larger physical allocation. Native creation must independently authenticate
+the backing inode, loop limits and mounted filesystem. Keep its outstanding
+outer growth reserved until the owned build has verifiably exited, then account
+later QA separately. The backing must not be deleted/reset to reuse the pool.
+
+Reservations are attributed to the measured filesystem device. An outer backing
+reservation must not be charged again as pending inner allocation. Both devices
+still retain their own unchanged 5 GiB reserve; absence of native measurements
+is not permission to substitute an invented available-space value.
+
+For an empty pool with measured U0, pre-admission staging/cache must stay at or
+below U0-30 GiB. A persistent 6 GiB cache cannot fit that margin in any 32 GiB
+pool; keep frozen reconstruction inputs separately preserved and read-only.
+Register before materializing the new profile/cache. After a failed attempt,
+stop/reap its entire service and verify namespace/process exit, preserve failure
+receipts/logs/input pins/reproduction, then retire only exact approved duplicated
+intermediates. Reconcile catalog reservations honestly and use a fresh workflow
+ID and empty working paths. Unlink within a pool does not establish physical
+host reclamation: measure backing allocation again. No global trim, silent pool
+reset, automatic deletion, or retained ISO overwrite is allowed.
+
+The proposed pool still requires owner-approved physical-space recovery,
+filesystem creation, mount/isolation checks and a native repeated-failure test.
+Source/real-file fixture tests do not certify that deployment or ISO acceptance.
+
+## Ownership and lifecycle
+
+Hermes owns the end-of-session storage lifecycle:
+
+Develop → Test → Deliver → Preserve essential evidence → Clean up → Continue.
+
+This is part of normal sprint completion, not an unattended service. No timer,
+cron job, queue restart, automatic signing approval or privileged ISO build is
+created by this procedure. Routine status goes on the existing project issue;
+unchanged state does not need another report archive or report-only branch.
+
+The authoritative current project dashboard is
+[issue #16](https://github.com/tomli0/wilsof-os/issues/16).
+[Issue #60](https://github.com/tomli0/wilsof-os/issues/60) tracks the remaining
+Daily Driver acceptance gates, not a second general status history.
+
+## Retention rules
+
+| Class | Rule |
+| --- | --- |
+| ACTIVE | A process, mount, lock or ongoing workflow owns it; never remove. |
+| PROTECTED | Accepted reference/current candidate ISO, necessary backing image, pinned baseline, source/WIP, signing material, credentials, user data, shared dependency store or protected backup; never remove. |
+| ARCHIVE | Unique completed evidence suitable for an existing authorized archive; retain locally until verified transfer and an explicit retention decision. |
+| DISPOSABLE | Explicit completed successful workflow manifest, or the separately approved failed-build duplicate-only exception below; known identity, retained duplicate proof, no owner/backing/intermediate dependency. |
+| UNKNOWN | Missing identity, permissions, ownership, provenance or dependency evidence; retain. |
+
+Age is not a classification. A successful fixture may be disposable; a failed
+fixture is not disposable while its unique failure evidence is needed. Keep
+small sanitized receipts, exact inputs/hashes, exit codes and the minimal
+reproducer for unresolved defects. Raw credentials, journals and cores stay
+private. Source history belongs in Git; do not make another full source archive
+unless a real custody/build input requires it. Preserve uncommitted work.
+
+Keep the accepted reference ISO, current candidate and any older image still
+referenced by unresolved bugs or a pinned acceptance baseline. Old *unreferenced
+copies* may become candidates only after an explicit per-copy decision; ISO age
+or a successful newer build is not permission to remove them. Do not rotate
+images by a numeric count alone. Package signatures and production trust are
+never disposable test output.
+
+For important archives, verify an already authorized destination's identity and
+capacity, use a new collision-safe private path, independently compare SHA256
+manifests, and remove originals only when policy permits. A second directory on
+the same filesystem is not off-host archival. No NAS access, new mount,
+credential enrollment or backup pruning is implied.
+
+## Host-only CLI
+
+Run with the Python standard library; no application installation is needed:
+
+    python3 scripts/artifact-maintenance.py --policy /private/run/retention.json
+    python3 scripts/artifact-maintenance.py --policy /private/run/retention.json plan
+
+Both commands are read-only. Inventory reports exact metadata and allocated
+blocks; it does not infer disposability. Unlisted files stay UNKNOWN, and
+protected prefixes/pins override a manifest label. Plans refuse ambiguous
+candidates rather than silently weakening a guard.
+
+The version-1 policy is a private JSON object with these fields:
+
+- `roots`: exact, narrow, canonical absolute Wilsof-owned deletion roots.
+- `protected`: canonical paths/prefixes that must survive.
+- `pins`: objects containing a retained `path` and independently expected `sha256`.
+- `image_roots`: complete existing image-catalog roots, including historical and
+  stopped guests that may depend on any proposed target. These can extend beyond
+  deletion roots; nothing there is implicitly disposable.
+- `host_identity`: independently recorded trusted host `boot_id`,
+  `pid_namespace_inode`, `user_namespace_inode` and `proc_device`. Destructive
+  execution requires an exact match, authenticated UID 0, full initial UID mapping,
+  CAP_SYS_PTRACE/CAP_SYS_ADMIN, matching caller/PID1 namespaces, initial-namespace
+  parent checks and an unfiltered host procfs mount. Missing pins, nested or masked
+  procfs and unsupported visibility contexts fail closed before lock-file writes.
+  Do not manufacture this trust assertion from an unverified container's own view.
+- `locks`: the existing project/QA locks and any owning workflow lock. All writers
+  must cooperate with those same locks. Do not invent a new lock instead of the
+  established one. Before administrative apply, verify/precreate required workflow
+  locks under their correct workflow owner; do not leave a new root-owned lock in
+  an ordinary user's QA workflow. Never replace or change the identity/permissions
+  of a pre-existing lock as a shortcut.
+- `artifacts`: objects containing unique `id`, exact `path`, `classification`,
+  expected `sha256`, `workflow`, and a reconstruction `proof`.
+
+A disposable workflow normally has a nonempty `id`, `state: completed`,
+`result: success`, and `pending_acceptance: false`. A caller must establish those
+facts from retained workflow evidence; a JSON label is not self-authenticating.
+A failure or historical baseline is not made successful by changing a label.
+
+A completed failed build can instead propose independently duplicated
+intermediates with `result: failure` (never success), `pending_acceptance: false`
+for that intermediate's retirement, and an explicit `retirement` object:
+`scope: duplicate-intermediates-only` and `evidence` with exactly `failure`,
+`inputs`, `log`, and `reproduction` path/SHA256 objects. Every evidence file must
+be independently pinned outside the deletion target set. The retained schema-1
+failure receipt must name the exact `workflow`, `result: FAIL`, and original
+nonzero integer `exit_code`. The normal duplicate, process/mount, backing,
+policy/plan/target approval and durable audit guards remain mandatory. This
+read-only planning exception does not stop a service, certify namespace exit,
+authorize deletion, mutate the original outcome, or release a catalog slot.
+Do not apply it to unique failure-state data or unresolved intermediate dependencies.
+After an approved apply, separately reconcile the exact stopped workflow's catalog
+custody; never call `complete --exit-code 0` to release a failed build.
+
+A proof has a retained `path` and the candidate's expected content `sha256`.
+Ordinary proofs are independently retained duplicate files. For immutable
+archive members, add an absolute archive `member` and optionally
+`format: squashfs`; the default format is ISO. Archive files must be independently
+pinned. The tool streams the actual member through xorriso or unsquashfs and
+compares its bytes, without extracting into the host tree. Only these two
+explicit archive formats are supported. Actual QEMU backing inspection requires
+`qemu-img`. Missing tools and unreadable catalogs are refusals, not clearance.
+
+An approved plan includes the policy digest, target inode/device/mode/owner/link
+count/timestamps/size/allocated blocks and content digest, retained proof, pins,
+and backing catalog. Review the exact target set, not just the total size.
+
+Execution needs all explicit approvals and a new private audit directory:
+
+    python3 scripts/artifact-maintenance.py --policy /private/run/retention.json apply \
+      --approve-policy POLICY_SHA256 --approve-plan PLAN_SHA256 \
+      --targets-file /private/run/approved-target-ids.json --audit /private/run/new-audit
+
+The targets file is a JSON array of the exact artifact IDs in the reviewed plan.
+The command is an interface example, not approval to run an arbitrary policy.
+Full procfs visibility is required for execution. When ordinary permissions hide
+other users' descriptors/mappings/mount namespaces, stop for normal owner
+administrative authentication; do not bypass it. Never run an ISO build merely
+to obtain cleanup permission. Keep approval and source digests outside mutable
+workflow output when preparing an authenticated owner handoff.
+
+## Safety and interruption
+
+Execution takes every configured lock nonblocking, rebuilds the plan, verifies
+its digest and exact selected IDs, checks processes/mappings/mounts, reads QEMU
+backing chains and pins, and rechecks each target and retained proof immediately
+before unlink. Ancestors are opened with directory FDs and `O_NOFOLLOW`; deletion
+is a file-only `unlink` relative to the verified parent FD. Hardlinked targets,
+source repositories, directories, changed identities, pinned paths and missing
+proofs are refused. No recursive tree deletion is implemented.
+
+This is an administrative/cooperating-workflow tool, not a security boundary
+against a malicious same-owner process or hostile root continuously renaming
+ancestors. Keep roots stable under the owning locks. Ensure the image catalog is
+complete: a manifest cannot prove that an undisclosed disk outside the configured
+catalog has no backing dependency.
+
+The private `events.jsonl` is exclusively created. Every intent is flushed and
+fsynced before unlink, every successful unlink is followed by parent-directory
+fsync and a durable receipt, and normal interruption records ABORTED. Terminating
+signals stop further deletion and allow bounded audit/FD unwinding. SIGKILL or
+power loss can leave a last INTENT without REMOVED: inspect that exact path and
+inode against the log before creating a new plan. Never replay an old approval
+or assume rollback. A changed/partially applied plan is refused. Existing audit
+directories are never overwritten.
+
+The final receipt distinguishes allocated bytes unlinked from the exact observed
+filesystem available-space delta. Concurrent log/cache growth, delayed allocation,
+shared extents or other writers can make those differ. Do not call a dry-run
+estimate reclaimed storage. Independently compare original path inventories,
+protected checksums, backing catalogs and source status after real execution.
+
+Removing duplicate unpacked package payload from a completed build root leaves
+that root NOT READY for chroot/build reuse, even when its package DB is preserved.
+Rematerialize from its exact source/package manifest or retained immutable image;
+never use the retained DB as evidence that pruned files still exist.
+
+## Producer integration: bounded post-test cleanup
+
+New QA producers must register retention before allocating a disk. Use the host-only
+helper (not an image payload or an unattended cleaner):
+
+    python3 scripts/qa-retention.py begin --run-root /private/new-qa-run --spec /private/run-spec.json --catalog /private/catalog.json
+
+First reserve every exact output path/classification in the host-wide lifecycle catalog; the CLI refuses an absent admission. Registered CLI finalization seals that catalog too. The schema-1 QA spec contains a unique `run_id`, exact 40-character `source_commit`,
+independently pinned `inputs` (`path`/`sha256`), and explicit relative `outputs`
+(`path`/`classification`). The run directory must not exist. It is created private,
+with an exclusive, fsynced `retention-start.json` and ACTIVE state. Declare reference
+or current candidate disks PROTECTED; unresolved/unique evidence is ARCHIVE or
+PROTECTED. Only independently reconstructed/duplicated temporary outputs may be
+DISPOSABLE. A passing test does not make its installed acceptance baseline disposable.
+Keep deletable outputs in a strict subdirectory such as `artifacts/`, with evidence
+outside it. Unknown/unlisted output stays retained.
+
+The producer remains responsible for its finite QEMU supervisor, existing QA lock,
+normal shutdown and verified process exit. After stopping it, write a schema-1 result
+with matching `run_id`, integer `exit_code`, Boolean `timed_out` and
+`pending_acceptance`, and named `checks`. Each PASS check needs retained evidence
+objects with exact absolute `path` and `sha256`. Hashes bind evidence; they are not
+independent certification of a producer's PASS claim. Review the actual test receipts.
+Then call:
+
+    python3 scripts/qa-retention.py finish --run-root /private/new-qa-run --result /private/new-qa-run/test-result.json --policy /private/new-qa-run/cleanup-policy.json --seconds 120
+
+A failure, timeout, pending acceptance or absent cleanup policy writes RETAIN and
+never invokes maintenance. An eligible success rechecks input and evidence identities,
+restricts all targets to declared disposable outputs of that exact run, preserves
+other outputs and receipts as protected pins, and runs the existing real maintenance
+planner in a separate process group with a 1–300-second bound. Timeout/cancellation
+stops that owned group, including proof readers. TERM/HUP/INT unwind through the
+same cleanup; repeated signals cannot interrupt its bounded stop, and original
+handlers are restored. Uncatchable SIGKILL or host loss cannot guarantee immediate
+cleanup: reconcile recorded processes before another attachment or retry.
+Failed plans retain files and their
+partial preparation; they never apply or silently retry. Existing completion receipts
+cannot be overwritten or replayed. If local finalization succeeds but the catalog
+completion refuses (for example a busy lock), preserve that receipt, inspect its
+real result and reconcile with explicit lifecycle `complete`/`check`; never rerun
+or overwrite the QA finalizer to manufacture a clean result.
+
+A successful finalizer writes `cleanup-policy.frozen.json`, `cleanup-plan.json`,
+`cleanup-targets.json` and `retention-finish.json` with CLEANUP_REVIEW_REQUIRED.
+It does not delete, invent approval, grant root, enroll keys or claim reclaimed bytes.
+Review the exact outputs and independent proofs; apply the frozen policy with the
+existing explicit policy/plan/target approvals, normal authenticated host inspection
+and a finite supervisor. Read the actual audit back before reporting cleanup.
+This is the normal post-test close-out step, not an optional age-based cache sweep.
+
+The helper is source/fixture-tested, including actual CLI planning, failed/pending
+refusals and descendant termination. Retrofitting a historical supervisor or
+retiring an existing installed disk still needs its own verified retention decision;
+no historical guest is silently reclassified by introducing this helper.
+
+## Normal sprint contract
+
+1. Before allocating space, inspect existing evidence, source/input digests,
+   storage, processes and locks. Reuse a test result only when its actual inputs
+   and required environment are unchanged; keep native/ISO/physical gates distinct.
+2. Use one new exclusive build/test directory per real attempt. Write its private
+   retention manifest at creation. Record bounded QEMU supervisor lifetime,
+   shutdown interface, backing parents and owning QA lock; no detached orphan.
+3. After delivery, preserve exact essential receipts and unresolved failure
+   evidence first. Mark successful disposable outputs as candidates; failed builds
+   require the explicit pinned duplicate-only exception above, never a PASS rewrite.
+4. Generate/review a read-only maintenance plan. Execute only that explicit
+   approved policy/target set within current owner authorization, then verify
+   actual storage and preservation. Do not auto-prune shared package stores.
+5. Record storage used/reclaimed, protected artifacts, remaining candidates,
+   active/parked branches and PRs, Daily Driver blockers and one next gate in the
+   existing current status. Do not create duplicate issues or reports.
+6. Stop owned tests/guests, verify locks available, and leave paused automation
+   paused. Execute owner-authorized retirement of verified obsolete branches/worktrees
+   in the same maintenance session, retaining original refs in verified archive tags
+   and a checked bundle. Preserve active PR head/base refs and unique WIP. No force
+   push, history rewrite, unverified merge, tag deletion or release publication.
+
+The owner-facing close-out must name actual storage/access blockers, not hide
+unreclaimed data behind a cleanup estimate. A trust or privilege gate is a reason
+to checkpoint and stop expensive work, not retry unchanged builds or tests.

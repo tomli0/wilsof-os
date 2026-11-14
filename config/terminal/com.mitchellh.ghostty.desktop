@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal
+Comment=Ghostty terminal emulator
+Exec=ghostty
+Icon=com.mitchellh.ghostty
+Terminal=false
+Categories=System;TerminalEmulator;
+StartupNotify=true

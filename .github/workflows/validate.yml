@@ -2,9 +2,9 @@ name: Validate
 
 on:
   push:
-    branches: [arch-install, integration/internal3-20261030, stabilization/internal4-20261030, fix/internal4-completion, feat/command-center-20261031, feat/modern-terminal-20261031]
+    branches: [main, arch-install, integration/private3-20261107, issue-10-ws-screensaver-prototype, issue-16-project-sync]
   pull_request:
-    branches: [main, integration/internal-iso-20261026, integration/internal3-20261030, stabilization/internal4-20261030, fix/internal4-completion, feat/command-center-20261031, feat/modern-terminal-20261031, integration/integration3-main-20261103]
+    branches: [main, arch-install, integration/private2-20261107, integration/private3-20261107]
 
 permissions:
   contents: read
@@ -18,7 +18,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install ShellCheck
-        run: sudo apt-get update && sudo apt-get install --yes shellcheck
+        run: |
+          sudo /usr/bin/bash -c 'printf "%s\n" https://archive.ubuntu.com/ubuntu/ https://security.ubuntu.com/ubuntu/ > /etc/apt/apt-mirrors.txt'
+          sudo apt-get --error-on=any update
+          sudo apt-get install --yes shellcheck qemu-utils xorriso squashfs-tools
       - name: Install test dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
       - name: Run local checks

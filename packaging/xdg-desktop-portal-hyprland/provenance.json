@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "upstream_tag": "v1.4.1",
+  "upstream_commit": "cc8e5ef8fb2acef3db488b9a33b0c48c2a4ee204",
+  "fix_commit": "0121b2e3f85c7ebf6280173f1054f7e5606262d1",
+  "upstream_fix": "https://github.com/hyprwm/xdg-desktop-portal-hyprland/pull/443",
+  "source_archive_sha256": "552291da7b076bd8f352f2052407df5c016fc5bba78ca69071dc2c52e2508748",
+  "sha256": {
+    "wayland-teardown.patch": "12bae42d345321bae415cc9c6b709c6a0996eee220e8a5a1868386d467140f6a",
+    "teardown.cpp": "785a6785cff0160c62c711c223bfc631d4225919f33fdf2ff2150f2ddc99bd93",
+    "run.py": "79bad72b4cd1444f715819a1acd6c581f36a44d1cd2a673261f1612376042af9",
+    "upstream-LICENSE": "91dd54e73712ac66eeddd06f0c79325d9e38a57eabe89430c6495ec064a9be23"
+  },
+  "scope": "Native source backport. New ISO, signing/trust and image/target integration are separate gates."
+}

@@ -77,8 +77,8 @@ that no prohibited code has ever been used.
 - Externally supplied compositor: the original native-build custody records were
   recovered. All 1,341 files in the retained pristine archive match the pinned
   direct Hyprland Git tree. Source archive, local patch, recipe and package hashes
-  match those records, and the package embeds the recorded patch. This verifies
-  that retained build's input lineage, not a new measurement of the RC4 ISO.[22]
+  match those records, and the package embeds the recorded patch. The follow-up
+  below also binds that retained package, patch and executable to exact RC4.[22]
 - Archiso: all ten retained v91/v92 fixture files were fetched directly from the
   recorded upstream URLs and matched both recorded and local SHA-256 values.
   They are test fixtures, not a new image build. The v91 KMS, kernel-entry and
@@ -101,6 +101,38 @@ See the retained [Dux notices](../assets/notices/dux-shell-2.0.0/PROVENANCE.json
 [portal provenance](../packaging/xdg-desktop-portal-hyprland/provenance.json) and
 [Archiso fixture provenance](../tests/fixtures/archiso-provenance.json).
 
+## Exact RC4 compositor binding
+
+A read-only follow-up on November 14, 2026 closed the component-level
+package-to-image gap. The earlier search of 109 retained JSON receipts was
+inconclusive; it was not evidence that the underlying inputs were missing.
+The follow-up read selected members directly from the original accepted ISO:
+
+1. The full ISO SHA-256 matched the accepted RC4 identity in
+   [Getting started](getting-started.md). Its descriptor-bound identity, size,
+   ownership, mode and modification/change timestamps were unchanged throughout.
+2. The embedded private-package manifest matched its marker digest and the
+   retained native-build package/executable identities. The actual embedded
+   package archive hash matched the independently rehashed retained archive.
+3. The archive's package name, version and architecture matched the manifest.
+   Its actual compositor executable and the live rootfs `/usr/bin/Hyprland`
+   matched the same retained binary digest. The archive's embedded local patch
+   matched the original patch digest as well.
+4. The retained source archive, patch and build recipe were rehashed against
+   their custody record, reusing the earlier direct-upstream tree comparison.
+   The image's runtime source marker still named the accepted RC4 source commit.
+
+Inspection used a read-only regular-file descriptor, the ISO-recorded SquashFS
+byte offset and selected standard-tool stdout. It created no mount, extracted
+rootfs, package copy on disk, guest, package transaction or new ISO. Private
+package pins, custody locators and patch contents remain outside this document.
+
+This binds the retained build records and compositor bytes to the exact live
+image. It is not an independently reproduced build, an originality certificate,
+a fresh installed-target test or professional security approval. Broader source
+and licensing coverage remains open below; the existing virtual results are
+unchanged and no physical PASS is inferred.
+
 ## Open evidence gaps
 
 1. **Initial originality.** The recovered generation records strengthen the
@@ -108,15 +140,7 @@ See the retained [Dux notices](../assets/notices/dux-shell-2.0.0/PROVENANCE.json
    unrecorded input influenced the code. The prototype has no independent full
    historical-payload byte comparison in this review. Do not turn generation
    records into an absolute authorship certificate.
-2. **Exact-image compositor binding.** The recovered native build has verified
-   direct-upstream archive/patch/recipe/package lineage. The public
-   [input contract](private-experimental-packages.md) binds archive/executable
-   identity, not complete source provenance. A bounded search of 109 retained
-   local RC4 JSON receipts did not expose the exact recovered package/binary
-   digests. Reconcile that original build with the exact image's private producer
-   contract before claiming full image-source provenance; this does not imply
-   missing evidence elsewhere. No private artifact, locator or patch is published.
-3. **Transitive inputs and licensing.** Commit/pin/notice checks are not a review
+2. **Transitive inputs and licensing.** Commit/pin/notice checks are not a review
    of every dependency's source history or a complete redistribution assessment.
    No project-wide license file is present in the reviewed tree. Do not invent a
    blanket license grant or treat upstream notices as licensing Wilsof's own code.

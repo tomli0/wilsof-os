@@ -84,8 +84,15 @@ merge the integration branch, or change the accepted image.
   installation boundaries, and essential shortcuts.
 - [Update and recovery design](docs/update-transition.md) — signed snapshot
   transitions, fail-closed checks, and explicit repair.
-- [Contributing](CONTRIBUTING.md) — development and verification workflow.
+- Development workflow: [engineering guide](CONTRIBUTING.md) and
+  [quality audit](docs/quality-audit.md) (historical findings).
 - [Engineering standards](docs/ENGINEERING_STANDARDS.md) — project quality rules.
+
+Developer check for the Bash ISO profile:
+
+```sh
+shellcheck --shell=bash iso/profiledef.sh
+```
 
 Wilsof builds on Arch Linux, Hyprland, Dux/DankMaterialShell, Ghostty, and other
 upstream projects. Their licenses and notices remain applicable; binary

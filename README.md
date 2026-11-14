@@ -1,83 +1,99 @@
 # Wilsof OS
 
-Wilsof OS is an early Arch Linux-based desktop prototype focused on a clean, keyboard-first experience. It combines Hyprland and DankMaterialShell with a consistent visual identity, a unified launcher and a minimal set of everyday applications.
+![Wilsof OS wordmark](docs/assets/readme/header.png)
 
-The goal is to make a tiling desktop easy to navigate, with discoverable controls and practical keyboard shortcuts.
+An Arch-based desktop built around your keyboard. Hyprland, a unified Wilsof Menu,
+and a restrained charcoal-and-ice-blue workspace.
 
-Wilsof is under active development. It is not yet a production-ready distribution or a standalone installation image.
+[Desktop](#the-desktop) · [Installation](#try-wilsof) ·
+[Status](#project-status) · [Documentation](#documentation)
 
-## Current prototype
+> **TEST ONLY — not production-ready.** RC4 passed 66/66 virtual acceptance checks.
+> Physical hardware acceptance and production approval are still pending.
+> Do not replace your existing system or use Wilsof for production workloads.
 
-- Arch Linux, greetd/tuigreet, Hyprland and DankMaterialShell (DMS).
-- An intentionally empty desktop using the approved WS wallpaper, charcoal `#14181E`, ice-blue `#86B9CE`, thin window borders and restrained rounding.
-- A minimal top bar for workspace orientation, time and essential system status.
-- `Super+Space` opens the single DMS Spotlight entry. Empty search starts with installed applications; supported local categories expose applications, DMS tools/settings and files when `dsearch` is installed. It is not yet a complete universal search for open windows or every system action.
-- `Super+I` opens DMS Settings.
-- `Super+F1` opens local shortcut help generated from Wilsof's shared shortcut manifest in DMS Notepad.
-- `Super+L` and Hypridle call the same idempotent Hyprlock wrapper. The lock configuration and PAM wiring are present; real password unlock remains a manual check.
-- Firefox, Ghostty, Nautilus, GNOME Text Editor, Papers, Loupe and VLC are part of the test-VM package set. Ghostty remains the standard terminal; its actual active-session launch is verified on VM 113.
-- `wilsof-doctor` is a read-only development/support check for dependencies, Wilsof-owned files, session units and relevant log locations.
-- [`docs/iso.md`](docs/iso.md) describes the internal-only Archiso test-image profile and its safety limits; no ISO is bundled or published.
+## The desktop
 
-## Screenshots from the Arch test session
+![Wilsof RC4 Live desktop with the WS wallpaper and workspace bar](docs/assets/readme/desktop.webp)
 
-![Wilsof application launcher](evidence/vm113-2026-10-16-launcher-apps.png)
+### A focused foundation
 
-![Wilsof settings](evidence/vm113-2026-10-16-settings.png)
+- **Keyboard-first workflow.** Hyprland workspaces, shared shortcuts, and fast
+  navigation through a single Wilsof Menu.
+- **One place to start.** Local application and action search, nested categories,
+  appearance controls, and explicit confirmation for power actions.
+- **Familiar applications.** Ghostty, Firefox, and Files in a consistent dark
+  environment.
+- **Deliberate installation and maintenance.** Mandatory LUKS2-encrypted root,
+  explicit target confirmation, and signed-snapshot update checks that refuse
+  incomplete or inconsistent proposals.
 
-![Wilsof shortcut help](evidence/vm113-2026-10-16-help.png)
+### Launcher
 
-![Wilsof lock surface](evidence/vm113-2026-10-16-lock.png)
+Search applications and actions without leaving the keyboard.
 
-These are screenshots of the running Arch VM, not the browser prototype in `prototype/`.
+![Wilsof Menu searching for Terminal and showing Ghostty](docs/assets/readme/launcher.webp)
 
-## What is implemented, and what is not
+### Terminal
 
-The application launcher, settings entry, local help renderer, optional VM fallback bindings, theme, wallpaper, active binding layer and installer guards are implemented in the prototype.
+Ghostty with Wilsof branding. The capture shows real, software-only Fastfetch output.
 
-The launcher is deliberately application-focused today. Its DMS UI exposes upstream categories, but Wilsof does not claim tested local-file search, open-window search, aliases in Norwegian and English, or system-power actions through that launcher. The physical MacBook → Omarchy → Proxmox keyboard path, Escape/Enter behavior, PAM unlock, idle-lock observation, logout/login and reboot persistence need direct manual verification.
+![Ghostty displaying the Wilsof ASCII mark and actual desktop software versions](docs/assets/readme/terminal.webp)
 
-See [the current status](docs/status.md), [test plan](docs/testplan.md) and [known deviations](docs/avvik.md) for evidence and limits.
+### Settings
 
-## Trying the isolated test VM
+Wallpaper, colors, and visual preferences in the native settings interface.
 
-The repository contains the intended configuration and test-VM scripts; it does not contain credentials, a disk image or an installer release. Use only an authorized disposable Arch VM and follow [the VM runbook](docs/vm-runbook.md). The user-profile installer has an explicit `WILSOF_TARGET_VM=1` guard and only manages Wilsof-owned files in the target user's home directory:
+![Wilsof appearance settings showing the dark theme and wallpaper controls](docs/assets/readme/settings.webp)
 
-    WILSOF_TARGET_VM=1 /opt/wilsof-os/scripts/install-user-config.sh
+All four images are authentic 1280 × 800 captures from the exact RC4 image in a
+separate, diskless Live session—not mockups. They are losslessly optimized;
+[image provenance](docs/assets/readme/README.md) records the source and scope.
 
-The optional VM fallback layer is for clients that intercept Super before it reaches the guest:
+## Try Wilsof
 
-    wilsof-vm-test-binds enable
-    wilsof-vm-test-binds disable
+Start with a disposable **x86_64 UEFI virtual machine**, not your everyday computer.
+There is no public ISO release or production installation path yet.
 
-It adds only `Ctrl+Alt+Space`, `Ctrl+Alt+L`, `Ctrl+Alt+I` and `Ctrl+Alt+F1`; it does not replace the standard Wilsof bindings.
+The [getting-started guide](docs/getting-started.md) covers the accepted image
+identity, checksum verification, Live mode, keyboard shortcuts, and the boundaries
+for installation on a blank virtual disk. The installer encrypts the root
+filesystem with LUKS2; the EFI System Partition remains unencrypted.
 
-## Everyday use
+Keep your current OS and data intact. Physical installation requires separate
+hardware, backup/restore, trust, and owner-approval gates.
 
-The English [user guide](docs/brukerveiledning.md) covers opening applications, settings, help, workspaces, locking, power actions and the VM fallback layer. Architecture and design boundaries are documented in [architecture](docs/arkitektur.md) and [decisions](docs/beslutningslogg.md).
+## Project status
 
-## Reviewed documentation (proposed, not merged)
+**RC4: virtually accepted, TEST ONLY.** The exact candidate passed **66 checks,
+with 0 failures and 0 unrun checks**, including encrypted installation, cold boot,
+session locking, update interruption, and recovery scenarios.
 
-The [engineering standard](docs/ENGINEERING_STANDARDS.md), [engineering guide](CONTRIBUTING.md), [reporting procedure](docs/development-reporting.md) and [adaptation template](docs/templates/ENGINEERING_STANDARDS_TEMPLATE.md) retain the existing documentation from PR #35.
+That result is not a hardware certification, a security certification, or a promise
+of reliable future updates. Physical compatibility, restorable backups,
+production signing/trust, and ongoing security-update responsibility remain
+release gates—not completed features.
 
-The [product vision](docs/product/WILSOF_PRODUCT_VISION.md), [UX specification](docs/product/WILSOF_UX_SPECIFICATION.md), [technical architecture](docs/product/WILSOF_TECHNICAL_ARCHITECTURE.md) and [roadmap](docs/product/WILSOF_IMPLEMENTATION_ROADMAP.md) preserve the dated planning baseline from PR #36, not a claim that those features ship on main. Runtime, installer, ISO and physical acceptance remain separate. See the [consolidation provenance and validation](docs/development-reports/2026-11-03-documentation-consolidation.md).
+Follow [project status #16](https://github.com/tomli0/wilsof-os/issues/16) for the
+current decision and remaining work. This presentation does not publish an ISO,
+merge the integration branch, or change the accepted image.
 
-## Development checks
+## Documentation
 
-    pytest -q
-    sh -n scripts/*.sh automation/*.sh bin/wilsof-*
-    python3 -m json.tool config/dms/wilsof-theme.json
+- [Getting started](docs/getting-started.md) — image identity, Live evaluation,
+  installation boundaries, and essential shortcuts.
+- [Update and recovery design](docs/update-transition.md) — signed snapshot
+  transitions, fail-closed checks, and explicit repair.
+- Development workflow: [engineering guide](CONTRIBUTING.md) and
+  [quality audit](docs/quality-audit.md) (historical findings).
+- [Engineering standards](docs/ENGINEERING_STANDARDS.md) — project quality rules.
 
-The bounded [GitHub workflow](docs/github-workflow.md) documents the project queue, approval marker, hourly model-free queue check and the reason automatic model starts are disabled.
+Developer check for the Bash ISO profile:
 
-GitHub Actions runs these local validation checks without secrets, homelab access, deployment or destructive disk operations.
+```sh
+shellcheck --shell=bash iso/profiledef.sh
+```
 
-## Branch and maturity
-
-The active Arch work is on `arch-install`. The repository default branch is `main`; its GitHub landing page remains unchanged until pull request review and merge. Review the current work directly at [the Arch branch README](https://github.com/tomli0/wilsof-os/blob/arch-install/README.md) and [pull request #1](https://github.com/tomli0/wilsof-os/pull/1).
-
-Historical Fedora material is retained where useful as history. It is not the active prototype path.
-
-## Credits and license
-
-Wilsof integrates Arch Linux, Hyprland, Hyprlock, Hypridle, DankMaterialShell and the listed desktop applications. Wilsof does not claim ownership of those upstream projects. No license file is currently included in this repository; no license grant should be inferred until one is added.
+Wilsof builds on Arch Linux, Hyprland, Dux/DankMaterialShell, Ghostty, and other
+upstream projects. Their licenses and notices remain applicable; binary
+redistribution and production-release approval are separate gates.

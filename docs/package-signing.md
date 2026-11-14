@@ -1,9 +1,40 @@
 # Owner-controlled Wilsof package signing and trust
 
-Status: no production signing identity has been approved. No production key is
-created, imported, certified or trusted by this workflow automatically. The portal
-archive remains unsigned. An approval JSON file is an input to a separately
-reviewed build, not evidence that the owner approved an identity.
+Status: **no production signing identity has been approved**. RC4 used explicitly
+isolated TEST ONLY signatures and passed its bounded native consumers/update/
+recovery checks. The test identity is not a production signer and is not promoted
+by these results. See [Getting started](getting-started.md) for exact image scope.
+
+No production key is created, imported, certified or trusted automatically. An
+approval JSON file is an input to a separately reviewed build, not evidence that
+the owner actually approved an identity.
+
+## Current release responsibilities
+
+These are unresolved production gates, not tasks already completed:
+
+- Name the release/security maintainer and backup contact; define advisory triage,
+  release cadence and response expectations. No service-level promise is approved.
+- Independently approve the production primary identity, key custodian, signing
+  subkey policy, expiry/renewal, revocation channel and exact enrollment scope.
+- Select and review one compatible complete future package closure, including
+  compositor, shell, portals, kernel/headers and required external drivers.
+- Approve and exercise production-signed image and fresh-target consumers. Existing
+  TEST ONLY passes do not establish those production identities or policies.
+- Define authenticated release/advisory delivery and how supported installations
+  learn revocation/current release status. The helper has no automatic update
+  feed or manifest-expiry service; forward-date and baseline checks are not a
+  complete freshness, anti-rollback or incident-response system.
+- Resolve [source-origin gaps](source-provenance.md#open-evidence-gaps), project
+  licensing and binary-redistribution obligations before claiming a public release.
+
+The existing controls verify exact pinned signatures, source/baseline/closure
+identity and usable boot artifacts. They refuse missing trust, inconsistent
+plans and incomplete recovery. They do not assign a maintainer, deliver future
+security fixes, provide Secure Boot trust or implement atomic rollback.
+
+No new signing infrastructure, production-key generation, enrollment, native transaction,
+image build or physical change is performed by this review.
 
 ## Gate and custody
 
@@ -209,5 +240,6 @@ Test keys were deleted and no namespace mounts remained after exit.
 
 GnuPG status interpretation follows the release-tagged
 [2.4.9 status contract](https://github.com/gpg/gnupg/blob/gnupg-2.4.9/doc/DETAILS).
-`VALIDSIG` alone is deliberately insufficient. Real approved-package installation,
-new-image and physical acceptance remain separate pending gates.
+`VALIDSIG` alone is deliberately insufficient. Production-approved package/image
+and physical acceptance remain separate gates; RC4's TEST ONLY native results do
+not approve those production identities or policies.

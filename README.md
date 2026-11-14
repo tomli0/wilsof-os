@@ -82,6 +82,8 @@ merge the integration branch, or change the accepted image.
 
 - [Getting started](docs/getting-started.md) — image identity, Live evaluation,
   installation boundaries, and essential shortcuts.
+- [Source provenance](docs/source-provenance.md) — independent implementation,
+  verified upstream references, review scope and unresolved origin evidence.
 - [Update and recovery design](docs/update-transition.md) — signed snapshot
   transitions, fail-closed checks, and explicit repair.
 - Development workflow: [engineering guide](CONTRIBUTING.md) and

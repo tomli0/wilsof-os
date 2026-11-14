@@ -83,7 +83,7 @@ Partition**. Root encryption does not authenticate the boot partition or establi
 Secure Boot trust. After installation, detach the ISO and verify cold boot,
 disk unlock, and normal user login in that same disposable VM.
 
-## Before replacing an existing system
+## Physical installation remains a separate decision
 
 Virtual acceptance alone does not clear these remaining gates:
 
@@ -92,7 +92,8 @@ Virtual acceptance alone does not clear these remaining gates:
 - Approved production signing/trust and a defined security-update responsibility.
 - Separate approval for the exact image, physical target, and destructive install.
 
-Until then, keep Omarchy or your current OS unchanged. Follow
+Wilsof must be developed independently; migration of another system is outside
+the current scope. Keep existing systems and data untouched. Follow
 [project status #16](https://github.com/tomli0/wilsof-os/issues/16) for the current
 release decision and [the update/recovery design](update-transition.md) for the
 maintenance model. Earlier engineering documents and screenshots may describe

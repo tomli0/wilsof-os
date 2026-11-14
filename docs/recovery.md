@@ -1,115 +1,100 @@
-# Recovery scope: ext4, systemd-boot and a frozen package baseline
+# RC4 recovery boundaries
 
-Status, 10 November 2026: manual EFI-loader repair PASSED in a disposable
-source-overlay QEMU lab. Future package-version progression remains BLOCKED.
-There is no automatic system rollback, and no physical recovery acceptance.
-The [owner transition checklist](omarchy-transition.md) remains a replacement NO-GO.
+Status: **bounded virtual recovery PASS; physical recovery not established**.
+RC4 passed 66/66 virtual checks on November 13, 2026. Its exact image/source
+identity is recorded in [Getting started](getting-started.md). The owner is
+currently evaluating physical Live behavior; no individual physical recovery
+result has been reported. Keep the accepted image unchanged.
 
-## Executed recovery gate
+Wilsof recovery is not migration of another operating system. This document does
+not authorize physical disk access, firmware changes, installation or repair.
 
-The retained lab installation used ext4 root and a 1 GiB FAT32 ESP at `/boot`.
-A new QCOW2 COW image referenced the independently verified, stopped installation;
-the original disk and firmware were never booted writable again.
+## Layout and trust
 
-1. Verify the synthetic target's exact serial, size and root mount. Rename both
-   `EFI/BOOT/BOOTX64.EFI` and `EFI/systemd/systemd-bootx64.efi` inside the COW only.
-2. Shut down the OS. Cold-boot without installation media. Firmware records
-   `Linux Boot Manager ... Not Found` and cannot boot the installed OS. This is
-   the expected controlled fault, not a newly discovered product failure.
-3. Quit that firmware-only guest and boot the unchanged, checksum-verified live
-   image against the same COW disk. Revalidate the synthetic disk identity.
-4. `sfdisk --verify` and unmounted `e2fsck -f -n` exit 0. The latter declines a
-   nonessential extent-tree optimization; no repair/write flag was used.
-5. Mount only the selected root and ESP. Run the installed system's `bootctl
-   --no-variables --esp-path=/boot install` through the API-prepared
-   `arch-chroot -r` boundary. Restore both loader binaries without a network
-   transaction, package downgrade or change to production repository policy.
-6. Verify both restored EFI hashes match their original bytes, then sync/unmount
-   and shut down live media. Cold-boot disk-only and perform genuine normal
-   greeter password/PAM authentication. This gate PASSED.
-7. `pacman -Dk` exits 0 with no database errors. The synthetic document, actual
-   QA user's Dux settings, image-source marker and repository configuration retain
-   their exact pre-fault hashes. These are recovery persistence checks, not proof
-   of update migration or mid-transaction recovery.
-8. All four owned QEMU lifetimes exit 0. Offline QCOW2 validation passes. Original
-   backing disk/firmware and both read-only sentinel images retain their hashes;
-   the exclusive QA lock is available.
+Normal RC4 installation uses a **LUKS2-encrypted ext4 root**, a separate
+**unencrypted FAT32 EFI System Partition** mounted at `/boot`, and systemd-boot.
+A disk-unlock passphrase is separate from the account password. Root encryption
+does not authenticate the ESP or provide Secure Boot trust. No TPM unlock,
+automatic recovery key, A/B system or atomic OS rollback is claimed.
 
-Private evidence group: `wilsof-stabilization-20261109T2232Z`, including
-`recovery-broken-boot.json`, `recovery-native-repair.json`,
-`recovery-reboot-final.json` and `recovery-offline-closure.json`.
-Do not copy the lab's `/dev/vda*` names into a physical recovery session.
+The image and private runtime inputs remain **TEST ONLY**. A verified checksum,
+working boot or successful repair does not approve production signing/trust.
 
-## Owner-controlled physical recovery procedure
+## What the exact RC4 image actually passed
 
-This document does not authorize disk access or modification. Before an approved
-physical installation, verify independent selected-data backups and bootable
-recovery media. If whole-system restoration is required, test an independent
-full-system image/reinstall-and-restore method separately; home-directory backups
-and a COW chain on one host are not substitutes.
+The retained acceptance evidence covers these distinct synthetic scenarios:
 
-For a future owner-approved EFI-loader recovery:
+- Encrypted-root recovery with read-only access and preserved data.
+- Deliberate loss of both EFI loader files on a disposable installed system;
+  real disk-only firmware boot failure was observed before repair.
+- Repair of the loader files from the exact Live image using the installed
+  system's bootctl through the prepared chroot boundary, followed by a fresh
+  encrypted disk-only boot, normal PAM login and user-data checks.
+- A genuine kernel-hook update interruption with an incomplete transaction.
+  The shipped recovery helper refused missing initramfs with exit 78 and did not
+  promote repository policy or report completion.
+- A separately reviewed, explicit full-set repair, followed by successful
+  completed-set recovery and a new encrypted boot/login with persistence checks.
 
-- Boot the separately verified recovery image and preserve the exact failure.
-  Re-identify every attached disk, the selected model/serial/size/transport and
-  the root/ESP filesystem UUIDs. Refuse ambiguous identities or active mounts.
-- Review the selected unmounted root with a non-writing filesystem check. Stop
-  for an unexpected filesystem, encryption, damaged data, changed geometry or
-  failed check. The tested method is not a general filesystem-repair procedure.
-- Mount only the freshly reviewed root and its ESP. Inspect the installed kernel,
-  boot entries and trusted installed bootloader files. Obtain the required
-  destructive/recovery authorization before overwriting any physical EFI file.
-- Use the installed tool through an API-prepared chroot with the actual reviewed
-  mountpoint. The lab-tested command is the `bootctl` invocation above, not a
-  generic partition, format, firmware-reset or GRUB recovery recipe.
-- Verify restored bytes, sync/unmount cleanly, boot without media and test real
-  password login, desktop, applications and all required physical hardware.
-  Do not claim success from the repair command's exit code alone.
+These are bounded virtual results, not arbitrary power-loss coverage, a guarantee
+for every damaged filesystem, physical-device acceptance or automatic rollback.
+Historical RC2/source-overlay/synthetic-package results remain in Git history;
+they must not be substituted for this image's evidence.
 
-## Failed or interrupted package transactions
+## Read-only diagnosis first
 
-Preserve the package inventory, exact repository policy and pacman journal. Do
-not delete a lock automatically, repeat a transaction blindly, ignore dependencies,
-create SONAME compatibility links or mix individual library/kernel versions.
-Resolve lock ownership and inspect consistency from an approved recovery context.
+For an explicitly authorized recovery of a dedicated test installation:
 
-Planning against coherent official snapshot 2026-11-08 was refused because
-`hyprland-as02-private` requires `libaquamarine.so=14-64` and
-`libhyprgraphics.so=4-64`, incompatible with its proposed providers. The real
-installed database and policy stayed unchanged. No future transaction was run.
-A compatible, signature-verified complete closure is required before advancing.
+1. Preserve the exact failure and boot only verified, trusted recovery media.
+2. Identify the selected disk, LUKS root and ESP unambiguously. Record private
+   device identifiers locally; never copy a lab's `/dev/vda*` names to hardware.
+3. Use the normal local passphrase surface. Do not put passphrases in command
+   arguments, logs, reports or chat. A login password cannot recover a lost
+   disk-unlock passphrase.
+4. Establish read-only access before inspecting data. For ext4, avoid journal
+   replay during a non-writing examination. An encrypted mapping and a mounted
+   filesystem have separate access modes; read-only must apply to both.
+5. Preserve relevant boot/package logs, policy, inventory and user data before
+   selecting any repair. Stop for an unexpected layout, ambiguous identity,
+   failing non-writing checks or missing trusted repair inputs.
 
-## Additional executed synthetic transaction gate
+Do not weaken encryption, signatures, dependency checks or firmware policy to
+force a successful result.
 
-A separate, network-isolated single-ID mapped-root lab exercised real pacman and
-libalpm, not substituted package commands. Two harmless signed test packages
-started at `1.0-1`. During a transaction to `2.0-1`, a controlled SIGKILL of the
-exact owned process group occurred inside package A's real `post_upgrade`, before
-package B was upgraded. Inventory was then A `2.0-1`, B `1.0-1`; `pacman -Dk`
-returned 0. Database consistency did not mean the transaction was complete or
-that the package set was coherent. The stale lock and interrupted database were
-preserved, not silently removed.
+## EFI-loader repair is not system restoration
 
-Only after confirming the owned process group had exited and copying the fixture
-database did the explicit lab recovery remove that fixture's stale lock, reinstall
-the entire exact signed test set and verify both versions `2.0-1`, matching payload
-bytes, database check 0 and no remaining lock. The host package database,
-configuration, public keyring and trust database retained their hashes. Test keys
-were removed and namespace mounts disappeared after exit. Nothing in the runtime
-update controller automatically removes locks or retries transactions.
+The accepted lab repaired only the two known loader files using the installed
+`bootctl --no-variables --esp-path=/boot install` through the API-prepared chroot.
+A future physical repair requires separate exact-target/write approval, reviewed
+mounts, safe access to the installed root and trusted bootloader files.
 
-Two earlier lab attempts failed before fault injection because the disposable
-chroot lacked an executable interpreter and then the native libalpm-configured
-`/usr/bin/bash` path. Their failures are retained. Correcting the lab and proving
-the actual shell prerequisite preceded the successful third attempt; they are not
-production update failures or accepted interruption tests.
+Compare repaired bytes with the expected references, sync/unmount cleanly, then
+verify a real disk-only boot, unlock and ordinary login. Exit 0 from a repair
+command alone is not recovery acceptance. Loader repair does not restore lost
+user files, undo an upgrade or reconstruct an overwritten operating system.
 
-This proves a synthetic package-transaction failure/recovery seam, not a real
-future Wilsof update, kernel/DKMS migration, boot after package recovery, full-system
-restore or atomic rollback. The complete OS transition remains blocked as described
-in [the coherent update plan](update-transition.md).
+## Interrupted package transactions
 
-Full OS mid-transaction interruption/recovery, full-system backup restoration and
-future update/reboot/application acceptance remain NOT RUN. Existing versioned
-Wilsof managed-file backups support explicit per-file restoration only, not
-transactional OS rollback.
+Preserve the proposal, detached signature, package cache, pacman logs and
+`/var/lib/wilsof-release-update/transaction.json`. Do not retry blindly, remove a
+lock automatically, disable dependencies or mix individual library/kernel sets.
+Verify whether the recorded transaction and package tools still own the lock.
+
+`wilsof-release-update --recover DIRECTORY` is **completed-set verification**, not
+package repair. It requires the same recorded signed plan, the intended complete
+package inventory, valid database and usable kernel/initramfs artifacts. Only
+then may it promote the recorded policy/completion state. The actual native
+transaction is repaired separately, explicitly and with the reviewed full set.
+
+A complete inventory or successful `pacman -Dk` alone does not prove bootability.
+See [the update/recovery contract](update-transition.md) and
+[signing requirements](package-signing.md). No automatic retry or hidden initramfs
+rebuild is part of normal recovery.
+
+## Data and physical limits
+
+Managed-file backups support explicit per-file restoration, not whole-system
+rollback. Independent data backups and trusted recovery media remain necessary
+before destructive work on any installation. Any real restore method must be
+rehearsed on a separately approved disposable target; this review performs none.
+Physical Live checks are tracked in [the checklist](physical-test-checklist.md).

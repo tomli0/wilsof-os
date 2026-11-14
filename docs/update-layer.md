@@ -1,8 +1,11 @@
 # Wilsof update layer — first bounded implementation
 
-Status: implemented and source/fixture-tested; **native package-transaction
-acceptance pending**. This is not Wilsof OS 1.0, a rolling update service or
-an atomic-update system.
+Status: **RC4's bounded TEST ONLY update/recovery path passed virtual acceptance**.
+The exact image completed a real 22-package snapshot advancement, fresh boot and
+controlled interruption/refusal/explicit recovery. See
+[Getting started](getting-started.md) for the frozen source/image identity.
+This is not a production update service, ongoing security-update guarantee or
+atomic-update system. No new transaction or image test is run by this document.
 
 ## Exposed commands
 
@@ -69,7 +72,8 @@ sudo /usr/local/bin/wilsof-release-update --execute /var/lib/wilsof-release-upda
 
 Preserve the proposal, signature, package cache and transaction receipts under
 `/var/lib/wilsof-release-update/`. Policy advances only after the installed package
-inventory matches the signed final closure and database checks pass. Installation
+inventory matches the signed final closure, database checks pass and kernel/boot
+artifacts are bound to the installed package/release. Installation
 of the companion does not run it, schedule updates, grant passwordless sudo,
 change `SOURCE_COMMIT`, migrate personal configuration or restart the desktop.
 
@@ -133,11 +137,12 @@ claim reinstalling restores user data. In a failed update, preserve logs and
 inspect installed packages, mounts and boot files from recovery media before
 choosing a reviewed repair. Cache availability is not guaranteed rollback.
 
-Required next native gate: on a new disposable COW installation, run the exact
-CLI with real Pacman/authentication; test changed-version/no-op/cancel/failure,
-private-package identity and user-data preservation, then a fresh authenticated
-login and boot/recovery scenario. The current source tests substitute the
-package boundary and do **not** establish these native results.
+The retained RC4 acceptance supplies the separately executed native transaction,
+refusal, interruption, recovery and fresh-boot evidence for that exact image.
+Source tests still substitute package boundaries and do not establish native
+results themselves. Do not repeat unchanged passed gates during physical testing.
+Any future closure, signer or runtime-source change needs its own reviewed inputs
+and relevant fresh acceptance; no production update cadence is established here.
 
 Primary references used: upstream Arch `pacman(8)` for `-Syu`, `-Dk`, transaction
 confirmation and config-file handling; existing [repository policy](repository-snapshot.md)

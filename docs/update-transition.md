@@ -1,11 +1,18 @@
 # Coherent update transition and recovery gates
 
-Status: **transition BLOCKED**, not an accepted daily-driver update release.
-The installed approved snapshot remains 2026-11-01. A successful full `pacman -Syu`
-on that snapshot can be a no-op; it is not delivery of later security versions.
-Do not replace the package manager or partially upgrade individual libraries.
+Status: **production maintenance approval remains pending**. RC4's exact TEST ONLY
+image passed a bounded native 2026-11-01 to 2026-11-02 transition with 22 changed
+packages, fresh boot and interruption/recovery checks. Its initial repository
+policy is still 2026-11-01; later policy promotion requires an explicit reviewed
+signed plan. See [Getting started](getting-started.md) and
+[the current release gates](package-signing.md#current-release-responsibilities).
 
-## Measured dependency boundary
+A frozen snapshot receives no later security fixes automatically. Successful
+`pacman -Syu` maintenance on an unchanged snapshot may be a no-op. The historical
+2026-11-08 compatibility investigation below is not an approved next release or
+proof of ongoing update delivery. Do not partially upgrade individual libraries.
+
+## Historical measured dependency boundary
 
 Native planning against a copied installed database and proposed complete official
 snapshot 2026-11-08 refused both of these changes:
@@ -20,15 +27,16 @@ Those observed versions describe the examined snapshot, not today's rolling
 repositories or an already approved future closure. Planning did not download and
 verify every future package, install it, migrate configuration or reboot it.
 
-## One selected transition, no mixed-version workaround
+## Future transition contract, no mixed-version workaround
 
-The selected engineering path is a separately built and reviewed compatible
-private-compositor package for **one complete 2026-11-08 snapshot**, retaining the
-required session-lock integration. This is a proposed transition target, not an
-approved build input or proof that the existing patched compositor source compiles
-against those APIs. If compatibility cannot be established, stop this transition
-and obtain a new complete-baseline decision; do not accumulate cherry-picked
-provider downgrades or silently switch mirrors.
+The earlier complete 2026-11-08 snapshot proposal was not an approved release and
+is not the current next-build instruction. RC4's accepted test transition was to
+2026-11-02. No later compatible complete baseline has been accepted by this record.
+Before choosing a future target, retain the required session-lock integration,
+review source/ABI compatibility and authenticate one complete signed closure.
+If compatibility cannot be established, stop; do not accumulate cherry-picked
+provider downgrades or silently switch mirrors. The sequence below is a contract
+for separately authorized future work, not a request to build while RC4 is tested.
 
 1. Preserve the accepted old package/source/patch evidence. Freeze the private
    compositor's exact source revision and required local lock patch set. Review

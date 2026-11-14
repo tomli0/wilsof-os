@@ -4,6 +4,18 @@ Read CONTRIBUTING.md and docs/artifact-maintenance.md before allocating resource
 GitHub issue #16 is the only authoritative current project status; #60 tracks
 release acceptance. Historical reports are evidence, not current instructions.
 
+## Independent implementation
+
+Wilsof OS must be developed independently of Omarchy. Do not copy, port, adapt,
+translate or repackage any Omarchy code, scripts or configuration, and do not add
+Omarchy as a build, installation or runtime dependency. Shared software must come
+directly from its original upstream with traceable provenance and applicable
+licenses. Review uncertain inherited provenance before claiming independence;
+functional tests do not establish code origin. Keep existing Omarchy installations
+untouched. Historical migration or replacement goals do not override this scope.
+
+## Delivery and preservation
+
 1. Clean as you go. Every task retires its own verified disposable resources
    after preserving essential results. Perform authorized safe cleanup in the
    same session; a concrete dependency/authentication blocker is the exception.

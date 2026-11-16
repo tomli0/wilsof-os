@@ -104,7 +104,11 @@ def prepare(upstream, output, source, commit, *, hypridle_package=None, portal_p
     runpy.run_path(str(source / 'runtime/broadcom-wl.py'))['stage'](root)
     (output / 'pacman.conf').write_text(snapshot['CONFIG'])
     (root / 'mnt/wilsof').mkdir(parents=True, exist_ok=True)
+    # A Live desktop must work before Wi-Fi/NTP is available. Releng enables an
+    # infinite time-sync waiter ahead of pacman-init; retain async timesyncd and
+    # the successful pacman-init -> Live setup ordering, but not that boot gate.
     for relative in ('root', 'etc/ssh', 'etc/systemd/network',
+                     'etc/systemd/system/sysinit.target.wants/systemd-time-wait-sync.service',
                      'etc/systemd/system/getty@tty1.service.d',
                      'etc/systemd/system/cloud-init.target.wants'):
         path = root / relative

@@ -35,16 +35,59 @@ ends, greetd falls back to tuigreet. Both call `wilsof-session` →
 boot-menu diagnostics entry instead leaves it on the originating console.
 A running greetd service is not proof of a running or rendered compositor.
 
-Next physical test, without rewriting the USB or accessing internal storage:
+### Pending greetd with unavailable Wi-Fi
 
-1. Boot the existing verified RC4 USB using **Wilsof OS diagnostics - boot logs,
-   no splash**. Do not change graphics parameters for this baseline.
-2. Switch to Ctrl+Alt+F2 and log in as `live` using the password displayed there.
-3. Run `sudo /usr/local/bin/wilsof-live-recover` and retain sanitized output or a
-   cropped photo, excluding the credential banner. Capture the original failure
-   before using `--restart`.
-4. Also retain any readable Hyprland crash report from `~/.cache/hyprland/` and
-   the diagnostics VT1 error. An absent report is not proof that Hyprland ran.
+The owner subsequently confirmed that TTY2 login works, while greetd is
+inactive/dead with a pending job and the kernel reports a Broadcom `wl` event
+thread warning/oops. Exact RC4 inspection found this startup ordering:
+
+```text
+systemd-time-wait-sync (enabled, TimeoutStartSec=infinity)
+  -> time-sync.target -> pacman-init -> wilsof-live-setup -> greetd
+```
+
+Without successful clock synchronization, that barrier can hold greetd before
+Hyprland ever starts while the independently ordered console remains usable.
+This is the most likely startup blocker, not yet a confirmed physical diagnosis.
+The Broadcom fault can prevent networking/NTP; its exact crash cause is not
+established without the trace. Do not infer an Intel rendering failure from a
+compositor which has not yet been launched.
+
+The minimal source correction removes only the Live profile's releng
+`sysinit.target.wants/systemd-time-wait-sync.service` enablement. Asynchronous
+`systemd-timesyncd` remains enabled; signature checks and successful
+`pacman-init` ordering before Live provisioning remain unchanged. No driver,
+installed-system policy or accepted ISO is changed. A bounded replay through the
+QA host's real systemd user scheduler reproduced inactive/dead/pending at the
+substituted unsynchronized boundary and admission after removing that barrier;
+it is not an exact-ISO offline boot or physical graphics test.
+
+Next physical test uses the existing USB, without rewriting media or requiring
+sudo/password commands:
+
+1. In its boot menu select the normal **Try Wilsof OS** entry and press `e`.
+2. Append these two space-separated options and press Enter:
+
+   ```text
+   systemd.mask=systemd-time-wait-sync.service module_blacklist=wl
+   ```
+
+3. Wait for the desktop. This intentionally tests a desktop-first path with
+   the NTP boot barrier removed and the suspect `wl` driver withheld. Broadcom
+   STA Wi-Fi will not be available; do not add `nomodeset` or disable i915.
+4. If it remains black, switch to TTY2 and run just
+   `systemctl list-jobs --no-pager`; report the pending units. That read does
+   not need sudo. Preserve any visible kernel/VT1 error without the password
+   banner. Do not unload a faulted driver in the already-running kernel.
+
+Both options affect only this boot. A successful combined test does not prove
+which change was necessary or establish a fixed `wl` driver. Keep the original
+physical failure and validate the final targeted candidate separately.
+
+The shipped `sudo -n /usr/local/bin/wilsof-live-recover` is explicitly NOPASSWD
+and does not require the temporary password, although its RC4 log coverage is
+limited as described below. If needed, the current generated login password is
+still locally readable in `/etc/issue`; do not transmit that file or its banner.
 
 The helper shipped in **RC4** queries only Live setup/greetd units; it can miss
 compositor, user-shell and kernel graphics failures. The subsequent source fix

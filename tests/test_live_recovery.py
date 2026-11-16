@@ -22,6 +22,31 @@ def test_live_setup_waits_for_successful_upstream_keyring_bootstrap(tmp_path, di
         'Live provisioning must not race the upstream keyring tmpfs/init/populate; '
         'both successful initialization and explicit ordering are required')
 
+
+def test_live_boot_does_not_wait_for_network_time_but_keeps_async_sync(tmp_path):
+    import runpy
+    upstream = tmp_path / 'upstream'
+    root = upstream / 'airootfs'
+    wants = root / 'etc/systemd/system/sysinit.target.wants'
+    wants.mkdir(parents=True)
+    (upstream / 'packages.x86_64').write_text('base\n')
+    for name in ('systemd-time-wait-sync.service', 'systemd-timesyncd.service', 'retained.service'):
+        (wants / name).symlink_to('/usr/lib/systemd/system/' + name)
+    output = tmp_path / 'profile'
+    runpy.run_path(str(ROOT / 'scripts/prepare-iso.py'))['prepare'](
+        upstream, output, ROOT, 'a' * 40)
+    target_wants = output / 'airootfs/etc/systemd/system/sysinit.target.wants'
+    assert not (target_wants / 'systemd-time-wait-sync.service').is_symlink(), (
+        'Offline Live boot must not queue the infinite NTP wait ahead of '
+        'time-sync.target -> pacman-init -> Live setup -> greetd')
+    assert (target_wants / 'systemd-timesyncd.service').is_symlink()
+    assert (target_wants / 'retained.service').is_symlink()
+    assert (wants / 'systemd-time-wait-sync.service').is_symlink(), 'Upstream reference changed'
+    setup = (output / 'airootfs/etc/systemd/system/wilsof-live-setup.service').read_text()
+    assert 'Requires=wilsof-live-console.service pacman-init.service' in setup
+    assert 'After=systemd-sysusers.service local-fs.target wilsof-live-console.service pacman-init.service' in setup
+
+
 ROOT = Path(__file__).resolve().parents[1]
 
 

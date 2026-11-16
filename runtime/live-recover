@@ -25,8 +25,27 @@ def main(args):
         subprocess.run(['systemctl', 'reset-failed', 'wilsof-live-setup', 'greetd'], check=True, timeout=15)
         subprocess.run(['systemctl', 'restart', 'wilsof-live-setup'], check=True, timeout=180)
         subprocess.run(['systemctl', 'restart', 'greetd'], check=True, timeout=30)
-    return subprocess.run(['journalctl', '-b', '-u', 'wilsof-live-setup', '-u', 'greetd',
-                           '--no-pager', '-n', '100'], check=False, timeout=20).returncode
+    # A successful greetd unit does not prove its compositor child started.
+    # Keep these queries separate: journal fields in one query are intersected.
+    queries = (
+        ('Live setup / display manager', ['-u', 'wilsof-live-setup', '-u', 'greetd']),
+        ('Hyprland session', ['-t', 'wilsof-session']),
+        ('Dux shell', ['_SYSTEMD_USER_UNIT=dms.service']),
+        ('Kernel graphics', ['-k', '-g', 'i915|[dD][rR][mM]|[gG][pP][uU]|[fF]irmware']),
+    )
+    status = 0
+    for title, filters in queries:
+        print('\n=== ' + title + ' (current boot) ===', flush=True)
+        try:
+            result = subprocess.run(['journalctl', '-b', '--no-pager', '-n', '100', *filters],
+                                    check=False, timeout=20)
+            code = result.returncode
+        except subprocess.TimeoutExpired:
+            print(title + ': journal query timed out', file=sys.stderr, flush=True)
+            code = 124
+        if code and not status:
+            status = code
+    return status
 
 
 if __name__ == '__main__':

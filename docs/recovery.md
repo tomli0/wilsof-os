@@ -1,13 +1,66 @@
 # RC4 recovery boundaries
 
-Status: **bounded virtual recovery PASS; physical recovery not established**.
+Status: **bounded virtual recovery PASS; physical Live boot FAIL reported**.
 RC4 passed 66/66 virtual checks on November 13, 2026. Its exact image/source
-identity is recorded in [Getting started](getting-started.md). The owner is
-currently evaluating physical Live behavior; no individual physical recovery
-result has been reported. Keep the accepted image unchanged.
+identity is recorded in [Getting started](getting-started.md). On November 16,
+2026, the owner reported a black screen after Live startup on MacBookPro11,1;
+TTY2 remained accessible. The graphical cause is not yet established. Keep the
+accepted image and its historical virtual evidence unchanged.
 
 Wilsof recovery is not migration of another operating system. This document does
 not authorize physical disk access, firmware changes, installation or repair.
+
+## Live console credentials and black-screen diagnosis
+
+The accepted RC4 ISO does not contain a static Live password. The boot-only
+`live-console-setup` creates user `live`, generates `secrets.token_hex(6)` (12
+hexadecimal characters), sets it through `chpasswd` on stdin, then writes this
+line to `/etc/issue` for the TTY2 login banner:
+
+```text
+Username: live    This boot only password: <generated for this boot>
+```
+
+Use that displayed password, not an empty password or the word `live`. Password
+input is hidden. It changes on a fresh boot; do not send it or an uncropped banner
+photo in a report. Root remains locked, remote login is not enabled, and the
+installed-user authentication policy is unchanged. If the password line is not
+visible, report that fact rather than guessing or changing authentication.
+
+TTY2 explicitly Requires/After `wilsof-live-console.service`; graphical setup
+also requires that service but the console does not require graphical setup.
+The Live desktop has an initial `live` session on greetd VT1; after that session
+ends, greetd falls back to tuigreet. Both call `wilsof-session` →
+`start-hyprland`. The normal wrapper journals output as `wilsof-session`; the
+boot-menu diagnostics entry instead leaves it on the originating console.
+A running greetd service is not proof of a running or rendered compositor.
+
+Next physical test, without rewriting the USB or accessing internal storage:
+
+1. Boot the existing verified RC4 USB using **Wilsof OS diagnostics - boot logs,
+   no splash**. Do not change graphics parameters for this baseline.
+2. Switch to Ctrl+Alt+F2 and log in as `live` using the password displayed there.
+3. Run `sudo /usr/local/bin/wilsof-live-recover` and retain sanitized output or a
+   cropped photo, excluding the credential banner. Capture the original failure
+   before using `--restart`.
+4. Also retain any readable Hyprland crash report from `~/.cache/hyprland/` and
+   the diagnostics VT1 error. An absent report is not proof that Hyprland ran.
+
+The helper shipped in **RC4** queries only Live setup/greetd units; it can miss
+compositor, user-shell and kernel graphics failures. The subsequent source fix
+adds separate bounded current-boot queries for `wilsof-session`, Dux and kernel
+graphics, retaining query failures/timeouts. That fix is **not in RC4** and is not
+a verified black-screen repair. A derivative must refresh the actual privileged
+Live executable, not just an embedded source copy, and pass its own immutable
+and runtime gates before delivery. Never overlay or rewrite the accepted ISO.
+
+Read-only inspection of RC4 found the `i915` module, Mesa's `crocus_dri.so`, the
+KMS initramfs hook and no i915 blacklist/renderer override in the inspected boot
+configuration. Presence is not evidence of device binding, successful EGL
+initialization or physical rendering. Without the failing hardware's boot and
+session logs, neither an Intel driver defect nor a compositor/configuration
+failure is confirmed. Do not add `nomodeset`, force a different Mesa driver or
+apply unrelated GPU workarounds merely because the screen is black.
 
 ## Layout and trust
 

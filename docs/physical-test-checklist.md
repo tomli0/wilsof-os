@@ -1,9 +1,11 @@
 # RC4 physical Live test checklist
 
-Status: **owner testing in progress; individual results not yet reported**.
-This records the owner's current test activity, not a physical PASS. RC4 already
-passed 66/66 virtual checks on November 13, 2026. Do not rerun those checks merely
-to fill this checklist, and do not modify the ISO during evaluation.
+Status: **physical Live boot FAIL reported on MacBookPro11,1**.
+On November 16, 2026, the owner reported boot/services starting, followed by a
+black screen; Ctrl+Alt+F2 opened recovery. Empty and `live` passwords were
+rejected; neither is the configured password. The graphical cause is unverified.
+RC4's 66/66 virtual checks from November 13, 2026 remain historical virtual
+evidence, not a physical PASS. Keep the accepted ISO unchanged.
 
 Use only `2026.11.13-rc4-recovery-test-only`; verify the full image identity and
 SHA-256 in [Getting started](getting-started.md). Results from other candidates

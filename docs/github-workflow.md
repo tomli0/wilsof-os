@@ -4,7 +4,9 @@ GitHub Issues are the task queue and GitHub pull requests/issues are the durable
 
 ## Current operating mode
 
-The scheduler runs one project-scoped, model-free queue check every hour. The check makes no model call when the queue is empty, rejected, paused, blocked, or ready for review. It never deploys, merges, releases, builds an ISO, logs out, reboots, locks a session, suspends, or performs a power action.
+The existing scheduler/worker remain disabled/paused during maintenance. If separately resumed, the existing design performs one project-scoped model-free hourly queue check; it makes no model call when paused, empty or blocked. Never activate it as a side effect of cleanup or status reporting.
+
+Reuse main for stable integration and the existing Private3 branch for active candidate work. Private2 remains PR61's preserved base; arch-install and the two unique older PR heads remain parked. Historical branches are archived under `archive/maintenance-20261110/`, not retained as active development streams. Keep at most six active/parked branch refs and one to three active PRs; preserve unique unfinished work rather than closing defects to meet a count.
 
 Automatic model execution is disabled. Hermes can report provider-wide OpenRouter spend, but that value is neither atomic nor attributable to an individual task/run and cannot reliably enforce a shared USD 5/day ceiling across manual and scheduled starts. The same supervisor therefore refuses `--model-start`; enabling it would violate the budget requirement.
 

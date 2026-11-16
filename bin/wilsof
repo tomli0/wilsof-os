@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""Small Wilsof identity/diagnostic/full-package-maintenance entrypoint.
+
+No network source deployment, rolling-mirror switch, partial upgrade, automatic
+confirmation, configuration migration or rollback is hidden in package updates.
+"""
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import runpy
+import shutil
+import stat
+import subprocess
+import sys
+
+
+def identity(root=Path('/')):
+    path = root / 'usr/share/wilsof/source/SOURCE_COMMIT'
+    if path.is_symlink():
+        raise ValueError('Installed image identity must be a regular file')
+    commit = path.read_text().strip()
+    if not re.fullmatch(r'[0-9a-f]{40}', commit):
+        raise ValueError('Installed image identity is invalid')
+    return {'version':'Development snapshot', 'image_source_commit':commit,
+            'atomic_rollback':False, 'configuration_updates':'separate reviewed local source only'}
+
+
+def preflight(root=Path('/'), *, policy=None, run=subprocess.run, space=shutil.disk_usage):
+    root = Path(root)
+    if not root.is_absolute() or root.resolve() != root:
+        raise ValueError('System root must be canonical')
+    release = root / 'usr/lib/os-release'
+    if release.is_symlink() or 'ID=arch' not in release.read_text().splitlines():
+        raise ValueError('Package updates require the installed Arch-based Wilsof system')
+    identity(root)
+    if (root / 'run/archiso/airootfs').exists():
+        raise ValueError('Live media cannot be persistently updated; boot the installed system')
+    # Verify root-owned policy inputs; the fixture root is owned by its test user.
+    owner = 0 if root == Path('/') else os.getuid()
+    paths = ['etc/pacman.conf', 'etc/pacman.d/mirrorlist',
+             'usr/share/wilsof/REPOSITORY-SNAPSHOT.json',
+             'usr/share/wilsof/source/SOURCE_COMMIT']
+    if policy is None:
+        paths.append('usr/share/wilsof/source/runtime/repository-snapshot.py')
+    for relative in paths:
+        p = root / relative
+        for entry in (p, *p.parents):
+            if entry == root.parent:
+                break
+            info = entry.lstat()
+            if stat.S_ISLNK(info.st_mode) or info.st_uid != owner or info.st_mode & 0o022:
+                raise ValueError('Package policy path is not safely owned: ' + relative)
+            if entry == root:
+                break
+    if policy is None:
+        policy = runpy.run_path(str(root / 'usr/share/wilsof/source/runtime/repository-snapshot.py'))
+    snapshot = policy['read'](root)
+    lock = root / 'var/lib/pacman/db.lck'
+    if lock.exists() or lock.is_symlink():
+        raise ValueError('Pacman lock exists; inspect its owner, never remove it automatically')
+    if space(root).free < 2 * 1024**3:
+        raise ValueError('At least 2 GiB free on root is required before the transaction')
+    boot = root / 'boot'
+    if root == Path('/') and not boot.is_mount():
+        raise ValueError('Expected /boot mount is unavailable; do not update the kernel')
+    if boot.exists() and space(boot).free < 64 * 1024**2:
+        raise ValueError('At least 64 MiB free on /boot is required; do not delete recovery files automatically')
+    r = run(['/usr/bin/pacman', '-Dk'], capture_output=True, text=True,
+            stdin=subprocess.DEVNULL, timeout=30, check=False)
+    if r.returncode:
+        raise ValueError('Local package database check failed; inspect pacman -Dk before updating')
+    return snapshot
+
+
+def package_update(*, run=subprocess.run):
+    before = run(['/usr/bin/pacman', '-Q'], capture_output=True, text=True, timeout=30, check=True).stdout
+    # Keep stdin/stdout attached to the terminal and preserve Pacman's own review,
+    # signature checks, global lock, CheckSpace and interactive confirmation.
+    result = run(['/usr/bin/sudo', '--', '/usr/bin/pacman', '-Syu'], check=False)
+    if result.returncode:
+        print('Package transaction failed or was cancelled. It may have changed packages; inspect /var/log/pacman.log. No config migration or retry was run.', file=sys.stderr)
+        return result.returncode
+    after = run(['/usr/bin/pacman', '-Q'], capture_output=True, text=True, timeout=30, check=True).stdout
+    if sorted(before.splitlines()) == sorted(after.splitlines()):
+        print('Transaction returned 0; no package versions changed (no-op).')
+    else:
+        print('Package inventory changed. Review .pacnew files and test a fresh login before relying on the updated session.')
+    print('Image source and user configuration were not advanced. No atomic rollback is available.')
+    return 0
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest='command', required=True)
+    version = commands.add_parser('version', help='read immutable installed image identity')
+    version.add_argument('--json', action='store_true')
+    commands.add_parser('doctor', help='run existing read-only desktop diagnostics')
+    update = commands.add_parser('update', help='interactive full package maintenance on the reviewed snapshot')
+    update.add_argument('--check', action='store_true', help='offline prechecks only; do not refresh or install packages')
+    args = parser.parse_args()
+    try:
+        if args.command == 'version':
+            info = identity()
+            print(json.dumps(info, sort_keys=True) if args.json else
+                  'Wilsof OS — ' + info['version'] + '\nImage source: ' + info['image_source_commit'] + '\nAtomic rollback: unavailable')
+            return 0
+        if args.command == 'doctor':
+            helper = Path(__file__).resolve().with_name('wilsof-doctor')
+            os.execv('/bin/sh', ['/bin/sh', str(helper)])
+        if os.geteuid() == 0:
+            raise ValueError('Run wilsof update as the desktop user, without sudo; Pacman alone requests elevation')
+        if not args.check and not (sys.stdin.isatty() and sys.stdout.isatty()):
+            raise ValueError('An interactive terminal is required; use wilsof update --check for read-only preflight')
+        snapshot = preflight()
+        print('Reviewed repository snapshot: ' + snapshot['date'])
+        print('Frozen snapshot maintenance only; this does not advance Arch or Wilsof to a newer snapshot.')
+        if args.check:
+            print('Prechecks passed. No package database refresh, transaction or configuration write was performed.')
+            return 0
+        print('Read relevant Arch advisories and review Pacman replacements before accepting. Preserve a separate backup; this is not an atomic update.', flush=True)
+        # Re-read policy immediately before handing off to Pacman. Pacman owns
+        # the transaction lock; this wrapper never removes a stale-looking lock.
+        preflight()
+        return package_update()
+    except KeyboardInterrupt:
+        print('Interrupted; package state may be partial. Inspect Pacman logs before retrying.', file=sys.stderr)
+        return 130
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print('Wilsof operation unavailable: ' + str(error), file=sys.stderr)
+        return 78
+
+
+if __name__ == '__main__':
+    sys.exit(main())

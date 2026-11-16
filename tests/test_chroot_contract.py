@@ -93,6 +93,7 @@ def read_snapshot(*args):
     if os.environ['SNAPSHOT_FAILS'] == '1': raise ValueError('repository snapshot rejected')
 def load(path, *args, **kwargs):
     if str(path).endswith('repository-snapshot.py'): return {'read': read_snapshot}
+    if str(path).endswith('broadcom-wl.py'): return {'verify': lambda: record('wl'), 'discard_image_signing_key': lambda: record('seal')}
     return {'verify_arch_chroot_support': lambda: record('gate'),
             'install_package': lambda *a: record('install')}
 runpy.run_path = load
@@ -101,23 +102,35 @@ runpy.run_path = load
            'PYTHONPATH': str(tmp_path), 'CALL_LOG': str(log), 'GATE_FAILS': str(int(gate_fails)), 'SNAPSHOT_FAILS': str(int(snapshot_fails))}
     result = subprocess.run(['sh', str(output / 'airootfs/root/customize_airootfs.sh')], env=env, capture_output=True, text=True)
     assert bool(result.returncode) == (gate_fails or snapshot_fails)
-    assert [json.loads(line) for line in log.read_text().splitlines()] == ['gate'] + ([] if gate_fails else ['snapshot']) + (['install'] if with_package and not gate_fails and not snapshot_fails else [])
+    assert [json.loads(line) for line in log.read_text().splitlines()] == ['gate'] + ([] if gate_fails else ['snapshot']) + ([] if gate_fails or snapshot_fails else ['wl']) + (['install'] if with_package and not gate_fails and not snapshot_fails else []) + ([] if gate_fails or snapshot_fails else ['seal'])
 
 
 def provision_transaction(tmp_path, monkeypatch, effect='intact', exit_code=0):
     import os
+    import shutil
     import sys
 
     api = runpy.run_path(str(ROOT / 'runtime/provision-target'))
     main = api['main']
     namespace = main.__globals__
+    # Explicitly simulate root-owned scratch inputs without privileged tests.
+    monkeypatch.setitem(namespace, 'ROOT_UID', os.getuid())
+    monkeypatch.setitem(namespace, 'ROOT_GID', os.getgid())
     source = tmp_path / 'source'
     (source / 'bin').mkdir(parents=True)
     (source / 'bin/wilsof-config-update').write_text('# fixture\n')
     (source / 'bin/wilsof-session').write_text('# session fixture\n')
+    shutil.copy2(ROOT / 'bin/wilsof-release-update', source / 'bin/wilsof-release-update')
+    # Provisioning now ships pinned notices; exercise the real safe stage helper.
+    (source / 'runtime').mkdir()
+    shutil.copy2(ROOT / 'runtime/notices.py', source / 'runtime/notices.py')
+    shutil.copy2(ROOT / 'runtime/portal-package.py', source / 'runtime/portal-package.py')
+    shutil.copytree(ROOT / 'assets/notices', source / 'assets/notices')
     target = tmp_path / 'target'
     (target / 'etc').mkdir(parents=True)
     (target / 'usr/lib').mkdir(parents=True)
+    target.chmod(0o755)
+    (target / 'usr').chmod(0o755)
     (target / 'usr/lib/os-release').write_text('ID=arch\n')
     (target / 'etc/passwd').write_text('demo:x:1000:1000::/home/demo:/bin/bash\n')
     (target / 'home/demo').mkdir(parents=True)

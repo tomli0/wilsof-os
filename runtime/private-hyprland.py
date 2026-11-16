@@ -81,17 +81,26 @@ def load(env=None):
         fail()
 
 
-def stage(record, base):
+def stage(record, base, *, require_signature=False):
     """Copy into a NEW image or target private namespace; no overwrite/reuse."""
     base = Path(base)
     folder = base / 'packages'
     destinations = [folder / PACKAGE, folder / MANIFEST, base / MARKER]
+    pin = runpy.run_path(str(Path(__file__).with_name('pinned-package.py')))
+    signature = pin['detached_signature'](record['package'], required=require_signature)
+    signature_destination = folder / (PACKAGE + '.sig')
+    if signature_destination.exists() or signature_destination.is_symlink():
+        fail()
     if any(p.exists() or p.is_symlink() or any(a.is_symlink() for a in p.parents) for p in destinations):
         fail()
     folder.mkdir(parents=True, exist_ok=True)
     package, manifest, marker = destinations
     with package.open('xb') as output, regular(record['package']).open('rb') as source:
         shutil.copyfileobj(source, output)
+    if signature is not None:
+        with signature_destination.open('xb') as output, signature.open('rb') as source:
+            shutil.copyfileobj(source, output)
+        signature_destination.chmod(0o600)
     clean = {k: record[k] for k in FIELDS}
     clean['package'] = PACKAGE  # Never embed the builder's private source path.
     data = (json.dumps(clean, sort_keys=True) + '\n').encode()
@@ -146,7 +155,7 @@ def verify(target, record):
         fail()
 
 
-def install(target, base, *, required=False):
+def install(target, base, *, required=False, require_signature=False):
     record = embedded(base, required=required)
     if record is None:
         return
@@ -154,6 +163,7 @@ def install(target, base, *, required=False):
     pin = runpy.run_path(str(Path(__file__).with_name('pinned-package.py')))
     try:
         # Repository Hyprland must never be the selected compositor in private mode.
+        pin['detached_signature'](record['package'], required=require_signature)
         result = subprocess.run(pin['target_command'](target, 'pacman', '-Qq'),
                                 check=True, capture_output=True, text=True)
         if 'hyprland' in result.stdout.splitlines():
@@ -168,7 +178,7 @@ def install(target, base, *, required=False):
                 fail()
         destination = target / 'usr/share/wilsof'
         if Path(base).resolve() != destination.resolve():
-            record = stage(record, destination)
+            record = stage(record, destination, require_signature=require_signature)
         # Same standard local-package policy as Hypridle; no SigLevel override.
         # Full dependency/version checks stay enabled; missing ABI/signature fails.
         subprocess.run(pin['target_command'](target, 'pacman', '-U', '--noconfirm',

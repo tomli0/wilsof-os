@@ -4,8 +4,12 @@ import os
 from pathlib import Path
 import runpy
 import shutil
+import stat
 import subprocess
 import sys
+
+ROOT_UID = 0
+ROOT_GID = 0
 
 
 # The helper is copied outside the source bundle on live/installed systems.
@@ -24,7 +28,7 @@ def validate_target(target, username, live):
     validate_username(username)
     paths = ['etc/passwd', 'usr/lib/os-release', f'home/{username}', 'usr/share/wilsof/source',
              'usr/local/lib/wilsof/provision-target', 'usr/local/bin/wilsof-config-update',
-             'usr/local/bin/wilsof-session',
+             'usr/local/bin/wilsof-session', 'usr/local/bin/wilsof-release-update',
              'etc/greetd/config.toml', 'etc/systemd/system', 'etc']
     for relative in paths:
         current = target
@@ -32,6 +36,9 @@ def validate_target(target, username, live):
             current = current / part
             if current.is_symlink():
                 raise ValueError(f'Refusing target symlink: {relative}')
+    updater = target / 'usr/local/bin/wilsof-release-update'
+    if updater.exists() and (not updater.is_file() or updater.stat().st_nlink != 1):
+        raise ValueError('Refusing non-regular or hardlinked target updater')
     release = target / 'usr/lib/os-release'
     if not release.exists():
         release = target / 'etc/os-release'
@@ -42,6 +49,21 @@ def validate_target(target, username, live):
     if account is None or int(account[2]) < 1000 or account[5] != f'/home/{username}':
         raise ValueError('Expected a non-root target account with a dedicated home')
     return target
+
+
+def validate_updater_destination(target):
+    """Require the administrative entrypoint's owning path before any writes."""
+    updater = target / 'usr/local/bin/wilsof-release-update'
+    for path in (updater, *updater.parents):
+        if path.exists() or path.is_symlink():
+            info = path.lstat()
+            expected_type = stat.S_ISREG if path == updater else stat.S_ISDIR
+            if (not expected_type(info.st_mode) or info.st_uid != ROOT_UID or
+                    info.st_gid != ROOT_GID or info.st_mode & 0o022 or
+                    (path == updater and info.st_nlink != 1)):
+                raise ValueError('Refusing unsafe updater ownership, mode, link or type: ' + str(path))
+        if path == target:
+            break
 
 
 def verify_resolver(target):
@@ -60,35 +82,54 @@ def main():
         raise SystemExit('Unknown provisioning mode')
     live = len(sys.argv) == 4
     target = validate_target(target, username, live)
+    validate_updater_destination(target)
     if not live and not target.is_mount():
         raise SystemExit('Installed target must be a mounted root filesystem')
     source = Path('/usr/share/wilsof/source')
+    updater = source / 'bin/wilsof-release-update'
+    if any(path.is_symlink() for path in (updater, *updater.parents)):
+        raise ValueError('Refusing source updater symlink')
+    if not updater.is_file() or updater.stat().st_mode & 0o022:
+        raise ValueError('Required source updater missing, non-regular or writable')
+    portal = runpy.run_path(str(source / 'runtime/portal-package.py'))
+    portal_mode = portal['test_context'](Path('/usr/share/wilsof'))
+    # Refuse missing/damaged persistent nonproduction inputs before any writes.
+    portal['embedded'](Path('/usr/share/wilsof'), **portal_mode)
     snapshot = runpy.run_path(str(source / 'runtime/repository-snapshot.py'))
     snapshot['read'](target)
+    if portal_mode:
+        portal['prepare_test_trust'](target, Path('/usr/share/wilsof'), build_version=portal_mode['build_version'])
+    runpy.run_path(str(source / 'runtime/notices.py'))['stage'](source, target)
     private = runpy.run_path(str(source / 'runtime/private-hyprland.py'))
     private_record = private['embedded'](Path('/usr/share/wilsof'))
     if private_record is not None:
         if live:
             private['verify'](target, private_record)
         else:
-            private['install'](target, Path('/usr/share/wilsof'), required=True)
+            private['install'](target, Path('/usr/share/wilsof'), required=True,
+                               **({'require_signature': True} if portal_mode else {}))
     pin = runpy.run_path(str(source / 'runtime/pinned-package.py'))
     if not live:
-        pin['install_package'](target, '/usr/share/wilsof/packages')
+        pin['install_package'](target, '/usr/share/wilsof/packages',
+                               **({'require_signature': True} if portal_mode else {}))
+    portal['install'](target, Path('/usr/share/wilsof'), **portal_mode)
     destination = target / 'usr/share/wilsof/source'
     if source.resolve() != destination.resolve():
         if destination.exists():
             raise SystemExit('Refusing to overwrite an existing system source bundle')
         shutil.copytree(source, destination)
     lib = target / 'usr/local/lib/wilsof'
-    lib.mkdir(parents=True, exist_ok=True)
+    for folder in (target / 'usr/local', target / 'usr/local/lib', lib):
+        folder.mkdir(mode=0o755, exist_ok=True)
     if Path(__file__).resolve() != (lib / 'provision-target').resolve():
         shutil.copy2(__file__, lib / 'provision-target')
     (lib / 'provision-target').chmod(0o755)
     bindir = target / 'usr/local/bin'
-    bindir.mkdir(parents=True, exist_ok=True)
-    for name in ('wilsof-config-update', 'wilsof-session'):
+    bindir.mkdir(mode=0o755, exist_ok=True)
+    for name in ('wilsof-config-update', 'wilsof-session', 'wilsof-release-update'):
         shutil.copy2(destination / 'bin' / name, bindir / name)
+        if name == 'wilsof-release-update':
+            os.chown(bindir / name, ROOT_UID, ROOT_GID)
         (bindir / name).chmod(0o755)
     if not live:
         greetd = target / 'etc/greetd'

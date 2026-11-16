@@ -49,7 +49,9 @@ def options(entry):
 def test_build_materializes_boot_experience_before_mkarchiso():
     build = (ROOT / 'scripts/build-iso.sh').read_text()
     assert 'scripts/boot-profile.py' in build
-    assert build.index('configure_boot') < build.index('exec mkarchiso')
+    # mkarchiso is no longer exec'd: the owning wrapper must finalize retention.
+    assert build.index('configure_boot') < build.index('\nmkarchiso -v ')
+    assert 'trap finish_storage 0' in build
 
 
 def test_menu_defaults_to_safe_live_boot_preserving_upstream_placeholders(tmp_path):
@@ -82,6 +84,43 @@ def test_menu_defaults_to_safe_live_boot_preserving_upstream_placeholders(tmp_pa
     assert 'copytoram=y' in options(ram)
     assert 'extra RAM' in ram and 'rootfs' in ram
     assert 'splash' not in options(ram), 'Leave upstream pv copy progress visible'
+
+
+@pytest.mark.parametrize('version', [91, 92])
+def test_live_boot_withholds_faulting_wl_without_disabling_intel_kms(tmp_path, version):
+    import shutil
+    output = tmp_path / 'profile'
+    shutil.copytree(ROOT / 'tests/fixtures' / f'archiso{version}', output)
+    configure(output)
+    entries = output / 'efiboot/loader/entries'
+    for path in sorted(entries.glob('*.conf')):
+        text = path.read_text()
+        if path.name == '05-wilsof-memtest.conf':
+            assert 'module_blacklist=' not in text
+            continue
+        args = options(text)
+        assert [x for x in args if x.startswith('module_blacklist=')] == ['module_blacklist=wl'], (
+            'Every shipped Live entry must withhold the owner-reported faulting STA driver')
+        assert 'nomodeset' not in args and 'i915.modeset=0' not in args
+    assert 'kms' in (output / 'airootfs/etc/mkinitcpio.conf.d/archiso.conf').read_text()
+
+
+def test_live_driver_policy_preserves_other_module_denials_and_is_idempotent(tmp_path):
+    output = profile(tmp_path)
+    entries = output / 'efiboot/loader/entries'
+    for name in ('01-archiso-linux.conf', '02-archiso-speech-linux.conf'):
+        path = entries / name
+        path.write_text(path.read_text().replace('%KERNEL_PARAMS%',
+                       'module_blacklist=test_other,wl module_blacklist=test_more %KERNEL_PARAMS%'))
+    configure(output)
+    for path in entries.glob('*.conf'):
+        if path.name != '05-wilsof-memtest.conf':
+            denials = [x for x in options(path.read_text()) if x.startswith('module_blacklist=')]
+            assert len(denials) == 1
+            assert set(denials[0].split('=', 1)[1].split(',')) == {'wl', 'test_other', 'test_more'}
+    before = {p.name: p.read_bytes() for p in entries.glob('*.conf')}
+    configure(output)
+    assert {p.name: p.read_bytes() for p in entries.glob('*.conf')} == before
 
 
 def test_plymouth_theme_and_hook_are_materialized_without_custom_ram_copy(tmp_path):

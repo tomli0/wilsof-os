@@ -66,8 +66,8 @@ def test_assets_are_included_in_project():
 
 def test_dms_lua_integration_overrides_the_generated_defaults():
     config = read_lua_config()
-    assert 'hl.bind("SUPER + space", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-search toggle"))' in config
-    assert 'hl.bind("SUPER + L", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-lock"))' in config
+    assert 'hl.bind("SUPER + space", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-search toggle"), { description = "Wilsof:command-center" })' in config
+    assert 'hl.bind("SUPER + L", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-lock"), { description = "Wilsof:lock" })' in config
     assert 'active_border = "rgb(86b9ce)"' in config
     assert 'kb_layout = "no"' in config
     assert 'systemctl --user start wilsof-session.target' in config
@@ -83,7 +83,7 @@ def test_managed_desktop_disables_only_optional_upstream_update_popup():
 def test_lua_owns_the_agreed_live_keybindings_with_supported_dispatchers():
     config = read_lua_config()
     for binding in (
-        '"SUPER + I", hl.dsp.exec_cmd("dms ipc call settings open")',
+        '"SUPER + I", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-search configure")',
         '"SUPER + F1", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-help")',
         '"SUPER + Q", hl.dsp.window.close()',
         '"SUPER + F", hl.dsp.window.fullscreen()',

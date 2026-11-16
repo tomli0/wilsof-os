@@ -17,8 +17,8 @@ def evaluate(expression):
 def test_default_view_has_three_shortcuts_then_seven_shallow_categories():
     assert MODEL.exists(), 'Command Center model is not implemented'
     rows = evaluate('m.defaults()')
-    assert [r['name'] for r in rows[:3]] == ['Browser', 'Terminal', 'Files']
-    assert [r['name'] for r in rows[3:]] == ['Applications', 'Files & Folders', 'Settings', 'Appearance', 'Help & Shortcuts', 'Edit Shortcuts', 'About Wilsof OS', 'Power']
+    assert [r['name'] for r in rows] == ['Apps','Learn','Tools','Appearance','Configure','Software','About','Power']
+    assert [r['name'] for r in evaluate('m.page("apps")')[1:]] == ['Browser','Files','Terminal']
     assert len({r['id'] for r in rows}) == len(rows)
 
 
@@ -33,8 +33,8 @@ def test_selection_survives_async_results_and_cannot_activate_another_row():
 
 def test_plain_queries_find_shortcuts_settings_and_lock_without_prefixes():
     assert evaluate('m.commands("terminal").map(r=>r.id)') == ['terminal']
-    assert evaluate('m.commands("display").map(r=>r.id)') == ['settings']
-    assert evaluate('m.commands("lock").map(r=>r.id)') == ['power', 'lock']
+    assert evaluate('m.commands("display").map(r=>r.id)') == ['display']
+    assert evaluate('m.commands("lock").map(r=>r.id)') == ['lock']
     assert evaluate('m.commands("nonsense-427").length') == 0
 
 
@@ -44,7 +44,7 @@ def test_native_dms_modal_distribution_and_safe_launcher_fallback():
     metadata = json.loads((plugin / 'plugin.json').read_text())
     assert metadata['components']['daemon'] == 'CommandCenter.qml'
     qml = (plugin / 'CommandCenter.qml').read_text()
-    for contract in ['DModal {', 'AppSearchService.searchApplications', 'AppSearchService.getBuiltInLauncherItems', 'SessionService.launchDesktopEntry', 'SessionService.launchDesktopAction', 'PopoutService.openPowerMenu', 'Model.selection', 'Model.move', 'onStreamFinished', 'wilsof-file-search', 'Model.accept', 'function status()', 'Theme.surface', 'forceActiveFocus']:
+    for contract in ['DModal {', 'AppSearchService.searchApplications', 'SessionService.launchDesktopEntry', 'SessionService.launchDesktopAction', 'SessionService.poweroff', 'Model.selection', 'Model.move', 'onStreamFinished', 'wilsof-action', 'Model.enter', 'function status()', 'backgroundColor: "#14181E"', 'forceActiveFocus']:
         assert contract in qml, contract
     manifest = (ROOT / 'runtime/image-files.txt').read_text().splitlines()
     for name in ['plugin.json', 'CommandCenter.qml', 'Model.js', 'NativeLock.js']:
@@ -89,4 +89,4 @@ def test_shortcuts_and_lock_escape_the_shell_service_lifetime():
     assert 'DesktopEntries.heuristicLookup' in qml, 'Shortcuts must use DMS desktop-entry launch policy'
     assert 'Quickshell.execDetached([row.data])' not in qml
     assert '["systemd-run", "--user", "--collect", "--quiet", "--", root.bin + "wilsof-lock"]' in qml
-    assert '["systemd-run", "--user", "--collect", "--quiet", "--", "xdg-open"' in qml
+    assert 'Qt.openUrlExternally(row.data)' in qml

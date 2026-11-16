@@ -24,7 +24,7 @@ def collect(root=Path('/')):
         'github': 'https://github.com/tomli0/wilsof-os',
         'website': '',
         'license': 'No project-wide license has been declared for Wilsof original source. Third-party components retain their own licenses; see /usr/share/licenses.',
-        'dedication': 'Dedicated to William and Sofie.',
+        'dedication': 'Dedicated to William & Sofie',
         'packages': [],
     }
     if root == Path('/'):

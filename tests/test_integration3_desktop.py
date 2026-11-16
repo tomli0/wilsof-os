@@ -19,7 +19,10 @@ def test_upgrade_seeds_missing_plugins_preserving_explicit_states(tmp_path, orig
     plugins.write_text(json.dumps(original))
     load_runtime().install_user(ROOT, tmp_path)
     actual = json.loads(plugins.read_text())
-    assert actual == {'wilsofProfiles': {'enabled': True}, 'wilsofCommandCenter': {'enabled': True}} | original
+    expected = {'wilsofCommandCenter': {'enabled': True}} | original
+    if 'wilsofProfiles' in expected:
+        expected['wilsofProfiles'] = dict(expected['wilsofProfiles'], enabled=False)
+    assert actual == expected
 
 
 def test_reset_refuses_collision_without_writing_either_file(tmp_path):

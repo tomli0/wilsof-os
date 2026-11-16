@@ -13,11 +13,18 @@ def _entry(template, title, order, flags):
     # Retain boot-device discovery and substitution tokens, but remove inherited
     # presentation/RAM policy so each entry has exactly one explicit choice.
     def policy_options(match):
+        # Desktop-first Live policy after the owner-reported wl kernel oops.
+        # This is an image boot argument only, never installed-target policy.
+        blocked = {'wl'}
+        for arg in match[1].split():
+            if arg.startswith('module_blacklist='):
+                blocked.update(filter(None, arg.split('=', 1)[1].split(',')))
         options = [arg for arg in match[1].split() if arg not in {'quiet', 'splash'}
-                   and not arg.startswith(('cow_spacesize=', 'copytoram=', 'plymouth.enable=', 'rd.plymouth=', 'systemd.show_status=', 'loglevel='))]
+                   and not arg.startswith(('cow_spacesize=', 'copytoram=', 'plymouth.enable=', 'rd.plymouth=', 'systemd.show_status=', 'loglevel=', 'module_blacklist='))]
         # tmpfs size is a ceiling, not an allocation. Scale to RAM rather
         # than reserving a fixed buffer; the installer checks actual headroom.
-        return 'options  ' + ' '.join(options) + ' cow_spacesize=75% ' + flags
+        return ('options  ' + ' '.join(options) + ' cow_spacesize=75% module_blacklist='
+                + ','.join(sorted(blocked)) + ' ' + flags)
     return re.sub(r'^options\s+(.*)$', policy_options, text, flags=re.M)
 
 

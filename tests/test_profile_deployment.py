@@ -14,26 +14,26 @@ def runtime():
     return m
 
 
-def test_new_home_installs_all_plugin_inputs_and_enables_default_bar(tmp_path):
+def test_new_home_installs_only_unified_menu_and_retires_profile_ui(tmp_path):
     entry = tmp_path / '.config/hypr/hyprland.lua'
     entry.parent.mkdir(parents=True)
     entry.write_text('-- base\n')
     runtime().install_user(ROOT, tmp_path)
     for name in ('wilsof-profile', 'wilsof-profile-ui'):
-        installed = tmp_path / '.local/bin' / name
-        assert installed.is_file(), 'M2 helper not distributed'
-        assert installed.read_bytes() == (ROOT / 'bin' / name).read_bytes()
-        assert installed.stat().st_mode & 0o777 == 0o755
-    source = ROOT / 'config/dms/plugins/wilsofProfiles'
+        assert not (tmp_path / '.local/bin' / name).exists()
+    assert not (tmp_path / '.config/dms/plugins/wilsofProfiles').exists()
+    source = ROOT / 'config/dms/plugins/wilsofCommandCenter'
     for file in source.iterdir():
-        installed = tmp_path / '.config/dms/plugins/wilsofProfiles' / file.name
+        installed = tmp_path / '.config/dms/plugins/wilsofCommandCenter' / file.name
         assert installed.read_bytes() == file.read_bytes()
     settings = json.loads((tmp_path / '.config/DankMaterialShell/settings.json').read_text())
-    assert settings['barConfigs'][0]['leftWidgets'][0] == 'wilsofProfiles'
-    assert json.loads((tmp_path / '.config/dms/plugin_settings.json').read_text())['wilsofProfiles']['enabled'] is True
+    assert settings['barConfigs'][0]['leftWidgets'][0] == 'wilsofCommandCenter'
+    plugins = json.loads((tmp_path / '.config/dms/plugin_settings.json').read_text())
+    assert plugins['wilsofCommandCenter']['enabled'] is True
+    assert 'wilsofProfiles' not in plugins
     manifest = (ROOT / 'runtime/image-files.txt').read_text().splitlines()
     assert len(manifest) == len(set(manifest))
-    assert 'bin/wilsof-profile' in manifest and 'bin/wilsof-profile-ui' in manifest
+    assert 'bin/wilsof-profile' not in manifest and 'bin/wilsof-profile-ui' not in manifest
     assert all(str(f.relative_to(ROOT)) in manifest for f in source.iterdir())
 
 

@@ -1,5 +1,12 @@
 # Approved private-image repository baseline
 
+Status: RC4 uses this fixed experimental policy and has separately recorded
+66/66 virtual acceptance. See [Getting started](getting-started.md) for the exact
+image and [update transitions](update-transition.md) for the bounded tested
+2026-11-02 advancement. This is not maintained production security-update delivery.
+The producer/consumer and first-build material below describes its contract and
+historical prerequisites, not an instruction to rebuild the accepted image.
+
 ## Policy and scope
 
 The compatibility investigation in issue #16 selected Arch Linux Archive

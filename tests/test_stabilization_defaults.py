@@ -44,7 +44,7 @@ def test_existing_personal_desktop_does_not_gain_changelog_marker(tmp_path):
 def test_only_identified_video_test_utilities_hidden_not_removed(tmp_path):
     seed(tmp_path)
     apps = tmp_path / '.local/share/applications'
-    assert sorted(p.name for p in apps.glob('*.desktop')) == ['qv4l2.desktop', 'qvidcap.desktop']
+    assert sorted(p.name for p in apps.glob('*.desktop')) == ['com.mitchellh.ghostty.desktop', 'qv4l2.desktop', 'qvidcap.desktop']
     for name in ('qv4l2', 'qvidcap'):
         text = (apps / (name + '.desktop')).read_text()
         assert 'NoDisplay=true\n' in text

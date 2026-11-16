@@ -1,14 +1,17 @@
-"""One approved dated repository policy for build, live and fresh-target roots.
+"""Dated repository policy for build, live and installed roots.
 
 No environment override or rolling-mirror fallback. Reading is side-effect free;
-materialization is restricted to a separately prepared non-host root.
+materialization is restricted to a separately prepared non-host root. Installed
+advancement requires the companion's authenticated completed-transaction receipt.
 """
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import runpy
 import shutil
+import stat
 import subprocess
 import tempfile
 
@@ -41,6 +44,22 @@ def content():
 
 
 def read(root=Path('/')):
+    root = Path(root)
+    state = checked(root, 'var/lib/wilsof-release-update')
+    if state.exists() or state.is_symlink():
+        helper = checked(root, 'usr/share/wilsof/source/bin/wilsof-release-update')
+        owner = 0 if root == Path('/') else os.getuid()
+        for entry in (helper, *helper.parents):
+            info = entry.lstat()
+            if (info.st_uid != owner or info.st_mode & 0o022 or
+                    not (stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode)) or
+                    (stat.S_ISREG(info.st_mode) and info.st_nlink != 1)):
+                raise ValueError('Unsafe installed snapshot companion')
+            if entry == root:
+                break
+        active = runpy.run_path(str(helper))['read_active'](root)
+        if active is not None:
+            return active
     for relative, expected in content().items():
         path = checked(root, relative)
         if not path.is_file() or path.read_text() != expected:

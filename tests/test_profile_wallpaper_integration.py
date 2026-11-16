@@ -32,20 +32,16 @@ def test_combined_clean_default_and_wallpaper_recovery_are_deployed(tmp_path, li
         os.umask(previous)
     profile = tmp_path / '.local/state/wilsof-os/profile.json'
     assert not profile.exists(), 'deployment must not create or reset profile intent'
-    cli = tmp_path / '.local/bin/wilsof-profile'
-    result = subprocess.run([str(cli), 'get'], env=os.environ | {'HOME': str(tmp_path)},
-                            capture_output=True, text=True, timeout=5)
-    assert result.returncode == 0 and result.stdout == 'clean\n'
-    choices = subprocess.run([str(cli), 'list'], capture_output=True, text=True, timeout=5)
-    assert choices.returncode == 0
-    assert choices.stdout.splitlines() == ['clean', 'study', 'development', 'everyday']
+    # The standalone historical profile code remains in Git, not in Private3's payload.
+    assert not (tmp_path / '.local/bin/wilsof-profile').exists()
+    assert not (tmp_path / '.local/bin/wilsof-profile-ui').exists()
     dropin = tmp_path / '.config/systemd/user/dms.service.d/wilsof.conf'
     assert dropin.read_bytes() == (ROOT / 'config/systemd/dms-wilsof.conf').read_bytes()
     assert dropin.read_text().count('ExecStartPost=') == 1
     assert '--no-block start wilsof-wallpaper.service' in dropin.read_text()
-    assert (tmp_path / '.config/dms/plugins/wilsofProfiles/ProfileState.qml').is_file()
+    assert not (tmp_path / '.config/dms/plugins/wilsofProfiles').exists()
     settings = json.loads((tmp_path / '.config/DankMaterialShell/settings.json').read_text())
-    assert settings['barConfigs'][0]['leftWidgets'][0] == 'wilsofProfiles'
+    assert settings['barConfigs'][0]['leftWidgets'][0] == 'wilsofCommandCenter'
     assert (tmp_path / '.config/systemd/user/wilsof-session.target.wants/wilsof-wallpaper.service').is_symlink()
 
 

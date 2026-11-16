@@ -1,28 +1,32 @@
 {
   "schema": 1,
   "actions": {
+    "terminal": {"label": "Terminal", "keys": "SUPER + RETURN", "exec": "ghostty", "editable": true},
+    "window-next": {"label": "Next window", "keys": "SUPER + TAB", "dsp": "window.cycle_next({ next = true })", "editable": true},
+    "window-previous": {"label": "Previous window", "keys": "SUPER + SHIFT + TAB", "dsp": "window.cycle_next({ next = false })", "editable": true},
+    "screenshot": {"label": "Screenshot", "keys": "Print", "exec": "$BINwilsof-action screenshot", "editable": true},
     "command-center": {
-      "label": "Command Center",
+      "label": "Wilsof Menu",
       "keys": "SUPER + space",
       "exec": "$BINwilsof-search toggle",
       "editable": true
     },
     "lock": {
-      "label": "Lås økten",
+      "label": "Lock screen",
       "keys": "SUPER + L",
       "exec": "$BINwilsof-lock",
       "editable": true
     },
     "help": {
-      "label": "Vis hjelpen",
+      "label": "Wilsof Guide",
       "keys": "SUPER + F1",
       "exec": "$BINwilsof-help",
       "editable": true
     },
     "settings": {
-      "label": "Åpne innstillinger",
+      "label": "Configure",
       "keys": "SUPER + I",
-      "exec": "dms ipc call settings open",
+      "exec": "$BINwilsof-search configure",
       "editable": true
     },
     "firefox": {
@@ -38,13 +42,13 @@
       "editable": true
     },
     "fullscreen": {
-      "label": "Fullskjerm",
+      "label": "Fullscreen",
       "keys": "SUPER + F",
       "dsp": "window.fullscreen()",
       "editable": true
     },
     "close-window": {
-      "label": "Lukk aktivt vindu",
+      "label": "Close active window",
       "keys": "SUPER + Q",
       "dsp": "window.close()",
       "editable": true

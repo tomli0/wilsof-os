@@ -1,0 +1,54 @@
+diff --git a/src/core/PortalManager.cpp b/src/core/PortalManager.cpp
+index 5dc98d4..ace56b3 100644
+--- a/src/core/PortalManager.cpp
++++ b/src/core/PortalManager.cpp
+@@ -484,11 +484,12 @@ void CPortalManager::startEventLoop() {
+     m_sPortals.screencopy.reset();
+     m_sPortals.screenshot.reset();
+     m_sHelpers.toplevel.reset();
++    m_sHelpers.toplevelMapping.reset();
+     m_sPortals.inputCapture.reset();
+ 
+     m_pConnection.reset();
+     pw_loop_destroy(m_sPipewire.loop);
+-    wl_display_disconnect(m_sWaylandConnection.display);
++    releaseWayland();
+ 
+     m_sTimersThread.thread.release();
+     pollThr.join(); // wait for poll to exit
+@@ -573,6 +574,22 @@ void CPortalManager::removeFdFromEventLoop(int fd) {
+     m_sEventLoopInternals.pollCallbacks.erase(fd);
+ }
+ 
++void CPortalManager::releaseWayland() {
++    m_vOutputs.clear();
++    m_sWaylandConnection.linuxDmabufFeedback.reset();
++    m_sWaylandConnection.linuxDmabuf.reset();
++    m_sWaylandConnection.hyprlandToplevelMgr.reset();
++    m_sWaylandConnection.xdgOutputManager.reset();
++    m_sWaylandConnection.shm.reset();
++    m_sWaylandConnection.registry.reset();
++
++    if (!m_sWaylandConnection.display)
++        return;
++
++    wl_display_disconnect(m_sWaylandConnection.display);
++    m_sWaylandConnection.display = nullptr;
++}
++
+ void CPortalManager::terminate() {
+     m_bTerminate = true;
+ 
+diff --git a/src/core/PortalManager.hpp b/src/core/PortalManager.hpp
+index eb62c1b..b0265f0 100644
+--- a/src/core/PortalManager.hpp
++++ b/src/core/PortalManager.hpp
+@@ -121,6 +121,8 @@ class CPortalManager {
+     // terminate after the event loop has been created. Before we can exit()
+     void terminate();
+ 
++    void releaseWayland();
++
+   private:
+     void  startEventLoop();
+     void  setupXDGOutput(SOutput* output);

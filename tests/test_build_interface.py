@@ -53,6 +53,9 @@ def test_isolated_valid_layout_reaches_only_substituted_builder(tmp_path):
     result = subprocess.run(['sh', str(source / 'scripts/build-iso.sh'), '--build'], env=env, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert json.loads(Path(env['CAPTURE']).read_text()) == ['-v', '-w', env['WILSOF_ISO_WORKDIR'], '-o', env['WILSOF_ISO_OUTDIR'], env['WILSOF_ISO_WORKDIR'] + '-profile']
+    # A built image is not a clean workflow until the exited namespace's work is retired.
+    state = json.loads(Path(env['WILSOF_ARTIFACT_CATALOG']).read_text())
+    assert state['workflows'][0]['state'] == 'CLEANUP_PENDING'
 
 
 def test_documented_archive_and_sudo_command_supplies_all_required_inputs(tmp_path):
@@ -71,3 +74,18 @@ def test_documented_archive_and_sudo_command_supplies_all_required_inputs(tmp_pa
     assert result.returncode == 0, result.stderr
     assert Path(env['CAPTURE']).exists(), 'Documented command must reach substituted mkarchiso'
     assert (Path(env['WILSOF_EXPORT_ROOT']) / 'SOURCE_COMMIT').read_text().strip() == commit
+
+
+def test_substituted_builder_failure_retains_evidence_and_exit_status(tmp_path):
+    source, _, package, env = layout(tmp_path)
+    tool = Path(env['PATH'].split(':')[0]) / 'mkarchiso'
+    tool.write_text('#!/bin/sh\nexit 7\n')
+    before = package.read_bytes()
+    result = subprocess.run(['sh', str(source / 'scripts/build-iso.sh'), '--build'],
+                            env=env, capture_output=True, text=True)
+    assert result.returncode == 7, result.stderr
+    record = json.loads(Path(env['WILSOF_ARTIFACT_CATALOG']).read_text())['workflows'][0]
+    assert record['state'] == 'RETAIN' and record['exit_code'] == 7
+    assert Path(env['WILSOF_ISO_WORKDIR'] + '-profile').is_dir()
+    assert (Path(env['WILSOF_ISO_OUTDIR']) / 'BUILD-INPUTS.json').is_file()
+    assert package.read_bytes() == before

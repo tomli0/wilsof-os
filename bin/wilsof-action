@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+"""Focused, unprivileged Wilsof actions using fixed upstream command APIs."""
+import argparse
+from datetime import datetime
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+
+DEPENDENCIES = {'screenshot':('grim','slurp'), 'recording':('wf-recorder','slurp','systemctl','systemd-run'),
+                'emoji':('wl-copy',), 'install':('ghostty','sudo','pacman'), 'remove':('ghostty','sudo','pacman'),
+                'update':('ghostty','sudo','pacman'), 'system':('ghostty','fastfetch'), 'guide':('wilsof-help',)}
+PROTECTED = {'base','linux','linux-firmware','hyprland','hyprland-as02-private','dux-shell','systemd','networkmanager','greetd','sudo','pacman','pipewire','wireplumber'}
+UNIT = 'wilsof-screen-recording.service'
+
+
+def capabilities(*, which=shutil.which):
+    result = {key:all(which(c) for c in commands) for key,commands in DEPENDENCIES.items()}
+    update = Path(software_command('update')[0])
+    result['update'] = result['update'] and update.is_file() and os.access(update, os.X_OK)
+    return result | {'window-visuals':False}
+
+
+def software_command(action, package=''):
+    if action == 'update': return [str(Path(__file__).resolve().with_name('wilsof')),'update']
+    if action not in ('install','remove'): raise ValueError('unknown software action')
+    if not re.fullmatch(r'[a-z0-9][a-z0-9@._+-]{0,127}',package): raise ValueError('enter one valid repository package name')
+    if action == 'remove' and package in PROTECTED: raise ValueError('essential system components cannot be removed from this application interface')
+    return ['sudo','pacman','-Syu' if action == 'install' else '-Rns','--',package]
+
+
+def software(action):
+    print('Wilsof Software — trusted Arch repository packages. Review the Pacman transaction before accepting.\n')
+    if action == 'update': return subprocess.run(software_command(action)).returncode
+    query = input('Search applications (empty cancels): ').strip()
+    if not query: return 0
+    subprocess.run(['pacman','-Ss' if action == 'install' else '-Qs','--',query],check=False)
+    package = input('\nExact package name (empty cancels): ').strip()
+    if not package: return 0
+    command = software_command(action,package)
+    if action == 'remove':
+        listing = subprocess.run(['pacman','-Ql','--',package],text=True,capture_output=True,check=True)
+        if not any('/usr/share/applications/' in line and line.endswith('.desktop') for line in listing.stdout.splitlines()):
+            raise ValueError('this package has no installed desktop application; use Terminal for system administration')
+    return subprocess.run(command).returncode
+
+
+def geometry():
+    selected = subprocess.run(['slurp'],capture_output=True,text=True,timeout=120,check=False)
+    if selected.returncode: return None
+    text = selected.stdout.strip()
+    match = re.fullmatch(r'(-?\d+),(-?\d+) (\d+)x(\d+)',text)
+    if not match or not all(-32768 <= int(n) <= 32768 for n in match.groups()[:2]) or not all(0 < int(n) <= 32768 for n in match.groups()[2:]):
+        raise ValueError('invalid capture geometry')
+    return text
+
+
+def new_capture(kind,suffix):
+    folder = Path.home() / ('Pictures/Screenshots' if kind == 'image' else 'Videos/Recordings')
+    folder.mkdir(parents=True,mode=0o700,exist_ok=True)
+    if folder.is_symlink(): raise ValueError('capture directory must be a regular directory')
+    fd, name = tempfile.mkstemp(prefix='Wilsof-'+datetime.now().strftime('%Y%m%d-%H%M%S')+'-',suffix=suffix,dir=folder)
+    return fd,Path(name)
+
+
+def notify(message):
+    print(message,flush=True)
+    if shutil.which('notify-send'):
+        subprocess.run(['notify-send','Wilsof',message],timeout=5,check=False)
+
+
+def screenshot():
+    selected=geometry()
+    if selected is None: return 0
+    fd,path=new_capture('image','.png')
+    with os.fdopen(fd,'wb') as stream:
+        subprocess.run(['grim','-g',selected,'-'],stdout=stream,check=True,timeout=20)
+    if path.stat().st_size < 8: raise ValueError('screenshot file is empty')
+    notify('Screenshot saved: '+str(path))
+    return 0
+
+
+def recorder_state():
+    result=subprocess.run(['systemctl','--user','show',UNIT,'--property=Description,ActiveState,ExecStart'],capture_output=True,text=True,timeout=5,check=False)
+    if result.returncode: raise ValueError('recording service state is unavailable')
+    return dict(line.split('=',1) for line in result.stdout.splitlines() if '=' in line)
+
+
+def owned_recorder(state):
+    return state.get('Description') == 'Wilsof Screen Recording' and 'path=/usr/bin/wf-recorder ;' in state.get('ExecStart','')
+
+
+def recording():
+    runtime = Path(os.environ.get('XDG_RUNTIME_DIR',''))
+    if not runtime.is_absolute() or runtime.is_symlink() or runtime.stat().st_uid != os.getuid():
+        raise ValueError('a user runtime directory is required')
+    fd=os.open(runtime/'wilsof-recording.lock',os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX | fcntl.LOCK_NB)
+        state=recorder_state()
+        if state.get('ActiveState') in ('active','activating','deactivating'):
+            if not owned_recorder(state): raise ValueError('refusing to stop an unrelated recording service')
+            subprocess.run(['systemctl','--user','kill','--kill-whom=main','--signal=SIGINT',UNIT],check=True,timeout=8)
+            until=time.monotonic()+12
+            while time.monotonic()<until:
+                if recorder_state().get('ActiveState') in ('inactive','failed'):
+                    notify('Screen recording stopped. Saved in ~/Videos/Recordings.');return 0
+                time.sleep(.2)
+            raise ValueError('recording is still stopping; do not start another capture')
+        if state.get('Description') not in (None,'',UNIT,'Wilsof Screen Recording'):
+            raise ValueError('recording service name is already used by another unit')
+        selected=geometry()
+        if selected is None: return 0
+        capture_fd,path=new_capture('video','.mp4');os.close(capture_fd)
+        subprocess.run(['systemd-run','--user','--unit='+UNIT,'--description=Wilsof Screen Recording','--property=KillSignal=SIGINT','--property=RuntimeMaxSec=3600','--collect','--quiet','--','/usr/bin/wf-recorder','-g',selected,'-f',str(path)],check=True,timeout=8)
+        time.sleep(.4)
+        state=recorder_state()
+        if state.get('ActiveState') != 'active' or not owned_recorder(state):
+            raise ValueError('recorder did not start; inspect journalctl --user -u '+UNIT)
+        notify('Recording started. Choose Screen Recording again to stop.');return 0
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('action',choices=[*DEPENDENCIES,'capabilities','_software','_system'])
+    parser.add_argument('operation',nargs='?',choices=['install','remove','update'])
+    args=parser.parse_args()
+    if os.geteuid() == 0: parser.error('run as the desktop user, never root')
+    try:
+        if args.action == 'capabilities': print(json.dumps(capabilities()));return 0
+        if args.action == '_software':
+            if not args.operation: parser.error('a software operation is required')
+            rc=software(args.operation);input('\nPress Enter to close. ');return rc
+        if args.action == '_system':
+            rc=subprocess.run(['fastfetch','--config',str(Path.home()/'.local/share/wilsof-os/fastfetch.json')]).returncode
+            input('\nPress Enter to close. ');return rc
+        if not capabilities()[args.action]: raise ValueError('required tools are not installed for '+args.action)
+        if args.action in ('install','remove','update'):
+            return subprocess.run(['ghostty','-e',str(Path(__file__).resolve()),'_software',args.action]).returncode
+        if args.action == 'system': return subprocess.run(['ghostty','-e',str(Path(__file__).resolve()),'_system']).returncode
+        if args.action == 'guide': return subprocess.run(['wilsof-help']).returncode
+        if args.action == 'screenshot': return screenshot()
+        if args.action == 'recording': return recording()
+        raise ValueError('this action is handled by Wilsof Menu')
+    except (OSError,ValueError,subprocess.SubprocessError,EOFError) as error:
+        message='Action unavailable: '+str(error)
+        print(message,file=sys.stderr)
+        if shutil.which('notify-send'): subprocess.run(['notify-send','Wilsof',message],check=False,timeout=5)
+        return 69
+
+
+if __name__ == '__main__':sys.exit(main())

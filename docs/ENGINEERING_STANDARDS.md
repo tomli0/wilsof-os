@@ -1,5 +1,7 @@
 # Engineering-standard for Wilsof OS
 
+> Gjeldende agent-, gren-, lagrings- og rapporteringsregler står i [AGENTS.md](../AGENTS.md), [artefaktlivssyklusen](artifact-maintenance.md) og [kort rapportering](development-reporting.md). Disse erstatter historiske krav om nye rapportgrener/12-punktsrapporter for hver økt; øvrige sikkerhets- og akseptporter består.
+
 Denne standarden beskriver hvordan endringer skal avgrenses, implementeres, gjennomgås og dokumenteres. Målet er færre feil og tryggere leveranser, ikke flere prosesser. Kravene gjelder mennesker og utviklingsagenter. En liten dokumentasjonsrettelse trenger ikke samme bevis som en installerendring.
 
 ## 1. Virkeområde og forholdet til eksisterende dokumentasjon
@@ -172,6 +174,24 @@ Dette er separate egenskaper, ikke automatisk videreføring av et «pass». En b
 - Slett mergede feature-/fix-/dokumentasjonsgrener først etter verifisert vellykket integrasjon, bevaring og fravær av aktive avhengigheter, med konkret eiergodkjenning som i §12.1.
 - Ingen report-only-grener eller rutinemessige QA-PR-er. Publiser meningsfulle, sanerte sluttrapporter på relevant eksisterende GitHub-PR eller issue, med eksakt SHA, faktiske sjekker, begrensninger og neste port.
 - Ingen autonome merges, releases eller destruktive vertshandlinger. Integrasjonsunntak, opprydding eller rapportering opphever ikke kravene om separat autorisasjon og privat sikkerhetsarbeid.
+
+### 12.3 Permanent artifact lifecycle
+
+Hermes owns storage maintenance at every session boundary. Follow
+[artifact maintenance](artifact-maintenance.md): Develop → Test → Deliver →
+Preserve essential evidence → Clean up → Continue. Use unique workflow directories,
+explicit retention manifests, bounded QEMU supervisors and the established locks.
+Retain unresolved failures and pins; only independently verified successful
+disposable outputs enter an approved exact-target cleanup plan. Default is read-only.
+No age-only deletion, broad recursive removal, source/WIP loss, shared-cache pruning,
+branch deletion, signing bypass or unattended scheduled cleanup. Archive only to an
+already authorized destination with independent checksum verification.
+
+Report storage used/reclaimed, protected artifacts, remaining candidates,
+active/parked branches and PRs, and Daily Driver blockers on the existing status.
+Reuse valid evidence when inputs are unchanged; do not create report-only branches,
+duplicate issues, source archives or unchanged-status reports. A trust/privilege gate
+ends expensive retries; it does not authorize another build or queue resumption.
 
 ## 13. Definition of Ready
 

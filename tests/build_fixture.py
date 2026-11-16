@@ -1,4 +1,4 @@
-"""Scratch-only wrapper harness: materializer/package tools/mkarchiso substituted."""
+"""Scratch wrapper harness; native build/package/storage boundaries substituted."""
 import json
 import os
 from pathlib import Path
@@ -15,7 +15,13 @@ def layout(tmp_path):
     upstream.mkdir()
     tools.mkdir()
     (source / 'SOURCE_COMMIT').write_text('a' * 40 + '\n')
+    (tmp_path / 'catalog.json').write_text(json.dumps({'schema': 1, 'inventory_complete': True, 'workflows': []}))
     shutil.copy2(ROOT / 'scripts/build-iso.sh', source / 'scripts/build-iso.sh')
+    lifecycle = (ROOT / 'scripts/artifact-lifecycle.py').read_text()
+    # The builder is substituted: exercise real admission with a deterministic
+    # capacity boundary, never reserve a fictitious 25 GiB on the test host.
+    lifecycle = lifecycle.replace('import os\n', 'import os\nfrom types import SimpleNamespace\nos.statvfs = lambda path: SimpleNamespace(f_bavail=100 * 1024**3, f_frsize=1)\n', 1)
+    (source / 'scripts/artifact-lifecycle.py').write_text(lifecycle)
     (source / 'runtime/pinned-package.py').write_text('def verified_package(directory):\n    return directory / "internal.pkg.tar.zst"\n')
     (source / 'scripts/prepare-iso.py').write_text('import pathlib,sys\np=pathlib.Path(sys.argv[sys.argv.index("--output")+1]); p.mkdir()\n(p/"packages.x86_64").write_text("base\\n")\n')
     (source / 'scripts/boot-profile.py').write_text('def configure_boot(profile,source):\n    pass\n')
@@ -24,6 +30,10 @@ def layout(tmp_path):
         (upstream / name).write_text('fixture\n')
     package = tmp_path / 'internal.pkg.tar.zst'
     package.write_bytes(b'fixture; not an actual verified Hypridle artifact')
+    portal = tmp_path / 'portal.pkg.tar.zst'
+    portal.write_bytes(b'synthetic portal archive; not signature acceptance')
+    Path(str(portal)+'.sig').write_bytes(b'synthetic detached signature')
+    (source / 'runtime/portal-package.py').write_text('def artifact(path):\n    if not path.is_file() or not path.with_name(path.name+".sig").is_file(): raise ValueError("missing portal input")\n    return {"package":str(path)}\n')
     for name, text in {
         'id': '#!/bin/sh\nprintf "0\\n"\n',
         'pacman': '#!/bin/sh\nexit 0\n',
@@ -39,6 +49,7 @@ def layout(tmp_path):
         'WILSOF_SOURCE_COMMIT': 'a' * 40, 'SOURCE_DATE_EPOCH': '1767225600',
         'WILSOF_ISO_VERSION': 'fixture', 'WILSOF_ARCHISO_RELENG': str(upstream),
         'WILSOF_ISO_WORKDIR': str(tmp_path / 'work'), 'WILSOF_ISO_OUTDIR': str(tmp_path / 'out'),
-        'WILSOF_HYPRIDLE_PACKAGE': str(package), 'CAPTURE': str(tmp_path / 'mkarchiso.json'),
+        'WILSOF_ARTIFACT_CATALOG': str(tmp_path / 'catalog.json'), 'WILSOF_WORKFLOW_ID': 'build-fixture',
+        'WILSOF_HYPRIDLE_PACKAGE': str(package), 'WILSOF_PORTAL_PACKAGE': str(portal), 'CAPTURE': str(tmp_path / 'mkarchiso.json'),
     }
     return source, upstream, package, env

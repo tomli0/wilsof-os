@@ -1,0 +1,32 @@
+# Private verification package; no release or signature-trust assertion.
+pkgname=xdg-desktop-portal-hyprland
+pkgver=1.4.1
+pkgrel=2.1
+pkgdesc='Hyprland portal with upstream Wayland ownership teardown backport'
+arch=('x86_64')
+url='https://github.com/hyprwm/xdg-desktop-portal-hyprland'
+license=('BSD-3-Clause')
+depends=('gcc-libs' 'glibc' 'hyprlang' 'hyprutils' 'libdrm' 'libpipewire' 'mesa' 'qt6-base' 'qt6-wayland' 'sdbus-cpp' 'util-linux-libs' 'wayland' 'xdg-desktop-portal' 'grim' 'slurp')
+makedepends=('cmake' 'ninja' 'pkgconf' 'hyprland-protocols' 'hyprwayland-scanner' 'wayland-protocols')
+options=('!debug' '!lto')
+# git archive --format=tar --prefix=portal/ cc8e5ef8fb2acef3db488b9a33b0c48c2a4ee204
+source=('upstream-pristine.tar' 'wayland-teardown.patch' 'run.py' 'teardown.cpp')
+sha256sums=('552291da7b076bd8f352f2052407df5c016fc5bba78ca69071dc2c52e2508748'
+            '12bae42d345321bae415cc9c6b709c6a0996eee220e8a5a1868386d467140f6a' '79bad72b4cd1444f715819a1acd6c581f36a44d1cd2a673261f1612376042af9' '785a6785cff0160c62c711c223bfc631d4225919f33fdf2ff2150f2ddc99bd93')
+prepare() {
+    cd "$srcdir/portal"
+    patch -Np1 --fuzz=0 -i "$srcdir/wayland-teardown.patch"
+}
+build() {
+    cmake -S "$srcdir/portal" -B build -G Ninja \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_LIBEXECDIR=lib
+    cmake --build build --parallel 2
+}
+check() {
+    python3 "$srcdir/run.py" "$srcdir/build" "$srcdir/portal"
+}
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+    install -Dm644 "$srcdir/portal/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -1,0 +1,10 @@
+{
+  "logo": {
+    "type": "file",
+    "source": "__WILSOF_LOGO_PATH__",
+    "color": {"1": "#86B9CE"},
+    "padding": {"right": 3}
+  },
+  "display": {"color": {"keys": "#86B9CE", "title": "#86B9CE"}, "separator": "  "},
+  "modules": ["title", "separator", "os", "kernel", "cpu", "gpu", "memory", "disk", "shell", "uptime"]
+}

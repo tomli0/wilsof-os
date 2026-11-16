@@ -38,6 +38,8 @@ end)
 -- Remove only generated DMS binds that conflict with Wilsof's documented map.
 -- `hl.unbind` is case-sensitive and removes all earlier registrations of each key.
 local wilsof_keys = {
+    "ALT + space", -- Remove the generated second app launcher, not its upstream implementation.
+    "SUPER + RETURN", "SUPER + Return", "SUPER + TAB", "SUPER + Tab", "SUPER + SHIFT + TAB", "SUPER + SHIFT + Tab", "Print",
     "SUPER + space", "SUPER + L", "SUPER + I", "SUPER + Q", "SUPER + F", "SUPER + F1",
     "SUPER + left", "SUPER + right", "SUPER + up", "SUPER + down",
     "SUPER + SHIFT + left", "SUPER + SHIFT + right", "SUPER + SHIFT + up", "SUPER + SHIFT + down",
@@ -51,10 +53,14 @@ for _, key in ipairs(wilsof_keys) do
     hl.unbind(key)
 end
 
-hl.bind("SUPER + space", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-search toggle"))
-hl.bind("SUPER + L", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-lock"))
-hl.bind("SUPER + I", hl.dsp.exec_cmd("dms ipc call settings open"))
-hl.bind("SUPER + F1", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-help"))
+hl.bind("SUPER + RETURN", hl.dsp.exec_cmd("ghostty"), { description = "Wilsof:terminal" })
+hl.bind("SUPER + TAB", hl.dsp.window.cycle_next({ next = true }), { description = "Wilsof:window-next" })
+hl.bind("SUPER + SHIFT + TAB", hl.dsp.window.cycle_next({ next = false }), { description = "Wilsof:window-previous" })
+hl.bind("Print", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-action screenshot"), { description = "Wilsof:screenshot" })
+hl.bind("SUPER + space", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-search toggle"), { description = "Wilsof:command-center" })
+hl.bind("SUPER + L", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-lock"), { description = "Wilsof:lock" })
+hl.bind("SUPER + I", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-search configure"), { description = "Wilsof:settings" })
+hl.bind("SUPER + F1", hl.dsp.exec_cmd(wilsof_bin .. "wilsof-help"), { description = "Wilsof:help" })
 hl.bind("SUPER + left", hl.dsp.focus({ direction = "left" }))
 hl.bind("SUPER + right", hl.dsp.focus({ direction = "right" }))
 hl.bind("SUPER + up", hl.dsp.focus({ direction = "up" }))
@@ -67,8 +73,8 @@ hl.bind("SUPER + CTRL + left", hl.dsp.window.resize({ x = -40, y = 0, relative =
 hl.bind("SUPER + CTRL + right", hl.dsp.window.resize({ x = 40, y = 0, relative = true }))
 hl.bind("SUPER + CTRL + up", hl.dsp.window.resize({ x = 0, y = -40, relative = true }))
 hl.bind("SUPER + CTRL + down", hl.dsp.window.resize({ x = 0, y = 40, relative = true }))
-hl.bind("SUPER + Q", hl.dsp.window.close())
-hl.bind("SUPER + F", hl.dsp.window.fullscreen())
+hl.bind("SUPER + Q", hl.dsp.window.close(), { description = "Wilsof:close-window" })
+hl.bind("SUPER + F", hl.dsp.window.fullscreen(), { description = "Wilsof:fullscreen" })
 hl.bind("SUPER + SHIFT + space", hl.dsp.window.float({ action = "toggle" }))
 
 for workspace = 1, 9 do

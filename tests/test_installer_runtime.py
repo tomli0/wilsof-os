@@ -174,6 +174,10 @@ def fake_arch(tmp_path, monkeypatch):
     from types import SimpleNamespace as NS
     from unittest.mock import Mock
     events = []
+    monkeypatch.setattr(runtime(), 'wireless', {
+        'stage': lambda *a: events.append('wl-stage'),
+        'verify': lambda *a: events.append('wl-verify'),
+    }, raising=False)
     # External live-root/package boundary. Real policy behavior has separate tests.
     policy = {'date': '2026-11-01'}
     monkeypatch.setattr(runtime(), 'snapshot', {
@@ -183,7 +187,7 @@ def fake_arch(tmp_path, monkeypatch):
         'verify_installed': lambda *a: None,
     }, raising=False)
     boot = NS(mountpoint=Path('/boot'), fs_type='fat32')
-    root = NS(mountpoint=Path('/'), fs_type='ext4')
+    root = NS(mountpoint=Path('/'), fs_type='ext4', safe_dev_path=Path('/dev/vda2'))
     mod = NS(partitions=[boot, root])
     async def suggest(device, *, filesystem_type, separate_home):
         assert filesystem_type == 'ext4' and separate_home is False
@@ -192,6 +196,7 @@ def fake_arch(tmp_path, monkeypatch):
     session.__enter__ = Mock(return_value=session)
     session.__exit__ = Mock(return_value=False)
     session.mkinitcpio.return_value = True
+
     locale_generated = False
     def generate_locale(locale):
         nonlocal locale_generated
@@ -290,7 +295,7 @@ def test_arch_executor_orders_guard_and_propagates_failures(fake_arch, monkeypat
         fallback.parent.mkdir(parents=True)
         fallback.write_bytes(b'fixture')
         executor.execute(plan, 'transient-only', guard)
-        assert f.events == ['guard', 'format', 'user', 'provision']
+        assert f.events == ['guard', 'format', 'wl-stage', 'wl-verify', 'user', 'provision']
         f.session.add_bootloader.assert_called_once_with('systemd')
         f.session.enable_service.assert_called_once_with(['NetworkManager', 'greetd'])
         f.session.genfstab.assert_called_once()
@@ -474,7 +479,6 @@ def test_read_only_validation_checks_schema_and_canonical_digest():
 
 
 @pytest.mark.parametrize('field,value', [
-    ('encryption', {'enabled': True}),
     ('bootloader', 'grub'),
     ('executor', {'adapter': 'archinstall', 'adapter_version': '4.4'}),
     ('account', {'username': 'root', 'password_in_plan': False}),
@@ -538,3 +542,178 @@ def test_target_snapshot_is_persisted_and_verified_before_private_provisioning(f
     plan = signed_plan(); plan['plan_id'] = executor.manifest_digest; plan['review_digest'] = m.review_digest(plan)
     executor.execute(plan, 'transient', lambda: None)
     assert f.events.index('snapshot-persist') < f.events.index('snapshot-verified') < f.events.index('provision')
+
+
+def test_encrypted_executor_passes_luks_root_to_filesystem_and_installer(fake_arch, monkeypatch):
+    from types import SimpleNamespace as NS
+    m, f = runtime(), fake_arch
+    f.api.DiskEncryption = lambda **kwargs: NS(**kwargs)
+    f.api.EncryptionType = NS(LUKS='luks')
+    monkeypatch.setattr(m, 'load_archinstall', lambda: f.api)
+    monkeypatch.setattr(m, 'check_target_mount', lambda path: None)
+    monkeypatch.setattr(m.subprocess, 'run', lambda *args, **kwargs: None)
+    fallback = f.target / 'boot/EFI/BOOT/BOOTX64.EFI'
+    fallback.parent.mkdir(parents=True)
+    fallback.write_bytes(b'fixture')
+    executor = m.ArchinstallExecutor(f.manifest, f.hook, f.target, encrypt=True)
+    plan = signed_plan()
+    plan['encryption']['enabled'] = True
+    plan['plan_id'] = executor.manifest_digest
+    plan['review_digest'] = m.review_digest(plan)
+    phrase = 'synthetic-only-luks-passphrase'
+    executor.execute(plan, 'synthetic-account-password', lambda: f.events.append('guard'),
+                     encryption_password=phrase)
+    config = f.api.FilesystemHandler.call_args.args[0]
+    enc = config.disk_encryption
+    assert enc.encryption_type == 'luks'
+    assert enc.partitions == [config.device_modifications[0].partitions[1]]
+    assert enc.encryption_password.plaintext == phrase
+    assert enc.partitions[0].mountpoint == Path('/')
+    assert config.device_modifications[0].partitions[0] not in enc.partitions
+    assert f.api.Installer.call_args.args[1] is config
+    assert 'cryptsetup' in executor.packages
+    assert phrase not in json.dumps(plan)
+    assert f.events.index('guard') < f.events.index('format')
+
+
+def test_interactive_encrypted_review_keeps_distinct_secrets_out_of_plan():
+    m = runtime()
+    calls, output, prompts = [], [], []
+    disk_secret = 'synthetic-only-disk-passphrase'
+    class Executor:
+        encrypt = True
+        packages = ['base', 'cryptsetup']
+        manifest_digest = 'sha256-encrypted-fixture'
+        def execute(self, plan, password, guard, *, encryption_password):
+            guard()
+            calls.append(plan)
+            assert plan['encryption'] == {'enabled': True}
+            assert password == 'synthetic-account-password'
+            assert encryption_password == disk_secret
+            assert disk_secret not in json.dumps(plan)
+    answers = iter(['/dev/vda', 'alice', 'ERASE /dev/vda'])
+    secrets = iter(['synthetic-account-password'] * 2 + [disk_secret] * 2)
+    def secret(prompt):
+        prompts.append(prompt)
+        return next(secrets)
+    m.interactive(Executor(), probe=lambda path: signed_plan()['target'],
+                  ask=lambda prompt: next(answers), secret=secret, output=output.append)
+    assert len(calls) == 1
+    assert len(prompts) == 4
+    assert any('LUKS2' in line and 'unencrypted' in line and 'ESP' in line for line in output)
+    assert disk_secret not in '\n'.join(output)
+    assert 'synthetic-account-password' not in '\n'.join(output)
+
+
+def test_encrypted_cli_is_explicit_and_read_only_help_remains_safe():
+    import subprocess
+    import sys
+    result = subprocess.run([sys.executable, str(ROOT / 'bin/wilsof-install'), '--help'],
+                            capture_output=True, text=True)
+    assert result.returncode == 0
+    assert '--encrypt' in result.stdout
+
+
+@pytest.mark.parametrize('mode', ['blank', 'replace-existing'])
+@pytest.mark.parametrize('explicit', [False, True])
+def test_main_connects_encryption_flag_to_reviewed_executor(monkeypatch, mode, explicit):
+    from types import SimpleNamespace as NS
+    m = runtime()
+    calls = []
+    monkeypatch.setattr(m.sys.stdin, 'isatty', lambda: True)
+    monkeypatch.setattr(m.sys.stdout, 'isatty', lambda: True)
+    monkeypatch.setattr(m.os, 'geteuid', lambda: 0)
+    monkeypatch.setattr(m, 'check_platform', lambda *a: None)
+    monkeypatch.setattr(m, 'check_firmware', lambda *a: None)
+    monkeypatch.setattr(m, 'check_live_capacity', lambda *a: None)
+    monkeypatch.setattr(m.Path, 'is_mount', lambda p: True)
+    monkeypatch.setattr(m, 'guest_policy', lambda: ([], False))
+    monkeypatch.setattr(m, 'ArchinstallExecutor', lambda **kwargs: NS(**kwargs))
+    monkeypatch.setattr(m, 'interactive', lambda ex, **kwargs: calls.append((ex, kwargs)))
+    args = (['--encrypt'] if explicit else []) + (['--replace-existing'] if mode == 'replace-existing' else [])
+    assert m.main(args) == 0
+    assert calls[0][0].encrypt is True
+    assert calls[0][1].get('mode', 'blank') == mode
+
+
+def test_encrypted_executor_refuses_plaintext_backend_fallback(fake_arch, monkeypatch):
+    import subprocess
+    from types import SimpleNamespace as NS
+    m, f = runtime(), fake_arch
+    f.api.DiskEncryption = lambda **kwargs: NS(**kwargs)
+    f.api.EncryptionType = NS(LUKS='luks')
+    monkeypatch.setattr(m, 'load_archinstall', lambda: f.api)
+    monkeypatch.setattr(m, 'check_target_mount', lambda path: None)
+    fallback = f.target / 'boot/EFI/BOOT/BOOTX64.EFI'
+    fallback.parent.mkdir(parents=True)
+    fallback.write_bytes(b'fixture')
+    calls = []
+    def command(argv, **kwargs):
+        calls.append(argv)
+        if argv[0] == 'cryptsetup':
+            assert argv == ['cryptsetup', 'isLuks', '--type', 'luks2', '/dev/vda2']
+            assert kwargs['check'] is True
+            raise subprocess.CalledProcessError(1, argv)
+    monkeypatch.setattr(m.subprocess, 'run', command)
+    executor = m.ArchinstallExecutor(f.manifest, f.hook, f.target, encrypt=True)
+    plan = signed_plan()
+    plan['encryption']['enabled'] = True
+    plan['plan_id'] = executor.manifest_digest
+    plan['review_digest'] = m.review_digest(plan)
+    with pytest.raises(subprocess.CalledProcessError):
+        executor.execute(plan, 'synthetic-account-password', lambda: None,
+                         encryption_password='synthetic-disk-passphrase')
+    f.api.Installer.assert_not_called()
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize('phrase', [None, '', 'short', 'line\nbreak-in-passphrase',
+                                   'null\x00in-passphrase', 'unicode-æ-passphrase',
+                                   ' ' * 20, 'synthetic-account-password'])
+def test_invalid_encryption_secrets_stop_before_any_disk_operation(fake_arch, monkeypatch, phrase):
+    from types import SimpleNamespace as NS
+    m, f = runtime(), fake_arch
+    f.api.DiskEncryption = lambda **kwargs: NS(**kwargs)
+    f.api.EncryptionType = NS(LUKS='luks')
+    monkeypatch.setattr(m, 'load_archinstall', lambda: f.api)
+    monkeypatch.setattr(m, 'check_target_mount', lambda path: None)
+    executor = m.ArchinstallExecutor(f.manifest, f.hook, f.target, encrypt=True)
+    plan = signed_plan()
+    plan['encryption']['enabled'] = True
+    plan['plan_id'] = executor.manifest_digest
+    plan['review_digest'] = m.review_digest(plan)
+    with pytest.raises(m.Refusal):
+        executor.execute(plan, 'synthetic-account-password',
+                         lambda: pytest.fail('Invalid secret reached disk guard'),
+                         encryption_password=phrase)
+    f.fs.perform_filesystem_operations.assert_not_called()
+
+
+def test_read_only_encrypted_plan_validation_has_no_secret_or_backend(monkeypatch):
+    m = runtime()
+    plan = signed_plan()
+    plan['encryption']['enabled'] = True
+    plan['review_digest'] = m.review_digest(plan)
+    monkeypatch.setattr(m, 'load_archinstall', lambda: pytest.fail('Read-only validation imported backend'))
+    assert m.validate_plan(plan) == plan
+    plan['encryption']['passphrase'] = 'must-not-be-serialized'
+    plan['review_digest'] = m.review_digest(plan)
+    with pytest.raises(m.Refusal, match='schema'):
+        m.validate_plan(plan)
+
+
+@pytest.mark.parametrize('defect', ['missing', 'mismatch', 'short', 'shared'])
+def test_interactive_encryption_failure_never_calls_executor(defect):
+    from types import SimpleNamespace as NS
+    m = runtime()
+    account = 'synthetic-account-password'
+    phrase = {'missing': '', 'short': 'short', 'shared': account}.get(defect, 'synthetic-disk-passphrase')
+    confirm = 'different-disk-passphrase' if defect == 'mismatch' else phrase
+    secrets = iter([account, account, phrase, confirm])
+    answers = iter(['/dev/vda', 'alice'])
+    ex = NS(encrypt=True, manifest_digest='sha256-fixture', packages=['base'],
+            execute=lambda *a, **kw: pytest.fail('Invalid encryption reached executor'))
+    with pytest.raises(m.Refusal):
+        m.interactive(ex, probe=lambda path: signed_plan()['target'],
+                      ask=lambda prompt: next(answers), secret=lambda prompt: next(secrets),
+                      output=lambda line: None)

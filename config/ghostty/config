@@ -1,15 +1,15 @@
 # Wilsof Modern Terminal. Seeded once; subsequent user changes are preserved.
 font-family = JetBrainsMono Nerd Font
 font-size = 12
-background = #121820
+background = #14181E
 foreground = #E7EEF2
 cursor-color = #86B9CE
-cursor-text = #121820
+cursor-text = #14181E
 cursor-style = block
 cursor-style-blink = false
 selection-background = #365362
 selection-foreground = #E7EEF2
-palette = 0=#121820
+palette = 0=#14181E
 palette = 1=#D59898
 palette = 2=#A7BEA5
 palette = 3=#D8B36C
